@@ -4,8 +4,7 @@ from numpy import array, dot
 from numpy.linalg import norm
 from scipy.sparse.csgraph import dijkstra
 from math import sqrt, pi
-
-import matplotlib.pyplot as plot
+# from matplotlib.pyplot import figure, ion, show
 
 from model.Car import Car
 from model.Game import Game
@@ -20,8 +19,8 @@ Point = namedtuple('Point', ('x', 'y'))
 
 class AdjacencyMatrix:
     def __init__(self, tiles):
-        row_size = len(tiles)
-        self.__column_size = len(tiles[0])
+        column_size = len(tiles)
+        self.__row_size = len(tiles[0])
 
         def generate():
             for x, column in enumerate(tiles):
@@ -57,7 +56,7 @@ class AdjacencyMatrix:
 
         def matrix_row(dst):
             return [1 if x in dst else 0
-                    for x in range(self.__column_size * row_size)]
+                    for x in range(self.__row_size * column_size)]
 
         def left(node):
             return self.index(node.x - 1, node.y)
@@ -74,44 +73,47 @@ class AdjacencyMatrix:
         self.__values = list(generate())
 
     def index(self, x, y):
-        return x * self.__column_size + y
+        return x * self.__row_size + y
 
     def x_position(self, index):
-        return int(index / self.__column_size)
+        return int(index / self.__row_size)
 
     def y_position(self, index):
-        return index % self.__column_size
+        return index % self.__row_size
 
     @property
     def values(self):
         return self.__values
 
 
-def graph_plot(matrix):
-    x_max = max(matrix.x_position(x) for x in range(len(matrix.values)))
-    y_max = max(matrix.y_position(x) for x in range(len(matrix.values)))
-    plot.figure()
-    for x, v in enumerate(matrix.values):
-        s = array([matrix.x_position(x), matrix.y_position(x)])
-        plot.plot([s[0]], [s[1]], 'o')
-        for y, w in enumerate(v):
-            if w:
-                d = array([matrix.x_position(y), matrix.y_position(y)]) - s
-                plot.arrow(s[0], s[1], d[0], d[1], head_width=0.2, head_length=0.2, fc='k', ec='k')
-    plot.axis([-1, x_max + 1, -1, y_max + 1])
-    plot.show()
+# def graph_plot(matrix):
+#     x_max = max(matrix.x_position(x) for x in range(len(matrix.values)))
+#     y_max = max(matrix.y_position(x) for x in range(len(matrix.values)))
+#     pyplot.figure()
+#     for x, v in enumerate(matrix.values):
+#         s = array([matrix.x_position(x), matrix.y_position(x)])
+#         pyplot.plot([s[0]], [s[1]], 'o')
+#         for y, w in enumerate(v):
+#             if w:
+#                 d = array([matrix.x_position(y), matrix.y_position(y)]) - s
+#                 pyplot.arrow(s[0], s[1], d[0], d[1], head_width=0.2, head_length=0.2, fc='k', ec='k')
+#     pyplot.axis([-1, x_max + 1, -1, y_max + 1])
+#     pyplot.show()
 
 
-def path_to_end(me: Car, world: World, game: Game):
-    matrix = AdjacencyMatrix(world.tiles_x_y)
-    # graph_plot(matrix)
+def current_tile(x, y, track_tile_size):
+    return Point(int(x / track_tile_size - 0.5), int(y / track_tile_size - 0.5))
+
+
+def path_to_end(start_index, next_waypoint_index, matrix, waypoints):
     graph = array(matrix.values)
     _, predecessors = dijkstra(graph, return_predecessors=True)
 
     def generate():
-        for x in range(me.next_waypoint_index - 1, len(world.waypoints) - 1):
-            src = matrix.index(*world.waypoints[x])
-            dst = matrix.index(*world.waypoints[x + 1])
+        yield path(start_index, matrix.index(*waypoints[next_waypoint_index]))
+        for i in range(next_waypoint_index, len(waypoints) - 1):
+            src = matrix.index(*waypoints[i])
+            dst = matrix.index(*waypoints[i + 1])
             yield path(src, dst)
 
     def path(src, dst):
@@ -122,10 +124,9 @@ def path_to_end(me: Car, world: World, game: Game):
             yield dst
             dst = predecessors.item(src, dst)
 
+    yield Point(*waypoints[next_waypoint_index - 1])
     for v in chain.from_iterable(generate()):
-        x = (matrix.x_position(v) + 0.5) * game.track_tile_size
-        y = (matrix.y_position(v) + 0.5) * game.track_tile_size
-        yield Point(x, y)
+        yield Point(matrix.x_position(v), matrix.y_position(v))
 
 
 def is_direct(a, b, c):
@@ -162,20 +163,27 @@ def detail(path):
 
 class MyStrategy:
     def move(self, me: Car, world: World, game: Game, move: Move):
-        path = list(path_to_end(me, world, game))
-        path = list(detail(path))
-        target = path[0]
+        matrix = AdjacencyMatrix(world.tiles_x_y)
+        tile = current_tile(me.x, me.y, game.track_tile_size)
+        tile_index = matrix.index(tile.x, tile.y)
+        path = list(path_to_end(tile_index, me.next_waypoint_index, matrix,
+                                world.waypoints))
+        target = Point(*(array(path[1]) + array([0.5, 0.5]) *
+                         game.track_tile_size))
         move.wheel_turn = me.get_angle_to(target.x, target.y) * 20.0 / pi
-        move.engine_power = 1.0
-        print((me.x, me.y), tuple(target))
-        # print([norm(array(path[x]) - array(path[x - 1]))
-        #        for x in range(1, len(path))])
+        move.engine_power = 0.5
+        print('next_waypoint=', me.next_waypoint_index, me.next_waypoint_x,
+              me.next_waypoint_y, *world.waypoints[me.next_waypoint_index])
+        print('tile=', tile)
+        print('tile_index=', tile_index)
+        print('len(path)=', len(path))
+        print('target=', target)
+        # print((me.x, me.y), tuple(target))
         # path_x = [x.x for x in path]
         # path_y = [x.y for x in path]
-        # plot.figure()
-        # plot.plot(path_x, path_y, 'o')
-        # plot.plot(path_x, path_y, '-')
-        # plot.axis([min(path_x) - 0.5, max(path_x) + 0.5,
-        #            min(path_y) - 0.5, max(path_y) + 0.5])
-        # plot.show()
-        # exit(0)
+        # self.path.clear()
+        # self.path.set_xlim([min(path_x) - 0.5, max(path_x) + 0.5])
+        # self.path.set_ylim([min(path_y) - 0.5, max(path_y) + 0.5])
+        # self.path.plot(path_x, path_y, '-')
+        # self.path.plot(path_x, path_y, 'o')
+        # self.figure.canvas.draw()
