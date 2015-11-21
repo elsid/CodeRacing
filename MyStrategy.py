@@ -1,11 +1,11 @@
 from collections import namedtuple
 from itertools import chain
-from numpy import array, meshgrid, linspace, vectorize
+from numpy import array, meshgrid, linspace, vectorize, arctan2
 from scipy.sparse.csgraph import dijkstra
-from math import sqrt
+from math import sqrt, cos, sin
 from matplotlib.pyplot import show, ion, figure
 from mpl_toolkits.mplot3d import Axes3D
-from itertools import islice
+from itertools import islice, takewhile
 
 from model.Car import Car
 from model.Game import Game
@@ -19,7 +19,9 @@ class MyStrategy:
         # self.__path_plots = PathPlots('path')
         # self.__tile_center_path_plots = PathPlots('tile_center_path')
         # self.__shifted_path_plots = PathPlots('shifted_path')
-        self.__path_from_me_plots = PathPlots('path_from_me')
+        self.__cartesian_path_plots = PathPlots('cartesian path')
+        self.__polar_path_plots = PathPlots('polar path')
+        self.__path_for_spline_plots = PathPlots('path for spline')
         self.__tile_passability_plot = SurfacePlot('tile_passability')
         ion()
         show()
@@ -35,7 +37,10 @@ class MyStrategy:
         reduced_path = list(reduce_direct(shifted_path))
         reduced_path = list(reduce_diagonal_direct(reduced_path))
         reduced_path = list(reduce_direct_first_after_me(reduced_path))
-        path_from_me = [Point(me.x, me.y)] + reduced_path
+        me_position = Point(me.x, me.y)
+        path_from_me = [me_position] + reduced_path
+        polar_path = list(polar(me_position, path_from_me))
+        path_for_spline = list(take_for_spline(polar_path))
         barriers = tile_barriers(world.tiles_x_y[tile.x][tile.y],
                                  game.track_tile_margin, game.track_tile_size)
         passability = tile_passability(barriers, me.height, me.width)
@@ -43,14 +48,14 @@ class MyStrategy:
         print(
             'move',
             'tick:', world.tick,
-            'me: ', (me.x, me.y),
-            'tile: ', (tile.x, tile.y),
+            'me: ', me_position,
+            'me_polar: ', me_position.polar(),
+            'tile: ', tile,
         )
         if world.tick % 100 == 0:
-            # self.__path_plots.draw(path)
-            # self.__tile_center_path_plots.draw(tile_center_path)
-            # self.__shifted_path_plots.draw(shifted_path)
-            self.__path_from_me_plots.draw(path_from_me)
+            self.__cartesian_path_plots.draw(path_from_me)
+            self.__polar_path_plots.draw(polar_path)
+            self.__path_for_spline_plots.draw(path_for_spline)
             self.__tile_passability_plot.draw(
                 linspace(0, game.track_tile_size, 20), passability)
 
@@ -97,6 +102,22 @@ class Point:
         self.x /= other
         self.y /= other
 
+    @property
+    def radius(self):
+        return self.x
+
+    @radius.setter
+    def radius(self, value):
+        self.x = value
+
+    @property
+    def angle(self):
+        return self.y
+
+    @angle.setter
+    def angle(self, value):
+        self.y = value
+
     def dot(self, other):
         return self.x * other.x + self.y * other.y
 
@@ -106,8 +127,20 @@ class Point:
     def cos(self, other):
         return self.dot(other) / (self.norm() * other.norm())
 
+    def distance(self, other):
+        return (other - self).norm()
+
     def map(self, function):
         return Point(function(self.x), function(self.y))
+
+    def polar(self):
+        radius = self.norm()
+        angle = arctan2(self.y, self.x)
+        return Point(radius, angle)
+
+    def cartesian(self):
+        return Point(x=self.radius * cos(self.angle),
+                     y=self.radius * sin(self.angle))
 
 
 class AdjacencyMatrix:
@@ -257,6 +290,24 @@ def reduce_direct_first_after_me(path):
 
 def reduce_diagonal_direct(path):
     return reduce_base_on_three(path, is_diagonal_direct)
+
+
+def polar(origin, path):
+    return ((x - origin).polar() for x in path)
+
+
+def take_for_spline(path):
+    if not path:
+        return []
+
+    def predicate(index, current):
+        return current.radius > path[index - 1].radius
+
+    yield path[0]
+    generator = takewhile(lambda x: predicate(*x),
+                          islice(enumerate(path), 1, len(path)))
+    for _, p in generator:
+        yield p
 
 
 def reduce_base_on_three(path, need_reduce):

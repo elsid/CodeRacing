@@ -1,6 +1,7 @@
 from unittest import TestCase, main
 from hamcrest import assert_that, equal_to
 from model.TileType import TileType
+from math import pi, sqrt
 from MyStrategy import (
     AdjacencyMatrix,
     path_to_end,
@@ -19,6 +20,8 @@ from MyStrategy import (
     reduce_direct_first_after_me,
     is_diagonal_direct,
     reduce_diagonal_direct,
+    polar,
+    take_for_spline,
 )
 
 
@@ -156,6 +159,20 @@ class AdjacencyMatrixTest(TestCase):
         assert_that(matrix.y_position(3), equal_to(1))
 
 
+class PointTest(TestCase):
+    def test_polar_for_0_0_returns_0_0(self):
+        assert_that(Point(0, 0).polar(), equal_to(Point(0, 0)))
+
+    def test_polar_for_1_0_returns_1_0(self):
+        assert_that(Point(1, 0).polar(), equal_to(Point(1, 0)))
+
+    def test_polar_for_0_1_returns_1_and_pi_div_2(self):
+        assert_that(Point(0, 1).polar(), equal_to(Point(1, pi / 2)))
+
+    def test_polar_for_1_1_returns_sqrt_2_and_pi_div_2(self):
+        assert_that(Point(1, 1).polar(), equal_to(Point(sqrt(2), pi / 4)))
+
+
 class PathToEndTest(TestCase):
     def test_from_vertical_to_next_vertical_returns_first_and_second_point(self):
         path = path_to_end(
@@ -236,34 +253,34 @@ class CircleTest(TestCase):
 
 class TileBarriersTest(TestCase):
     def test_for_empty_returns_empty_tuple(self):
-        barriers = tile_barriers(TileType.EMPTY, 1, 3)
-        assert_that(barriers, equal_to(tuple()))
+        result = tile_barriers(TileType.EMPTY, 1, 3)
+        assert_that(result, equal_to(tuple()))
 
     def test_for_vertical_returns_two_borders(self):
-        barriers = tile_barriers(TileType.VERTICAL, 1, 3)
-        assert_that(barriers, equal_to((
+        result = tile_barriers(TileType.VERTICAL, 1, 3)
+        assert_that(result, equal_to((
             Border(Point(1, 0), Point(1, 3), Point(1, 0)),
             Border(Point(2, 0), Point(2, 3), Point(-1, 0)),
         )))
 
     def test_for_horizontal_returns_two_borders(self):
-        barriers = tile_barriers(TileType.HORIZONTAL, 1, 3)
-        assert_that(barriers, equal_to((
+        result = tile_barriers(TileType.HORIZONTAL, 1, 3)
+        assert_that(result, equal_to((
             Border(Point(0, 1), Point(3, 1), Point(0, 1)),
             Border(Point(0, 2), Point(3, 2), Point(0, -1)),
         )))
 
     def test_for_left_top_corner_returns_two_borders_and_one_circle(self):
-        barriers = tile_barriers(TileType.LEFT_TOP_CORNER, 1, 3)
-        assert_that(barriers, equal_to((
+        result = tile_barriers(TileType.LEFT_TOP_CORNER, 1, 3)
+        assert_that(result, equal_to((
             Border(Point(1, 0), Point(1, 3), Point(1, 0)),
             Border(Point(0, 1), Point(3, 1), Point(0, 1)),
             Circle(Point(3, 3), 1),
         )))
 
     def test_for_crossroads_returns_four_circles(self):
-        barriers = tile_barriers(TileType.CROSSROADS, 1, 3)
-        assert_that(barriers, equal_to((
+        result = tile_barriers(TileType.CROSSROADS, 1, 3)
+        assert_that(result, equal_to((
             Circle(Point(0, 0), 1), Circle(Point(0, 3), 1),
             Circle(Point(3, 0), 1), Circle(Point(3, 3), 1),
         )))
@@ -303,20 +320,20 @@ class TileCenterTest(TestCase):
 
 class ShiftToBordersTest(TestCase):
     def test_for_empty_returns_empty(self):
-        shifted = shift_to_borders([])
-        assert_that(list(shifted), equal_to([]))
+        result = shift_to_borders([])
+        assert_that(list(result), equal_to([]))
 
     def test_for_one_returns_equal(self):
-        shifted = shift_to_borders([Point(0, 0)])
-        assert_that(list(shifted), equal_to([Point(0, 0)]))
+        result = shift_to_borders([Point(0, 0)])
+        assert_that(list(result), equal_to([Point(0, 0)]))
 
-    def test_for_two_returns_first_shifted_by_half_distance_to_second(self):
-        shifted = shift_to_borders([Point(0, 0), Point(1, 0)])
-        assert_that(list(shifted), equal_to([Point(0.5, 0), Point(1, 0)]))
+    def test_for_two_returns_first_result_by_half_distance_to_second(self):
+        result = shift_to_borders([Point(0, 0), Point(1, 0)])
+        assert_that(list(result), equal_to([Point(0.5, 0), Point(1, 0)]))
 
-    def test_for_turn_returns_first_and_second_shifted_to_their_following(self):
-        shifted = shift_to_borders([Point(0, 0), Point(1, 0), Point(1, 1)])
-        assert_that(list(shifted),
+    def test_for_turn_returns_first_and_second_result_to_their_following(self):
+        result = shift_to_borders([Point(0, 0), Point(1, 0), Point(1, 1)])
+        assert_that(list(result),
                     equal_to([Point(0.5, 0), Point(1, 0.5), Point(1, 1)]))
 
 
@@ -384,54 +401,54 @@ class IsDirectTest(TestCase):
 
 class ReduceDirectTest(TestCase):
     def test_for_empty_returns_empty(self):
-        reduced = reduce_direct([])
-        assert_that(list(reduced), equal_to([]))
+        result = reduce_direct([])
+        assert_that(list(result), equal_to([]))
 
     def test_for_one_returns_equal(self):
-        reduced = reduce_direct([Point(0, 0)])
-        assert_that(list(reduced), equal_to([Point(0, 0)]))
+        result = reduce_direct([Point(0, 0)])
+        assert_that(list(result), equal_to([Point(0, 0)]))
 
     def test_for_two_returns_equal(self):
-        reduced = reduce_direct([Point(0, 0), Point(1, 1)])
-        assert_that(list(reduced), equal_to([Point(0, 0), Point(1, 1)]))
+        result = reduce_direct([Point(0, 0), Point(1, 1)])
+        assert_that(list(result), equal_to([Point(0, 0), Point(1, 1)]))
 
     def test_for_three_not_direct_returns_equal(self):
-        reduced = reduce_direct([Point(0, 0), Point(1, 0), Point(1, 1)])
-        assert_that(list(reduced),
+        result = reduce_direct([Point(0, 0), Point(1, 0), Point(1, 1)])
+        assert_that(list(result),
                     equal_to([Point(0, 0), Point(1, 0), Point(1, 1)]))
 
     def test_for_three_direct_returns_without_second(self):
-        reduced = reduce_direct([Point(0, 0), Point(1, 0), Point(2, 0)])
-        assert_that(list(reduced),
+        result = reduce_direct([Point(0, 0), Point(1, 0), Point(2, 0)])
+        assert_that(list(result),
                     equal_to([Point(0, 0), Point(2, 0)]))
 
 
 class ReduceDirectFirstAfterMeTest(TestCase):
     def test_for_empty_returns_empty(self):
-        reduced = reduce_direct_first_after_me([])
-        assert_that(list(reduced), equal_to([]))
+        result = reduce_direct_first_after_me([])
+        assert_that(list(result), equal_to([]))
 
     def test_for_one_returns_equal(self):
-        reduced = reduce_direct_first_after_me([Point(0, 0)])
-        assert_that(list(reduced), equal_to([Point(0, 0)]))
+        result = reduce_direct_first_after_me([Point(0, 0)])
+        assert_that(list(result), equal_to([Point(0, 0)]))
 
     def test_for_two_different_returns_equal(self):
-        reduced = reduce_direct_first_after_me([Point(0, 0), Point(1, 1)])
-        assert_that(list(reduced), equal_to([Point(0, 0), Point(1, 1)]))
+        result = reduce_direct_first_after_me([Point(0, 0), Point(1, 1)])
+        assert_that(list(result), equal_to([Point(0, 0), Point(1, 1)]))
 
     def test_for_two_with_equal_y_returns_without_first(self):
-        reduced = reduce_direct_first_after_me([Point(0, 0), Point(1, 0)])
-        assert_that(list(reduced), equal_to([Point(1, 0)]))
+        result = reduce_direct_first_after_me([Point(0, 0), Point(1, 0)])
+        assert_that(list(result), equal_to([Point(1, 0)]))
 
     def test_for_three_where_first_two_with_equal_y_returns_without_first(self):
-        reduced = reduce_direct_first_after_me(
+        result = reduce_direct_first_after_me(
             [Point(0, 0), Point(1, 0), Point(1, 1)])
-        assert_that(list(reduced), equal_to([Point(1, 0), Point(1, 1)]))
+        assert_that(list(result), equal_to([Point(1, 0), Point(1, 1)]))
 
     def test_for_three_with_equal_y_returns_without_first(self):
-        reduced = reduce_direct_first_after_me(
+        result = reduce_direct_first_after_me(
             [Point(0, 0), Point(1, 0), Point(2, 0)])
-        assert_that(list(reduced), equal_to([Point(1, 0), Point(2, 0)]))
+        assert_that(list(result), equal_to([Point(1, 0), Point(2, 0)]))
 
 
 class IsDiagonalDirectTest(TestCase):
@@ -462,27 +479,62 @@ class IsDiagonalDirectTest(TestCase):
 
 class ReduceDiagonalDirectTest(TestCase):
     def test_for_empty_returns_empty(self):
-        reduced = reduce_diagonal_direct([])
-        assert_that(list(reduced), equal_to([]))
+        result = reduce_diagonal_direct([])
+        assert_that(list(result), equal_to([]))
 
     def test_for_one_returns_equal(self):
-        reduced = reduce_diagonal_direct([Point(0, 0)])
-        assert_that(list(reduced), equal_to([Point(0, 0)]))
+        result = reduce_diagonal_direct([Point(0, 0)])
+        assert_that(list(result), equal_to([Point(0, 0)]))
 
     def test_for_two_returns_equal(self):
-        reduced = reduce_diagonal_direct([Point(0, 0), Point(1, 1)])
-        assert_that(list(reduced), equal_to([Point(0, 0), Point(1, 1)]))
+        result = reduce_diagonal_direct([Point(0, 0), Point(1, 1)])
+        assert_that(list(result), equal_to([Point(0, 0), Point(1, 1)]))
 
     def test_for_three_not_diagonal_direct_returns_equal(self):
-        reduced = reduce_diagonal_direct(
+        result = reduce_diagonal_direct(
             [Point(0, 0), Point(1, 1), Point(2, 1)])
-        assert_that(list(reduced),
+        assert_that(list(result),
                     equal_to([Point(0, 0), Point(1, 1), Point(2, 1)]))
 
     def test_for_three_diagonal_direct_returns_without_second(self):
-        reduced = reduce_diagonal_direct([Point(0, 0), Point(1, 1), Point(2, 2)])
-        assert_that(list(reduced), equal_to([Point(0, 0), Point(2, 2)]))
+        result = reduce_diagonal_direct([Point(0, 0), Point(1, 1), Point(2, 2)])
+        assert_that(list(result), equal_to([Point(0, 0), Point(2, 2)]))
 
+
+class PolarTest(TestCase):
+    def test_for_empty_with_origin_0_0_returns_empty(self):
+        result = polar(origin=Point(0, 0), path=[])
+        assert_that(list(result), equal_to([]))
+
+    def test_for_one_with_origin_0_0_returns_one_polar(self):
+        result = polar(origin=Point(0, 0), path=[Point(1, 1)])
+        assert_that(list(result), equal_to([Point(sqrt(2), pi / 4)]))
+
+    def test_for_one_with_origin_1_0_returns_one_shifted_polar(self):
+        result = polar(origin=Point(1, 0), path=[Point(1, 1)])
+        assert_that(list(result), equal_to([Point(1, pi / 2)]))
+
+
+class TakeForSplineTest(TestCase):
+    def test_for_empty_returns_empty(self):
+        result = take_for_spline([])
+        assert_that(list(result), equal_to([]))
+
+    def test_for_one_returns_equal(self):
+        result = take_for_spline([Point(0, 0)])
+        assert_that(list(result), equal_to([Point(0, 0)]))
+
+    def test_for_two_where_second_radius_greater_than_first_returns_equal(self):
+        result = take_for_spline([Point(0, 0), Point(1, 1)])
+        assert_that(list(result), equal_to([Point(0, 0), Point(1, 1)]))
+
+    def test_for_two_where_second_radius_equals_first_returns_without_second(self):
+        result = take_for_spline([Point(1, 0), Point(1, 1)])
+        assert_that(list(result), equal_to([Point(1, 0)]))
+
+    def test_for_two_where_second_radius_less_than_first_returns_without_second(self):
+        result = take_for_spline([Point(1, 0), Point(0.5, 0.5)])
+        assert_that(list(result), equal_to([Point(1, 0)]))
 
 
 if __name__ == '__main__':
