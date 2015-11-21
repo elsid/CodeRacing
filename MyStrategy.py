@@ -1,10 +1,11 @@
-from collections import namedtuple, defaultdict
+from collections import namedtuple
 from itertools import chain
-from numpy import array, dot, array_equal
+from numpy import array, dot, array_equal, meshgrid, linspace, vectorize
 from numpy.linalg import norm
 from scipy.sparse.csgraph import dijkstra
 from math import sqrt
-from matplotlib.pyplot import subplots, show, ion
+from matplotlib.pyplot import subplots, show, ion, figure
+from mpl_toolkits.mplot3d import Axes3D
 
 from model.Car import Car
 from model.Game import Game
@@ -16,20 +17,28 @@ from model.TileType import TileType
 class MyStrategy:
     def __init__(self):
         self.__path_plots = PathPlots()
-        self.__tiles_barriers = defaultdict(lambda: defaultdict(lambda: None))
+        self.__detailed_path_plots = PathPlots()
+        self.__tiles_barriers_plot = SurfacePlot()
+        ion()
+        show()
 
     def move(self, me: Car, world: World, game: Game, move: Move):
+        print('move', world.tick, me.x, me.y)
         matrix = AdjacencyMatrix(world.tiles_x_y)
         tile = current_tile(me.x, me.y, game.track_tile_size)
         tile_index = matrix.index(tile.x, tile.y)
         path = list(path_to_end(tile_index, me.next_waypoint_index, matrix,
                                 world.waypoints))
-        path_tiles = (world.tiles_x_y[x][y] for x, y in path)
-        update_tiles_barriers(self.__tiles_barriers, path_tiles,
-                              game.track_tile_margin, game.track_tile_size)
+        detailed_path = list(detail(path))
+        barriers = tile_barriers(world.tiles_x_y[tile.x][tile.y],
+                                 game.track_tile_margin, game.track_tile_size)
+        passability = tile_passability(barriers, me.height, me.width)
         move.engine_power = 0.5
-        print(me.x, me.y, tile.x, tile.y, tile_index, path[:2])
-        self.__path_plots.draw(path)
+        if world.tick % 100 == 0:
+            self.__path_plots.draw(path)
+            self.__detailed_path_plots.draw(detailed_path)
+            self.__tiles_barriers_plot.draw(
+                linspace(0, game.track_tile_size, 20), passability)
 
 
 Node = namedtuple('Node', ('x', 'y'))
@@ -183,13 +192,6 @@ def detail(path):
     return chain.from_iterable(replace(i, x) for i, x in enumerate(path))
 
 
-def update_tiles_barriers(values, tiles, tile_margin, tile_size):
-    for x, v in enumerate(tiles):
-        for y, tile_type in enumerate(v):
-            if values[x][y] is None:
-                values[x][y] = tile_barriers(tile_type, tile_margin, tile_size)
-
-
 def tile_barriers(tile_type, tile_margin, tile_size):
     low = tile_margin
     high = tile_size - low
@@ -229,7 +231,7 @@ def tile_barriers(tile_type, tile_margin, tile_size):
 
 def tile_passability(barriers, height, width):
     def impl(x, y):
-        return min(x.passability(x, y, height, width) for x in barriers)
+        return min(b.passability(x, y, height, width) for b in barriers)
     return impl
 
 
@@ -245,7 +247,7 @@ class Circle(Barrier):
 
     def passability(self, x, y, height, width):
         position = array((x, y))
-        radius = max((height, width))
+        radius = max((height, width)) / 2
         return float(norm(self.__position - position) > self.__radius + radius)
 
     def __repr__(self):
@@ -269,7 +271,7 @@ class Border(Barrier):
         to_end = self.__end - self.__begin
         distance = sqrt(norm(to_car)**2 -
                         (dot(to_car, to_end) / norm(to_end))**2)
-        if distance <= max((height, width)):
+        if distance <= max((height, width)) / 2:
             return 0.0
         return float(dot(to_car, self.__normal) > 0)
 
@@ -284,26 +286,38 @@ class Border(Barrier):
 
 
 class PathPlots:
-    __plot_inited = False
-    __figure = None
+    __inited = False
     __points_plot = None
     __lines_plot = None
+
+    def __init__(self):
+        self.__figure, self.__axis = subplots()
 
     def draw(self, path):
         path_x = array([p.x for p in path])
         path_y = array([p.y for p in path])
-        if self.__plot_inited:
+        if self.__inited:
             self.__points_plot.set_xdata(path_x)
             self.__points_plot.set_ydata(path_y)
             self.__lines_plot.set_xdata(path_x)
             self.__lines_plot.set_ydata(path_y)
             self.__figure.canvas.draw()
         else:
-            self.__figure, axis = subplots()
-            axis.set_xlim([min(path_x) - 0.5, max(path_x) + 0.5])
-            axis.set_ylim([min(path_y) - 0.5, max(path_y) + 0.5])
-            self.__points_plot = axis.plot(path_x, path_y, 'o')[0]
-            self.__lines_plot = axis.plot(path_x, path_y, '-')[0]
-            ion()
-            show()
-            self.__plot_inited = True
+            self.__axis.set_xlim([min(path_x) - 0.5, max(path_x) + 0.5])
+            self.__axis.set_ylim([min(path_y) - 0.5, max(path_y) + 0.5])
+            self.__points_plot = self.__axis.plot(path_x, path_y, 'o')[0]
+            self.__lines_plot = self.__axis.plot(path_x, path_y, '-')[0]
+            self.__inited = True
+
+
+class SurfacePlot:
+    def __init__(self):
+        self.__figure = figure()
+        self.__axis = self.__figure.add_subplot(1, 1, 1, projection='3d')
+
+    def draw(self, limits, function):
+        x, y = meshgrid(limits, limits)
+        z = vectorize(function)(x, y)
+        self.__axis.cla()
+        self.__axis.plot_wireframe(x, y, z)
+        self.__figure.canvas.draw()

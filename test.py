@@ -1,4 +1,3 @@
-from collections import defaultdict
 from unittest import TestCase, main
 from hamcrest import assert_that, equal_to
 from model.TileType import TileType
@@ -11,7 +10,7 @@ from MyStrategy import (
     Border,
     Circle,
     tile_barriers,
-    update_tiles_barriers,
+    tile_passability,
 )
 
 
@@ -199,7 +198,7 @@ class BorderTest(TestCase):
 
     def test_passability_at_normal_side_with_unfit_size_returns_0(self):
         border = Border([0, 0], [1, 0], [0, 1])
-        assert_that(border.passability(0, 2, 3, 3), equal_to(0.0))
+        assert_that(border.passability(0, 1.5, 3, 3), equal_to(0.0))
 
     def test_passability_at_not_normal_side_with_fit_size_returns_0(self):
         border = Border([0, 0], [1, 0], [0, 1])
@@ -221,7 +220,7 @@ class CircleTest(TestCase):
 
     def test_passability_outside_radius_with_unfit_size_returns_0(self):
         circle = Circle([0, 0], 1)
-        assert_that(circle.passability(0, 3, 2, 2), equal_to(0.0))
+        assert_that(circle.passability(0, 2, 2, 2), equal_to(0.0))
 
     def test_passability_inside_radius_with_unfit_size_returns_0(self):
         circle = Circle([0, 0], 4)
@@ -263,18 +262,18 @@ class TileBarriersTest(TestCase):
         )))
 
 
-class UpdateTilesBarriers(TestCase):
-    def test_with_one_empty_for_empty_should_fill(self):
-        tiles_barriers = defaultdict(lambda: defaultdict(lambda: None))
-        update_tiles_barriers(tiles_barriers, tiles=[[TileType.EMPTY]],
-                              tile_margin=1, tile_size=3)
-        assert_that(tiles_barriers, equal_to({0: {0: tuple()}}))
+class TilePassabilityTest(TestCase):
+    def test_inside_one_of_circles_returns_0(self):
+        passability = tile_passability(barriers=[Circle([0, 0], 1),
+                                                 Circle([1, 1], 1)],
+                                       height=1, width=1)
+        assert_that(passability(0, 0), equal_to(0))
 
-    def test_with_different_tile_for_filled_should_do_not_change(self):
-        tiles_barriers = {0: {0: tuple()}}
-        update_tiles_barriers(tiles_barriers, tiles=[[TileType.VERTICAL]],
-                              tile_margin=1, tile_size=3)
-        assert_that(tiles_barriers, equal_to({0: {0: tuple()}}))
+    def test_inside_all_of_circles_returns_1(self):
+        passability = tile_passability(barriers=[Circle([0, 0], 1),
+                                                 Circle([1, 1], 1)],
+                                       height=1, width=1)
+        assert_that(passability(3, 3), equal_to(1))
 
 
 if __name__ == '__main__':
