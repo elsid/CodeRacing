@@ -11,7 +11,7 @@ from MyStrategy import (
     Border,
     Circle,
     tile_barriers,
-    tile_passability,
+    passability_function,
     tile_center_coord,
     tile_center,
     shift_to_borders,
@@ -201,102 +201,118 @@ class PathToEndTest(TestCase):
 
 class TileCoordTest(TestCase):
     def test_at_0_with_tile_size_100_returns_0(self):
-        assert_that(tile_coord(0, 100), equal_to(0))
+        assert_that(tile_coord(value=0, tile_size=100), equal_to(0))
 
     def test_at_99_with_tile_size_100_returns_0(self):
-        assert_that(tile_coord(99, 100), equal_to(0))
+        assert_that(tile_coord(value=99, tile_size=100), equal_to(0))
 
     def test_at_100_with_tile_size_100_returns_1(self):
-        assert_that(tile_coord(100, 100), equal_to(1))
+        assert_that(tile_coord(value=100, tile_size=100), equal_to(1))
 
 
 class CurrentTileTest(TestCase):
     def test_at_100_100_with_tile_size_100_returns_1_1(self):
-        assert_that(current_tile(100, 100, 100), equal_to(Point(1, 1)))
+        result = current_tile(x=100, y=100, tile_size=100)
+        assert_that(result, equal_to(Point(1, 1)))
 
 
 class BorderTest(TestCase):
     def test_passability_at_normal_side_with_fit_size_returns_1(self):
-        border = Border(Point(0, 0), Point(1, 0), Point(0, 1))
-        assert_that(border.passability(0, 2, 1, 1), equal_to(1.0))
+        border = Border(begin=Point(0, 0), end=Point(1, 0), normal=Point(0, 1))
+        result = border.passability(position=Point(0, 2), radius=1)
+        assert_that(result, equal_to(1.0))
 
     def test_passability_at_normal_side_with_unfit_size_returns_0(self):
-        border = Border(Point(0, 0), Point(1, 0), Point(0, 1))
-        assert_that(border.passability(0, 1.5, 3, 3), equal_to(0.0))
+        border = Border(begin=Point(0, 0), end=Point(1, 0), normal=Point(0, 1))
+        result = border.passability(position=Point(0, 1.5), radius=3)
+        assert_that(result, equal_to(0.0))
 
     def test_passability_at_not_normal_side_with_fit_size_returns_0(self):
-        border = Border(Point(0, 0), Point(1, 0), Point(0, 1))
-        assert_that(border.passability(0, -2, 1, 1), equal_to(0.0))
+        border = Border(begin=Point(0, 0), end=Point(1, 0), normal=Point(0, 1))
+        result = border.passability(position=Point(0, -2), radius=1)
+        assert_that(result, equal_to(0.0))
 
     def test_passability_at_not_normal_side_with_unfit_size_returns_0(self):
-        border = Border(Point(0, 0), Point(1, 0), Point(0, 1))
-        assert_that(border.passability(0, -2, 3, 3), equal_to(0.0))
+        border = Border(begin=Point(0, 0), end=Point(1, 0), normal=Point(0, 1))
+        result = border.passability(position=Point(0, -2), radius=3)
+        assert_that(result, equal_to(0.0))
 
 
 class CircleTest(TestCase):
     def test_passability_outside_radius_with_fit_size_returns_1(self):
         circle = Circle(Point(0, 0), 1)
-        assert_that(circle.passability(0, 3, 1, 1), equal_to(1.0))
+        result = circle.passability(position=Point(0, 3), radius=1)
+        assert_that(result, equal_to(1.0))
 
     def test_passability_inside_radius_with_fit_size_returns_0(self):
         circle = Circle(Point(0, 0), 1)
-        assert_that(circle.passability(0, 1, 1, 1), equal_to(0.0))
+        result = circle.passability(position=Point(0, 1), radius=1)
+        assert_that(result, equal_to(0.0))
 
     def test_passability_outside_radius_with_unfit_size_returns_0(self):
         circle = Circle(Point(0, 0), 1)
-        assert_that(circle.passability(0, 2, 2, 2), equal_to(0.0))
+        result = circle.passability(position=Point(0, 2), radius=2)
+        assert_that(result, equal_to(0.0))
 
     def test_passability_inside_radius_with_unfit_size_returns_0(self):
         circle = Circle(Point(0, 0), 4)
-        assert_that(circle.passability(0, 1, 4, 4), equal_to(0.0))
+        result = circle.passability(position=Point(0, 1), radius=4)
+        assert_that(result, equal_to(0.0))
 
 
 class TileBarriersTest(TestCase):
     def test_for_empty_returns_empty_tuple(self):
-        result = tile_barriers(TileType.EMPTY, 1, 3)
-        assert_that(result, equal_to(tuple()))
+        result = tile_barriers(tile_type=TileType.EMPTY,
+                               position=Point(10, 10), margin=1, size=3)
+        assert_that(result, equal_to([]))
 
     def test_for_vertical_returns_two_borders(self):
-        result = tile_barriers(TileType.VERTICAL, 1, 3)
-        assert_that(result, equal_to((
-            Border(Point(1, 0), Point(1, 3), Point(1, 0)),
-            Border(Point(2, 0), Point(2, 3), Point(-1, 0)),
-        )))
+        result = tile_barriers(tile_type=TileType.VERTICAL,
+                               position=Point(10, 10), margin=1, size=3)
+        assert_that(result, equal_to([
+            Border(Point(31, 30), Point(31, 33), Point(1, 0)),
+            Border(Point(32, 30), Point(32, 33), Point(-1, 0)),
+        ]))
 
     def test_for_horizontal_returns_two_borders(self):
-        result = tile_barriers(TileType.HORIZONTAL, 1, 3)
-        assert_that(result, equal_to((
-            Border(Point(0, 1), Point(3, 1), Point(0, 1)),
-            Border(Point(0, 2), Point(3, 2), Point(0, -1)),
-        )))
+        result = tile_barriers(tile_type=TileType.HORIZONTAL,
+                               position=Point(10, 10), margin=1, size=3)
+        assert_that(result, equal_to([
+            Border(Point(30, 31), Point(33, 31), Point(0, 1)),
+            Border(Point(30, 32), Point(33, 32), Point(0, -1)),
+        ]))
 
     def test_for_left_top_corner_returns_two_borders_and_one_circle(self):
-        result = tile_barriers(TileType.LEFT_TOP_CORNER, 1, 3)
-        assert_that(result, equal_to((
-            Border(Point(1, 0), Point(1, 3), Point(1, 0)),
-            Border(Point(0, 1), Point(3, 1), Point(0, 1)),
-            Circle(Point(3, 3), 1),
-        )))
+        result = tile_barriers(tile_type=TileType.LEFT_TOP_CORNER,
+                               position=Point(10, 10), margin=1, size=3)
+        assert_that(result, equal_to([
+            Border(Point(31, 30), Point(31, 33), Point(1, 0)),
+            Border(Point(30, 31), Point(33, 31), Point(0, 1)),
+            Circle(Point(33, 33), 1),
+        ]))
 
     def test_for_crossroads_returns_four_circles(self):
-        result = tile_barriers(TileType.CROSSROADS, 1, 3)
-        assert_that(result, equal_to((
-            Circle(Point(0, 0), 1), Circle(Point(0, 3), 1),
-            Circle(Point(3, 0), 1), Circle(Point(3, 3), 1),
-        )))
+        result = tile_barriers(tile_type=TileType.CROSSROADS,
+                               position=Point(10, 10), margin=1, size=3)
+        assert_that(result, equal_to([
+            Circle(Point(30, 30), 1), Circle(Point(30, 33), 1),
+            Circle(Point(33, 30), 1), Circle(Point(33, 33), 1),
+        ]))
 
 
 class TilePassabilityTest(TestCase):
     def test_inside_one_of_circles_returns_0(self):
-        passability = tile_passability(barriers=[Circle(Point(0, 0), 1),
-                                                 Circle(Point(1, 1), 1)],
-                                       height=1, width=1)
+        passability = passability_function(barriers=[Circle(Point(0, 0), 1),
+                                                     Circle(Point(1, 1), 1)],
+                                           radius=1,
+                                           speed=Point(0, 0))
         assert_that(passability(0, 0), equal_to(0))
 
     def test_inside_all_of_circles_returns_1(self):
-        passability = tile_passability(barriers=[Circle(Point(0, 0), 1),
-                                                 Circle(Point(1, 1), 1)],
-                                       height=1, width=1)
+        passability = passability_function(barriers=[Circle(Point(0, 0), 1),
+                                                     Circle(Point(1, 1), 1)],
+                                           radius=1,
+                                           speed=Point(0, 0))
         assert_that(passability(3, 3), equal_to(1))
 
 
