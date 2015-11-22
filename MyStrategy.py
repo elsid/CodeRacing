@@ -1,13 +1,13 @@
 from collections import namedtuple
 from itertools import chain
-from numpy import array, meshgrid, linspace, vectorize, arctan2
+from numpy import array, meshgrid, linspace, vectorize, arctan2, sign, arange
 from scipy.sparse.csgraph import dijkstra
 from scipy.interpolate import UnivariateSpline
-from math import sqrt, cos, sin
+from math import sqrt, cos, sin, pi, log, exp
 from matplotlib.pyplot import show, ion, figure
 from mpl_toolkits.mplot3d import Axes3D
 from itertools import islice, takewhile
-from scipy.optimize import fminbound
+from scipy.optimize import fminbound, bisect
 
 from model.Car import Car
 from model.Game import Game
@@ -20,44 +20,17 @@ from model.CircularUnit import CircularUnit
 
 class MyStrategy:
     def __init__(self):
-        self.__cartesian_path_plots = PathPlots('cartesian path')
-        self.__polar_path_plots = PathPlots('polar path')
-        self.__path_for_spline_plots = PathPlots('path for spline')
-        self.__path_spline = PathSplinePlots('path spline')
-        self.__tile_passability_plot = SurfacePlot('tile_passability')
+        self.__plot = Plot()
         ion()
         show()
 
     def move(self, me: Car, world: World, game: Game, move: Move):
+        if world.tick < game.initial_freeze_duration_ticks:
+            return
         matrix = AdjacencyMatrix(world.tiles_x_y)
-        tile = current_tile(me.x, me.y, game.track_tile_size)
+        tile = current_tile(Point(me.x, me.y), game.track_tile_size)
         tile_index = matrix.index(tile.x, tile.y)
-        path = list(path_to_end(tile_index, me.next_waypoint_index, matrix,
-                                world.waypoints))
-        tile_center_path = [tile_center(x, game.track_tile_size) for x in path]
-        shifted_path = list(shift_to_borders(tile_center_path))
-        # reduced_path = list(reduce_direct(shifted_path))
-        # reduced_path = list(reduce_diagonal_direct(reduced_path))
-        # reduced_path = list(reduce_direct_first_after_me(reduced_path))
-        reduced_path = shifted_path
         my_position = Point(me.x, me.y)
-        path_from_me = [my_position] + reduced_path
-        polar_path = list(polar(my_position, path_from_me))
-        path_for_spline = list(take_for_spline(polar_path))
-        path_spline = make_spline(path_for_spline)
-        target_radius = Point(me.speed_x, me.speed_y).norm() * 2
-        polar_target = Point(target_radius, path_spline(target_radius))
-        my_radius = min((me.height, me.width)) / 2
-        my_speed = Point(me.speed_x, me.speed_y)
-        barriers = []
-        for position in islice(path, len(path_for_spline)):
-            barriers += tile_barriers(
-                world.tiles_x_y[position.x][position.y], position,
-                game.track_tile_margin, game.track_tile_size)
-        barriers += units_barriers((c for c in world.cars if c.id != me.id))
-        barriers += units_barriers(world.projectiles)
-        passability = passability_function(barriers, my_radius, my_speed)
-        move.engine_power = 0.5
         print(
             'move',
             'tick:', world.tick,
@@ -69,45 +42,105 @@ class MyStrategy:
             'width:', me.width,
             'height:', me.height,
         )
+        path = list(make_path(tile_index, me.next_waypoint_index, matrix,
+                              world.waypoints))
+        tile_center_path = [tile_center(x, game.track_tile_size) for x in path]
+        shifted_path = list(shift_to_borders(tile_center_path))
+        shifted_polar_path = list(polar(my_position,
+                                        [my_position] + shifted_path))
+        shifted_path_for_spline = list(take_for_spline(shifted_polar_path))
+        reduced_path = list(reduce_direct(shifted_path))
+        reduced_path = list(reduce_diagonal_direct(reduced_path))
+        reduced_path = list(reduce_direct_first_after_me(reduced_path))
+        path_from_me = [my_position] + reduced_path
+        polar_path = list(polar(my_position, path_from_me))
+        path_for_spline = list(take_for_spline(polar_path))
+        my_radius = min((me.height, me.width)) / 2
+        my_speed = Point(me.speed_x, me.speed_y)
+        barriers = []
+        tiles = []
+        for position in islice(path, len(shifted_path_for_spline)):
+            barriers += make_tile_barriers(
+                world.tiles_x_y[position.x][position.y], position,
+                game.track_tile_margin, game.track_tile_size)
+            tiles.append(position)
+        barriers += make_units_barriers((c for c in world.cars
+                                         if c.id != me.id))
+        barriers += make_units_barriers(world.projectiles)
+        passability = make_passability_function(barriers, my_radius, my_speed,
+                                                tiles, game.track_tile_size)
+
+        def polar_passability(radius, angle):
+            cartesian = Point(radius, angle).cartesian(my_position)
+            return passability(cartesian.x, cartesian.y)
+
+        trajectory_points = list(make_trajectory(passability, path_for_spline,
+                                                 my_position))
+
+        move.engine_power = 0.5
         if world.tick % 50 == 0:
-            self.__cartesian_path_plots.draw(path_from_me)
-            self.__polar_path_plots.draw(polar_path)
-            self.__path_for_spline_plots.draw(path_for_spline)
-            self.__path_spline.draw(path_for_spline, path_spline)
-            x = linspace(0, world.width * game.track_tile_size, 100)
-            y = linspace(0, world.height * game.track_tile_size, 100)
-            # if path[0].x == path[1].x:
-            #     x = linspace(path[0].x * game.track_tile_size,
-            #                  (path[0].x + 1) * game.track_tile_size,
-            #                  20)
-            # else:
-            #     x = linspace(min((path[0].x, path[1].x)) * game.track_tile_size,
-            #                  (max((path[0].x, path[1].x)) + 1) * game.track_tile_size,
-            #                  40)
-            # if path[0].y == path[1].y:
-            #     y = linspace(path[0].y * game.track_tile_size,
-            #                  (path[0].y + 1) * game.track_tile_size,
-            #                  20)
-            # else:
-            #     y = linspace(min((path[0].y, path[1].y)) * game.track_tile_size,
-            #                  (max((path[0].y, path[1].y)) + 1) * game.track_tile_size,
-            #                  40)
-            self.__tile_passability_plot.draw(x, y, passability)
+            trajectory_spline = make_spline(trajectory_points)
+            trajectory_points = [p.cartesian(my_position)
+                                 for p in trajectory_points]
+            trajectory_spline_points = [
+                Point(r, trajectory_spline(r))
+                for r in linspace(0, path_for_spline[-1].radius, 100)]
+            # trajectory_spline_points = [
+            #     p.cartesian(my_position) for p in trajectory_spline_points]
+            self.__plot.clear()
+            self.__plot.path(path_from_me, 'o')
+            self.__plot.path(path_from_me, '-')
+            self.__plot.path(trajectory_points, 'o')
+            self.__plot.path(trajectory_points, '-')
+            # self.__plot.path(trajectory_spline_points, '-')
+            self.__plot.surface(
+                linspace(0, world.width * game.track_tile_size, 150),
+                linspace(world.height * game.track_tile_size, 0, 150),
+                passability)
+            self.__plot.draw()
 
 
-# def make_point_preference_function(passability, path):
-#     def impl(radius):
-#         initial_angle = path(radius)
-#         if passability(radius, initial_angle) >= 1.0:
-#             return 1.0
-#
-#         def func(angle):
-#             return (abs(initial_angle - angle) /
-#                     max((passability(radius, angle), 1e-3)))
-#
-#         fminbound(func, xtol=1e-3)
-#
-#     return impl
+def sigmoid(x):
+    return 1 / (1 + exp(-x))
+
+
+def make_trajectory(passability, path_points, origin):
+    yield path_points[0]
+    previous = path_points[0].cartesian(origin)
+    target = path_points[1].cartesian(origin)
+    target_index = 1
+    last_direction = target - previous
+    previous_angle = (last_direction / last_direction.norm()).polar(origin).angle
+    radius_iter = islice(arange(100, path_points[-1].radius - 100, 100), 30)
+    for radius in radius_iter:
+        def func(a):
+            cartesian = Point(radius, a).cartesian(origin)
+            direction = cartesian - previous
+            distance = cartesian.distance(target)
+            return (0.0
+                - direction.cos(last_direction)
+                + 2 * (1 - passability(cartesian.x, cartesian.y))
+                + distance / 100
+            )
+        angle = fminbound(func, previous_angle - pi, previous_angle + pi)
+        point = Point(radius, angle)
+        yield point
+        previous_angle = angle
+        current = point.cartesian(origin)
+        if current.distance(target) < 500:
+            target_index += 1
+            target = path_points[target_index]
+            last_direction = target - current
+        else:
+            last_direction = current - previous
+        previous = current
+
+
+def make_tile_rectangle(position, size):
+    center = tile_center(position, size)
+    to_corner = Point(size / 2, size / 2)
+    return Rectangle(left_top=center - to_corner,
+                     right_bottom=center + to_corner)
 
 
 def make_spline(path):
@@ -189,14 +222,20 @@ class Point:
     def map(self, function):
         return Point(function(self.x), function(self.y))
 
-    def polar(self):
-        radius = self.norm()
-        angle = arctan2(self.y, self.x)
-        return Point(radius, angle)
+    def polar(self, cartesian_origin=None):
+        if cartesian_origin:
+            return (self - cartesian_origin).polar()
+        else:
+            radius = self.norm()
+            angle = arctan2(self.y, self.x)
+            return Point(radius, angle)
 
-    def cartesian(self):
-        return Point(x=self.radius * cos(self.angle),
-                     y=self.radius * sin(self.angle))
+    def cartesian(self, cartesian_origin=None):
+        if cartesian_origin:
+            return self.cartesian() + cartesian_origin
+        else:
+            return Point(x=self.radius * cos(self.angle),
+                         y=self.radius * sin(self.angle))
 
     def orthogonal(self):
         return Point(-self.y, self.x)
@@ -221,6 +260,9 @@ class Line:
         to_point = point - self.begin
         norm = to_point.dot(to_end) / to_end.norm()
         return self.begin + to_end / to_end.norm() * norm
+
+    def length(self):
+        return (self.end - self.begin).norm()
 
 
 class AdjacencyMatrix:
@@ -307,15 +349,15 @@ class AdjacencyMatrix:
 #     pyplot.show()
 
 
-def current_tile(x, y, tile_size):
-    return Point(tile_coord(x, tile_size), tile_coord(y, tile_size))
+def current_tile(point, tile_size):
+    return Point(tile_coord(point.x, tile_size), tile_coord(point.y, tile_size))
 
 
 def tile_coord(value, tile_size):
     return int(value / tile_size)
 
 
-def path_to_end(start_index, next_waypoint_index, matrix, waypoints):
+def make_path(start_index, next_waypoint_index, matrix, waypoints):
     graph = array(matrix.values)
     _, predecessors = dijkstra(graph, return_predecessors=True)
 
@@ -373,7 +415,11 @@ def reduce_diagonal_direct(path):
 
 
 def polar(origin, path):
-    return ((x - origin).polar() for x in path)
+    return (x.polar(origin) for x in path)
+
+
+def cartesian(origin, path):
+    return (x.cartesian(origin) for x in path)
 
 
 def take_for_spline(path):
@@ -381,7 +427,7 @@ def take_for_spline(path):
         return []
 
     def predicate(index, current):
-        return current.radius > path[index - 1].radius
+        return path[index - 1].radius < current.radius
 
     yield path[0]
     generator = takewhile(lambda x: predicate(*x),
@@ -416,7 +462,7 @@ def tile_center_coord(value, size):
     return (value + 0.5) * size
 
 
-def tile_barriers(tile_type: TileType, position: Point, margin, size):
+def make_tile_barriers(tile_type: TileType, position: Point, margin, size):
     absolute_position = position * size
 
     def point(x, y):
@@ -458,7 +504,7 @@ def tile_barriers(tile_type: TileType, position: Point, margin, size):
         return []
 
 
-def units_barriers(units):
+def make_units_barriers(units):
     return [unit_barriers(x) for x in units]
 
 
@@ -475,18 +521,18 @@ def unit_barriers(unit):
 
 def world_passability_function(tiles_functions, tile_size):
     def impl(x, y):
-        tile = current_tile(x, y, tile_size)
+        tile = current_tile(Point(x, y), tile_size)
         return tiles_functions[tile.x][tile.y](x, y)
     return impl
 
 
-def passability_function(barriers, radius, speed):
+def make_passability_function(barriers, radius, speed, tiles, tile_size):
     def impl(x, y):
-        if barriers:
-            return min(b.passability(Point(x, y), radius, speed)
-                       for b in barriers)
-        else:
+        tile = current_tile(Point(x, y), tile_size)
+        if tile not in tiles:
             return 0.0
+        return min((b.passability(Point(x, y), radius, speed)
+                    for b in barriers), default=1.0)
     return impl
 
 
@@ -511,14 +557,28 @@ class Circle:
         nearest = line.nearest(self.position)
         distance = self.position.distance(nearest)
         if (distance > self.radius or
-                (line.begin - nearest).dot(line.end - nearest) >= 0):
+                (line.begin - nearest).dot(line.end - nearest) > 0):
             return []
         if self.radius == distance:
             return [nearest]
-        direction = (nearest - self.position) / distance
-        distance_to_circle = sqrt(self.radius ** 2 - distance ** 2)
-        nearest_to_circle = direction.orthogonal() * distance_to_circle
-        return [nearest - nearest_to_circle, nearest + nearest_to_circle]
+
+        def generate():
+            to_begin = Line(nearest, line.begin)
+            if to_begin.length() > 0:
+                def func(parameter):
+                    return (self.position.distance(to_begin(parameter)) -
+                            self.radius)
+                if sign(func(0)) != sign(func(1)):
+                    yield to_begin(bisect(func, 0, 1))
+            to_end = Line(nearest, line.end)
+            if to_end.length() > 0:
+                def func(parameter):
+                    return (self.position.distance(to_end(parameter)) -
+                            self.radius)
+                if sign(func(0)) != sign(func(1)):
+                    yield to_end(bisect(func, 0, 1))
+
+        return list(generate())
 
 
 class Rectangle:
@@ -531,6 +591,14 @@ class Rectangle:
     def __init__(self, left_top, right_bottom):
         self.left_top = left_top
         self.right_bottom = right_bottom
+
+    def __repr__(self):
+        return 'Rectangle(left_top={lt}, right_bottom={rb})'.format(
+            lt=repr(self.left_top), rb=repr(self.right_bottom))
+
+    def __eq__(self, other):
+        return (self.left_top == other.left_top and
+                self.right_bottom == other.right_bottom)
 
     def passability(self, position, radius, _=None):
         position_code = self.point_code(position)
@@ -556,13 +624,27 @@ class Rectangle:
             result |= Rectangle.BOTTOM
         return result
 
-    def __repr__(self):
-        return 'Rectangle(left_top={lt}, right_bottom={rb})'.format(
-            lt=repr(self.left_top), rb=repr(self.right_bottom))
+    def left(self):
+        return Line(begin=self.left_top,
+                    end=self.left_top + Point(0, self.height()))
 
-    def __eq__(self, other):
-        return (self.left_top == other.left_top and
-                self.right_bottom == other.right_bottom)
+    def right(self):
+        return Line(begin=self.right_bottom,
+                    end=self.right_bottom - Point(0, self.height()))
+
+    def top(self):
+        return Line(begin=self.left_top + Point(self.width(), 0),
+                    end=self.left_top)
+
+    def bottom(self):
+        return Line(begin=self.right_bottom - Point(self.width(), 0),
+                    end=self.right_bottom)
+
+    def width(self):
+        return self.right_bottom.x - self.left_top.x
+
+    def height(self):
+        return self.right_bottom.y - self.left_top.y
 
 
 class Unit:
@@ -591,52 +673,28 @@ class Unit:
                 self.__speed == other.__speed)
 
 
-class PathPlots:
-    def __init__(self, title):
-        self.__title = title
+class Plot:
+    def __init__(self):
         self.__figure = figure()
         self.__axis = self.__figure.add_subplot(1, 1, 1)
 
-    def draw(self, path):
-        path_x = array([p.x for p in path])
-        path_y = array([p.y for p in path])
-        step_x = abs((max(path_x) - min(path_x)) / 10)
-        step_y = abs((max(path_y) - min(path_y)) / 10)
+    def clear(self):
         self.__axis.cla()
-        self.__axis.set_title(self.__title)
-        self.__axis.set_xlim([min(path_x) - step_x, max(path_x) + step_x])
-        self.__axis.set_ylim([min(path_y) - step_y, max(path_y) + step_y])
-        self.__axis.plot(path_x, path_y, 'o', path_x, path_y, '-')
-        self.__figure.canvas.draw()
 
-
-class PathSplinePlots:
-    def __init__(self, title):
-        self.__title = title
-        self.__figure = figure()
-        self.__axis = self.__figure.add_subplot(1, 1, 1)
-
-    def draw(self, path, path_spline):
-        self.__axis.cla()
-        self.__axis.set_title(self.__title)
-        path_x = array([p.x for p in path])
-        path_y = array([p.y for p in path])
-        self.__axis.plot(path_x, path_y, 'o', path_x, path_y, '-')
-        spline_x = linspace(0, path[-1].x, 100)
-        self.__axis.plot(spline_x, vectorize(path_spline)(spline_x))
-        self.__figure.canvas.draw()
-
-
-class SurfacePlot:
-    def __init__(self, title):
-        self.__title = title
-        self.__figure = figure()
-        self.__axis = self.__figure.add_subplot(1, 1, 1)
-
-    def draw(self, x, y, function):
+    def surface(self, x, y, function):
         x, y = meshgrid(x, y)
         z = vectorize(function)(x, y)
-        self.__axis.cla()
-        self.__axis.set_title(self.__title)
-        self.__axis.imshow(z)
+        self.__axis.imshow(z, alpha=0.5,
+                           extent=[x.min(), x.max(), y.min(), y.max()])
+
+    def path(self, points, line_type):
+        x = [p.x for p in points]
+        y = [p.y for p in points]
+        self.__axis.plot(x, y, line_type)
+
+    def curve(self, x, function, line_type):
+        y = vectorize(function)(x)
+        self.__axis.plot(x, y, line_type)
+
+    def draw(self):
         self.__figure.canvas.draw()

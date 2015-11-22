@@ -4,14 +4,14 @@ from model.TileType import TileType
 from math import pi, sqrt
 from MyStrategy import (
     AdjacencyMatrix,
-    path_to_end,
+    make_path,
     Point,
     tile_coord,
     current_tile,
     Rectangle,
     Circle,
-    tile_barriers,
-    passability_function,
+    make_tile_barriers,
+    make_passability_function,
     tile_center_coord,
     tile_center,
     shift_to_borders,
@@ -22,6 +22,8 @@ from MyStrategy import (
     reduce_diagonal_direct,
     polar,
     take_for_spline,
+    make_tile_rectangle,
+    Line,
 )
 
 
@@ -173,9 +175,9 @@ class PointTest(TestCase):
         assert_that(Point(1, 1).polar(), equal_to(Point(sqrt(2), pi / 4)))
 
 
-class PathToEndTest(TestCase):
+class MakePathTest(TestCase):
     def test_from_vertical_to_next_vertical_returns_first_and_second_point(self):
-        path = path_to_end(
+        path = make_path(
             start_index=1,
             next_waypoint_index=1,
             matrix=AdjacencyMatrix([
@@ -186,7 +188,7 @@ class PathToEndTest(TestCase):
         assert_that(list(path), equal_to([Point(0, 1), Point(0, 2)]))
 
     def test_over_three_vertical_returns_three_points(self):
-        path = path_to_end(
+        path = make_path(
             start_index=1,
             next_waypoint_index=1,
             matrix=AdjacencyMatrix([
@@ -212,7 +214,7 @@ class TileCoordTest(TestCase):
 
 class CurrentTileTest(TestCase):
     def test_at_100_100_with_tile_size_100_returns_1_1(self):
-        result = current_tile(x=100, y=100, tile_size=100)
+        result = current_tile(point=Point(x=100, y=100), tile_size=100)
         assert_that(result, equal_to(Point(1, 1)))
 
 
@@ -309,32 +311,62 @@ class CircleTest(TestCase):
         result = circle.passability(position=Point(0, 1), radius=4)
         assert_that(result, equal_to(0.0))
 
+    def test_intersection_with_line_begins_from_circle_position_returns_one_point(self):
+        circle = Circle(Point(0, 0), 1)
+        line = Line(begin=Point(0, 0), end=Point(2, 0))
+        result = circle.intersection_with_line(line)
+        assert_that(result, equal_to([Point(1, 0)]))
 
-class TileBarriersTest(TestCase):
+    def test_intersection_with_line_cross_circle_position_returns_two_points(self):
+        circle = Circle(Point(0, 0), 1)
+        line = Line(begin=Point(-2, 0), end=Point(2, 0))
+        result = circle.intersection_with_line(line)
+        assert_that(result, equal_to([Point(-1, 0), Point(1, 0)]))
+
+    def test_intersection_with_line_inside_circle_returns_empty(self):
+        circle = Circle(Point(0, 0), 2)
+        line = Line(begin=Point(-1, 0), end=Point(1, 0))
+        result = circle.intersection_with_line(line)
+        assert_that(result, equal_to([]))
+
+    def test_intersection_with_circle_chord_returns_two_points(self):
+        circle = Circle(Point(0, 0), 2)
+        line = Line(begin=Point(-2, 1), end=Point(2, 1))
+        result = circle.intersection_with_line(line)
+        assert_that(len(result), equal_to(2))
+
+    def test_intersection_with_circle_tangent_returns_one_points(self):
+        circle = Circle(Point(0, 0), 1)
+        line = Line(begin=Point(-1, 1), end=Point(1, 1))
+        result = circle.intersection_with_line(line)
+        assert_that(result, equal_to([Point(0, 1)]))
+
+
+class MakeTileBarriersTest(TestCase):
     def test_for_empty_returns_empty_list(self):
-        result = tile_barriers(tile_type=TileType.EMPTY,
-                               position=Point(10, 10), margin=1, size=3)
+        result = make_tile_barriers(tile_type=TileType.EMPTY,
+                                    position=Point(10, 10), margin=1, size=3)
         assert_that(result, equal_to([]))
 
     def test_for_vertical_returns_two_rectangles(self):
-        result = tile_barriers(tile_type=TileType.VERTICAL,
-                               position=Point(10, 20), margin=1, size=3)
+        result = make_tile_barriers(tile_type=TileType.VERTICAL,
+                                    position=Point(10, 20), margin=1, size=3)
         assert_that(result, equal_to([
             Rectangle(left_top=Point(30, 60), right_bottom=Point(31, 63)),
             Rectangle(left_top=Point(32, 60), right_bottom=Point(33, 63)),
         ]))
 
     def test_for_horizontal_returns_two_rectangles(self):
-        result = tile_barriers(tile_type=TileType.HORIZONTAL,
-                               position=Point(10, 20), margin=1, size=3)
+        result = make_tile_barriers(tile_type=TileType.HORIZONTAL,
+                                    position=Point(10, 20), margin=1, size=3)
         assert_that(result, equal_to([
             Rectangle(left_top=Point(30, 60), right_bottom=Point(33, 61)),
             Rectangle(left_top=Point(30, 62), right_bottom=Point(33, 63)),
         ]))
 
     def test_for_left_top_corner_returns_two_rectangles_and_one_circle(self):
-        result = tile_barriers(tile_type=TileType.LEFT_TOP_CORNER,
-                               position=Point(10, 20), margin=1, size=3)
+        result = make_tile_barriers(tile_type=TileType.LEFT_TOP_CORNER,
+                                    position=Point(10, 20), margin=1, size=3)
         assert_that(result, equal_to([
             Rectangle(left_top=Point(30, 60), right_bottom=Point(31, 63)),
             Rectangle(left_top=Point(30, 60), right_bottom=Point(33, 61)),
@@ -342,27 +374,25 @@ class TileBarriersTest(TestCase):
         ]))
 
     def test_for_crossroads_returns_four_circles(self):
-        result = tile_barriers(tile_type=TileType.CROSSROADS,
-                               position=Point(10, 20), margin=1, size=3)
+        result = make_tile_barriers(tile_type=TileType.CROSSROADS,
+                                    position=Point(10, 20), margin=1, size=3)
         assert_that(result, equal_to([
             Circle(Point(30, 60), 1), Circle(Point(30, 63), 1),
             Circle(Point(33, 60), 1), Circle(Point(33, 63), 1),
         ]))
 
 
-class TilePassabilityTest(TestCase):
+class MakeTilePassabilityTest(TestCase):
     def test_inside_one_of_circles_returns_0(self):
-        passability = passability_function(barriers=[Circle(Point(0, 0), 1),
-                                                     Circle(Point(1, 1), 1)],
-                                           radius=1,
-                                           speed=Point(0, 0))
+        passability = make_passability_function(
+            barriers=[Circle(Point(0, 0), 1), Circle(Point(1, 1), 1)],
+            radius=1, speed=Point(0, 0), tiles=[Point(0, 0)], tile_size=4)
         assert_that(passability(0, 0), equal_to(0))
 
     def test_inside_all_of_circles_returns_1(self):
-        passability = passability_function(barriers=[Circle(Point(0, 0), 1),
-                                                     Circle(Point(1, 1), 1)],
-                                           radius=1,
-                                           speed=Point(0, 0))
+        passability = make_passability_function(
+            barriers=[Circle(Point(0, 0), 1), Circle(Point(1, 1), 1)],
+            radius=1, speed=Point(0, 0), tiles=[Point(0, 0)], tile_size=4)
         assert_that(passability(3, 3), equal_to(1))
 
 
@@ -601,6 +631,30 @@ class TakeForSplineTest(TestCase):
     def test_for_two_where_second_radius_less_than_first_returns_without_second(self):
         result = take_for_spline([Point(1, 0), Point(0.5, 0.5)])
         assert_that(list(result), equal_to([Point(1, 0)]))
+
+
+class MakeTileRectangleTest(TestCase):
+    def test_at_1_1_with_size_2_returns_0_0_2_2(self):
+        result = make_tile_rectangle(position=Point(0, 0,), size=2)
+        assert_that(result, equal_to(Rectangle(left_top=Point(0, 0),
+                                               right_bottom=Point(2, 2))))
+
+
+class LineTest(TestCase):
+    def test_nearest_at_line_returns_equal(self):
+        line = Line(begin=Point(0, 0), end=Point(1, 0))
+        result = line.nearest(Point(0, 0))
+        assert_that(result, equal_to(Point(0, 0)))
+
+    def test_nearest_at_line_but_not_in_segment_returns_equal(self):
+        line = Line(begin=Point(0, 0), end=Point(1, 0))
+        result = line.nearest(Point(2, 0))
+        assert_that(result, equal_to(Point(2, 0)))
+
+    def test_nearest_not_at_line_returns_at_line(self):
+        line = Line(begin=Point(0, 0), end=Point(1, 0))
+        result = line.nearest(Point(1, 1))
+        assert_that(result, equal_to(Point(1, 0)))
 
 
 if __name__ == '__main__':
