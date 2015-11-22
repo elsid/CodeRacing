@@ -7,6 +7,7 @@ from math import sqrt, cos, sin
 from matplotlib.pyplot import show, ion, figure
 from mpl_toolkits.mplot3d import Axes3D
 from itertools import islice, takewhile
+from scipy.optimize import fminbound
 
 from model.Car import Car
 from model.Game import Game
@@ -49,7 +50,7 @@ class MyStrategy:
         my_radius = min((me.height, me.width)) / 2
         my_speed = Point(me.speed_x, me.speed_y)
         barriers = []
-        for position in islice(path, 2):
+        for position in islice(path, len(path_for_spline)):
             barriers += tile_barriers(
                 world.tiles_x_y[position.x][position.y], position,
                 game.track_tile_margin, game.track_tile_size)
@@ -73,23 +74,40 @@ class MyStrategy:
             self.__polar_path_plots.draw(polar_path)
             self.__path_for_spline_plots.draw(path_for_spline)
             self.__path_spline.draw(path_for_spline, path_spline)
-            if path[0].x == path[1].x:
-                x = linspace(path[0].x * game.track_tile_size,
-                             (path[0].x + 1) * game.track_tile_size,
-                             20)
-            else:
-                x = linspace(min((path[0].x, path[1].x)) * game.track_tile_size,
-                             (max((path[0].x, path[1].x)) + 1) * game.track_tile_size,
-                             40)
-            if path[0].y == path[1].y:
-                y = linspace(path[0].y * game.track_tile_size,
-                             (path[0].y + 1) * game.track_tile_size,
-                             20)
-            else:
-                y = linspace(min((path[0].y, path[1].y)) * game.track_tile_size,
-                             (max((path[0].y, path[1].y)) + 1) * game.track_tile_size,
-                             40)
+            x = linspace(0, world.width * game.track_tile_size, 100)
+            y = linspace(0, world.height * game.track_tile_size, 100)
+            # if path[0].x == path[1].x:
+            #     x = linspace(path[0].x * game.track_tile_size,
+            #                  (path[0].x + 1) * game.track_tile_size,
+            #                  20)
+            # else:
+            #     x = linspace(min((path[0].x, path[1].x)) * game.track_tile_size,
+            #                  (max((path[0].x, path[1].x)) + 1) * game.track_tile_size,
+            #                  40)
+            # if path[0].y == path[1].y:
+            #     y = linspace(path[0].y * game.track_tile_size,
+            #                  (path[0].y + 1) * game.track_tile_size,
+            #                  20)
+            # else:
+            #     y = linspace(min((path[0].y, path[1].y)) * game.track_tile_size,
+            #                  (max((path[0].y, path[1].y)) + 1) * game.track_tile_size,
+            #                  40)
             self.__tile_passability_plot.draw(x, y, passability)
+
+
+# def make_point_preference_function(passability, path):
+#     def impl(radius):
+#         initial_angle = path(radius)
+#         if passability(radius, initial_angle) >= 1.0:
+#             return 1.0
+#
+#         def func(angle):
+#             return (abs(initial_angle - angle) /
+#                     max((passability(radius, angle), 1e-3)))
+#
+#         fminbound(func, xtol=1e-3)
+#
+#     return impl
 
 
 def make_spline(path):
@@ -179,6 +197,30 @@ class Point:
     def cartesian(self):
         return Point(x=self.radius * cos(self.angle),
                      y=self.radius * sin(self.angle))
+
+    def orthogonal(self):
+        return Point(-self.y, self.x)
+
+
+class Line:
+    def __init__(self, begin: Point, end: Point):
+        self.begin = begin
+        self.end = end
+
+    def __call__(self, parameter):
+        return self.begin + (self.end - self.begin) * parameter
+
+    def distance(self, point):
+        to_end = self.end - self.begin
+        to_point = point - self.begin
+        norm = to_point.dot(to_end) / to_end.norm()
+        return sqrt(to_point.norm() ** 2 - norm ** 2)
+
+    def nearest(self, point):
+        to_end = self.end - self.begin
+        to_point = point - self.begin
+        norm = to_point.dot(to_end) / to_end.norm()
+        return self.begin + to_end / to_end.norm() * norm
 
 
 class AdjacencyMatrix:
@@ -375,17 +417,17 @@ def tile_center_coord(value, size):
 
 
 def tile_barriers(tile_type: TileType, position: Point, margin, size):
-    low = margin
-    high = size - low
     absolute_position = position * size
 
     def point(x, y):
         return absolute_position + Point(x, y)
 
-    left = Border(point(low, 0), point(low, size), Point(1, 0))
-    right = Border(point(high, 0), point(high, size), Point(-1, 0))
-    top = Border(point(0, low), point(size, low), Point(0, 1))
-    bottom = Border(point(0, high), point(size, high), Point(0, -1))
+    left = Rectangle(left_top=point(0, 0), right_bottom=point(margin, size))
+    right = Rectangle(left_top=point(size - margin, 0),
+                      right_bottom=point(size, size))
+    top = Rectangle(left_top=point(0, 0), right_bottom=point(size, margin))
+    bottom = Rectangle(left_top=point(0, size - margin),
+                       right_bottom=point(size, size))
     left_top = Circle(point(0, 0), margin)
     left_bottom = Circle(point(0, size), margin)
     right_top = Circle(point(size, 0), margin)
@@ -450,51 +492,77 @@ def passability_function(barriers, radius, speed):
 
 class Circle:
     def __init__(self, position, radius):
-        self.__position = position
-        self.__radius = radius
-
-    def passability(self, position, radius, _=None):
-        distance = (self.__position - position).norm()
-        return float(distance > self.__radius + radius)
+        self.position = position
+        self.radius = radius
 
     def __repr__(self):
         return 'Circle(position={p}, radius={r})'.format(
-            p=repr(self.__position), r=repr(self.__radius))
+            p=repr(self.position), r=repr(self.radius))
 
     def __eq__(self, other):
-        return (self.__position == other.__position and
-                self.__radius == other.__radius)
-
-
-class Border:
-    def __init__(self, begin, end, normal):
-        self.__begin = begin
-        self.__end = end
-        self.__normal = normal
+        return (self.position == other.position and
+                self.radius == other.radius)
 
     def passability(self, position, radius, _=None):
-        to_end = self.__end - self.__begin
-        if (to_end.x != 0 and (position.x < self.__begin.x or
-                               position.x > self.__end.x) or
-            to_end.y != 0 and (position.y < self.__begin.y or
-                               position.y > self.__end.y)):
-            return 1.0
-        to_car = position - self.__begin
-        distance = sqrt(to_car.norm() ** 2 -
-                        (to_car.dot(to_end) / to_end.norm()) ** 2)
-        if distance <= radius:
+        distance = (self.position - position).norm()
+        return float(distance > self.radius + radius)
+
+    def intersection_with_line(self, line: Line):
+        nearest = line.nearest(self.position)
+        distance = self.position.distance(nearest)
+        if (distance > self.radius or
+                (line.begin - nearest).dot(line.end - nearest) >= 0):
+            return []
+        if self.radius == distance:
+            return [nearest]
+        direction = (nearest - self.position) / distance
+        distance_to_circle = sqrt(self.radius ** 2 - distance ** 2)
+        nearest_to_circle = direction.orthogonal() * distance_to_circle
+        return [nearest - nearest_to_circle, nearest + nearest_to_circle]
+
+
+class Rectangle:
+    INSIDE = 0
+    LEFT = 1
+    RIGHT = 2
+    TOP = 4
+    BOTTOM = 8
+
+    def __init__(self, left_top, right_bottom):
+        self.left_top = left_top
+        self.right_bottom = right_bottom
+
+    def passability(self, position, radius, _=None):
+        position_code = self.point_code(position)
+        if position_code == Rectangle.INSIDE:
             return 0.0
-        return float(to_car.dot(self.__normal) > 0)
+        width = self.right_bottom.x - self.left_top.x
+        height = self.right_bottom.y - self.left_top.y
+        center = self.left_top + Point(width / 2, height / 2)
+        direction = center - position
+        border = position + direction / direction.norm() * radius
+        border_code = self.point_code(border)
+        return float(position_code & border_code)
+
+    def point_code(self, point):
+        result = Rectangle.INSIDE
+        if point.x < self.left_top.x:
+            result |= Rectangle.LEFT
+        elif point.x > self.right_bottom.x:
+            result |= Rectangle.RIGHT
+        if point.y < self.left_top.y:
+            result |= Rectangle.TOP
+        elif point.y > self.right_bottom.y:
+            result |= Rectangle.BOTTOM
+        return result
 
     def __repr__(self):
-        return 'Border(begin={b}, end={e}, normal={n})'.format(
-            b=repr(self.__begin), e=repr(self.__end),
-            n=repr(self.__normal))
+        return 'Rectangle(left_top={lt}, right_bottom={rb})'.format(
+            lt=repr(self.left_top), rb=repr(self.right_bottom))
 
     def __eq__(self, other):
-        return (self.__begin == other.__begin and
-                self.__end == other.__end and
-                self.__normal == other.__normal)
+        return (self.left_top == other.left_top and
+                self.right_bottom == other.right_bottom)
 
 
 class Unit:
@@ -508,7 +576,9 @@ class Unit:
         immovable = self.__circle.passability(position, radius, speed)
         if immovable == 1.0:
             return 1.0
-        return immovable
+        else:
+            distance = (self.__position - position).norm()
+            return (distance / (self.__radius + radius)) ** 2
 
     def __repr__(self):
         return 'Unit(position={p}, radius={r}, speed={s})'.format(
