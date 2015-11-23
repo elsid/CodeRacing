@@ -20,9 +20,14 @@ from model.CircularUnit import CircularUnit
 
 class MyStrategy:
     def __init__(self):
-        self.__plot = Plot()
+        self.plot = Plot()
         ion()
         show()
+        self.controller = PidController(proportional_gain=1.0,
+                                        integral_gain=1.0,
+                                        derivative_gain=1.0,
+                                        output_gain=1.0)
+        self.engine_power_history = []
 
     def move(self, me: Car, world: World, game: Game, move: Move):
         if world.tick < game.initial_freeze_duration_ticks:
@@ -31,6 +36,7 @@ class MyStrategy:
         tile = current_tile(Point(me.x, me.y), game.track_tile_size)
         tile_index = matrix.index(tile.x, tile.y)
         my_position = Point(me.x, me.y)
+        my_speed = Point(me.speed_x, me.speed_y)
         print(
             'move',
             'tick:', world.tick,
@@ -46,58 +52,71 @@ class MyStrategy:
                               world.waypoints))
         tile_center_path = [tile_center(x, game.track_tile_size) for x in path]
         shifted_path = list(shift_to_borders(tile_center_path))
-        shifted_polar_path = list(polar(my_position,
-                                        [my_position] + shifted_path))
-        shifted_path_for_spline = list(take_for_spline(shifted_polar_path))
+        # shifted_polar_path = list(polar(my_position,
+        #                                 [my_position] + shifted_path))
+        # shifted_path_for_spline = list(take_for_spline(shifted_polar_path))
         reduced_path = list(reduce_direct(shifted_path))
         reduced_path = list(reduce_diagonal_direct(reduced_path))
         reduced_path = list(reduce_direct_first_after_me(reduced_path))
-        path_from_me = [my_position] + reduced_path
-        polar_path = list(polar(my_position, path_from_me))
-        path_for_spline = list(take_for_spline(polar_path))
-        my_radius = min((me.height, me.width)) / 2
-        my_speed = Point(me.speed_x, me.speed_y)
-        barriers = []
-        tiles = []
-        for position in islice(path, len(shifted_path_for_spline)):
-            barriers += make_tile_barriers(
-                world.tiles_x_y[position.x][position.y], position,
-                game.track_tile_margin, game.track_tile_size)
-            tiles.append(position)
-        barriers += make_units_barriers((c for c in world.cars
-                                         if c.id != me.id))
-        barriers += make_units_barriers(world.projectiles)
-        passability = make_passability_function(barriers, my_radius, my_speed,
-                                                tiles, game.track_tile_size)
+        # path_from_me = [my_position] + reduced_path
+        # error = Polyline(path_from_me).distance(my_position)
+        error = array([
+            reduced_path[0].distance(my_position),
+            50 - my_speed.norm(),
+            0.0 if my_speed.norm() == 0.0
+            else 1.0 - (reduced_path[0] - my_position).cos(my_speed)
+        ])
+        output = self.controller(error)
+        move.engine_power = output[1]
+        move.wheel_turn = output[2]
+        self.engine_power_history.append(move.engine_power)
+        # polar_path = list(polar(my_position, path_from_me))
+        # path_for_spline = list(take_for_spline(polar_path))
+        # my_radius = min((me.height, me.width)) / 2
+        # my_speed = Point(me.speed_x, me.speed_y)
+        # barriers = []
+        # tiles = []
+        # for position in islice(path, len(shifted_path_for_spline)):
+        #     barriers += make_tile_barriers(
+        #         world.tiles_x_y[position.x][position.y], position,
+        #         game.track_tile_margin, game.track_tile_size)
+        #     tiles.append(position)
+        # barriers += make_units_barriers((c for c in world.cars
+        #                                  if c.id != me.id))
+        # barriers += make_units_barriers(world.projectiles)
+        # passability = make_passability_function(barriers, my_radius, my_speed,
+        #                                         tiles, game.track_tile_size)
 
-        def polar_passability(radius, angle):
-            cartesian = Point(radius, angle).cartesian(my_position)
-            return passability(cartesian.x, cartesian.y)
+        # def polar_passability(radius, angle):
+        #     cartesian = Point(radius, angle).cartesian(my_position)
+        #     return passability(cartesian.x, cartesian.y)
 
-        trajectory_points = list(make_trajectory(passability, path_for_spline,
-                                                 my_position))
-
-        move.engine_power = 0.5
+        # trajectory_points = list(make_trajectory(passability, path_for_spline,
+        #                                          my_position))
+        #
+        # move.engine_power = 0.5
         if world.tick % 50 == 0:
-            trajectory_spline = make_spline(trajectory_points)
-            trajectory_points = [p.cartesian(my_position)
-                                 for p in trajectory_points]
-            trajectory_spline_points = [
-                Point(r, trajectory_spline(r))
-                for r in linspace(0, path_for_spline[-1].radius, 100)]
+            # trajectory_spline = make_spline(trajectory_points)
+            # trajectory_points = [p.cartesian(my_position)
+            #                      for p in trajectory_points]
+            # trajectory_spline_points = [
+            #     Point(r, trajectory_spline(r))
+            #     for r in linspace(0, path_for_spline[-1].radius, 100)]
             # trajectory_spline_points = [
             #     p.cartesian(my_position) for p in trajectory_spline_points]
-            self.__plot.clear()
-            self.__plot.path(path_from_me, 'o')
-            self.__plot.path(path_from_me, '-')
-            self.__plot.path(trajectory_points, 'o')
-            self.__plot.path(trajectory_points, '-')
-            # self.__plot.path(trajectory_spline_points, '-')
-            self.__plot.surface(
-                linspace(0, world.width * game.track_tile_size, 150),
-                linspace(world.height * game.track_tile_size, 0, 150),
-                passability)
-            self.__plot.draw()
+            self.plot.clear()
+            self.plot.lines(range(len(self.engine_power_history)),
+                            self.engine_power_history)
+            # self.plot.path(path_from_me, 'o')
+            # self.plot.path(path_from_me, '-')
+            # self.plot.path(trajectory_points, 'o')
+            # self.plot.path(trajectory_points, '-')
+            # self.plot.path(trajectory_spline_points, '-')
+            # self.plot.surface(
+            #     linspace(0, world.width * game.track_tile_size, 150),
+            #     linspace(world.height * game.track_tile_size, 0, 150),
+            #     passability)
+            self.plot.draw()
 
 
 def sigmoid(x):
@@ -687,14 +706,50 @@ class Plot:
         self.__axis.imshow(z, alpha=0.5,
                            extent=[x.min(), x.max(), y.min(), y.max()])
 
-    def path(self, points, line_type):
+    def path(self, points, line_type='-'):
         x = [p.x for p in points]
         y = [p.y for p in points]
         self.__axis.plot(x, y, line_type)
 
-    def curve(self, x, function, line_type):
+    def curve(self, x, function, line_type='-'):
         y = vectorize(function)(x)
+        self.__axis.plot(x, y, line_type)
+
+    def lines(self, x, y, line_type='-'):
         self.__axis.plot(x, y, line_type)
 
     def draw(self):
         self.__figure.canvas.draw()
+
+
+class PidController:
+    def __init__(self, proportional_gain, integral_gain, derivative_gain,
+                 output_gain):
+        self.proportional_gain = proportional_gain
+        self.integral_gain = integral_gain
+        self.derivative_gain = derivative_gain
+        self.output_gain = output_gain
+        self.__previous_output = 0
+        self.__previous_error = 0
+        self.__integral = 0
+
+    def __call__(self, error):
+        self.__integral += error
+        derivative = error - self.__previous_error
+        output = (self.proportional_gain * error +
+                  self.integral_gain * self.__integral +
+                  self.derivative_gain * derivative +
+                  self.output_gain * self.__previous_output)
+        self.__previous_output = output
+        self.__previous_error = error
+        return output
+
+
+class Polyline:
+    def __init__(self, points):
+        self.points = points
+
+    def distance(self, point):
+        points = islice(enumerate(self.points), len(self.points) - 1)
+        return min(Line(p, self.points[i - 1]).nearest(point).distance(point)
+                   for i, p in points)
