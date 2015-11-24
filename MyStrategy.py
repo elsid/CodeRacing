@@ -1,9 +1,9 @@
 from collections import namedtuple
 from itertools import chain
-from numpy import array, meshgrid, linspace, vectorize, arctan2, sign, arange
+from numpy import array, meshgrid, linspace, vectorize, arctan2, sign, arange, dot
 from scipy.sparse.csgraph import dijkstra
 from scipy.interpolate import UnivariateSpline
-from math import sqrt, cos, sin, pi, log, exp
+from math import sqrt, cos, sin, pi, log, exp, acos
 from matplotlib.pyplot import show, ion, figure
 from mpl_toolkits.mplot3d import Axes3D
 from itertools import islice, takewhile
@@ -18,36 +18,39 @@ from model.RectangularUnit import RectangularUnit
 from model.CircularUnit import CircularUnit
 
 
+def make_rotate_matrix(angle):
+    return array([[cos(angle), sin(angle)], [-sin(angle), cos(angle)]])
+
+
 class MyStrategy:
+    controller = None
+
     def __init__(self):
         self.plot = Plot()
         ion()
         show()
-        self.controller = PidController(proportional_gain=1.0,
-                                        integral_gain=1.0,
-                                        derivative_gain=1.0,
-                                        output_gain=1.0)
-        self.engine_power_history = []
 
     def move(self, me: Car, world: World, game: Game, move: Move):
+        if self.controller is None:
+            self.controller = Controller(
+                distance_to_wheels=me.width / 3,
+                max_engine_power_derivative=game.car_engine_power_change_per_tick)
         if world.tick < game.initial_freeze_duration_ticks:
             return
-        matrix = AdjacencyMatrix(world.tiles_x_y)
-        tile = current_tile(Point(me.x, me.y), game.track_tile_size)
-        tile_index = matrix.index(tile.x, tile.y)
-        my_position = Point(me.x, me.y)
-        my_speed = Point(me.speed_x, me.speed_y)
         print(
             'move',
             'tick:', world.tick,
-            'me:', my_position.x, my_position.y,
-            'tile:', tile.x, tile.y,
-            'my speed:', me.speed_x, me.speed_y,
+            'position:', me.x, me.y,
+            'angle:', me.angle,
+            'speed:', me.speed_x, me.speed_y,
             'angular speed:', me.angular_speed,
+            'engine power:', me.engine_power,
             'wheel turn:', me.wheel_turn,
-            'width:', me.width,
-            'height:', me.height,
         )
+        move.engine_power = 0.3
+        matrix = AdjacencyMatrix(world.tiles_x_y)
+        tile = current_tile(Point(me.x, me.y), game.track_tile_size)
+        tile_index = matrix.index(tile.x, tile.y)
         path = list(make_path(tile_index, me.next_waypoint_index, matrix,
                               world.waypoints))
         tile_center_path = [tile_center(x, game.track_tile_size) for x in path]
@@ -58,18 +61,28 @@ class MyStrategy:
         reduced_path = list(reduce_direct(shifted_path))
         reduced_path = list(reduce_diagonal_direct(reduced_path))
         reduced_path = list(reduce_direct_first_after_me(reduced_path))
+        control = self.controller(position=Point(me.x, me.y),
+                                  angle=me.angle,
+                                  wheel_turn=me.wheel_turn,
+                                  engine_power=me.engine_power,
+                                  speed=Point(me.speed_x, me.speed_y),
+                                  angular_speed=me.angular_speed,
+                                  target_position=reduced_path[0],
+                                  target_speed=Point(0, 0))
+        move.engine_power += control.engine_power_derivative
+        move.wheel_turn += control.wheel_turn_derivative
         # path_from_me = [my_position] + reduced_path
         # error = Polyline(path_from_me).distance(my_position)
-        error = array([
-            reduced_path[0].distance(my_position),
-            50 - my_speed.norm(),
-            0.0 if my_speed.norm() == 0.0
-            else 1.0 - (reduced_path[0] - my_position).cos(my_speed)
-        ])
-        output = self.controller(error)
-        move.engine_power = output[1]
-        move.wheel_turn = output[2]
-        self.engine_power_history.append(move.engine_power)
+        # error = array([
+        #     reduced_path[0].distance(my_position),
+        #     50 - my_speed.norm(),
+        #     0.0 if my_speed.norm() == 0.0
+        #     else 1.0 - (reduced_path[0] - my_position).cos(my_speed)
+        # ])
+        # output = self.controller(error)
+        # move.engine_power = output[1]
+        # move.wheel_turn = output[2]
+        # self.engine_power_history.append(move.engine_power)
         # polar_path = list(polar(my_position, path_from_me))
         # path_for_spline = list(take_for_spline(polar_path))
         # my_radius = min((me.height, me.width)) / 2
@@ -95,7 +108,7 @@ class MyStrategy:
         #                                          my_position))
         #
         # move.engine_power = 0.5
-        if world.tick % 50 == 0:
+        # if world.tick % 50 == 0:
             # trajectory_spline = make_spline(trajectory_points)
             # trajectory_points = [p.cartesian(my_position)
             #                      for p in trajectory_points]
@@ -104,9 +117,9 @@ class MyStrategy:
             #     for r in linspace(0, path_for_spline[-1].radius, 100)]
             # trajectory_spline_points = [
             #     p.cartesian(my_position) for p in trajectory_spline_points]
-            self.plot.clear()
-            self.plot.lines(range(len(self.engine_power_history)),
-                            self.engine_power_history)
+            # self.plot.clear()
+            # self.plot.lines(range(len(self.engine_power_history)),
+            #                 self.engine_power_history)
             # self.plot.path(path_from_me, 'o')
             # self.plot.path(path_from_me, '-')
             # self.plot.path(trajectory_points, 'o')
@@ -116,7 +129,10 @@ class MyStrategy:
             #     linspace(0, world.width * game.track_tile_size, 150),
             #     linspace(world.height * game.track_tile_size, 0, 150),
             #     passability)
-            self.plot.draw()
+            # self.plot.draw()
+
+
+PathPoint = namedtuple('PathPoint', ('position', 'speed'))
 
 
 def sigmoid(x):
@@ -210,6 +226,9 @@ class Point:
         self.x /= other
         self.y /= other
 
+    def __neg__(self):
+        return Point(-self.x, -self.y)
+
     @property
     def radius(self):
         return self.x
@@ -258,6 +277,13 @@ class Point:
 
     def orthogonal(self):
         return Point(-self.y, self.x)
+
+    def rotation(self, other):
+        return acos(self.cos(other)) * sign(self.y * other.x - self.x * other.y)
+
+    def rotate(self, angle):
+        return Point(self.x * cos(angle) - self.y * sin(angle),
+                     self.y * cos(angle) - self.x * sin(angle))
 
 
 class Line:
@@ -723,12 +749,10 @@ class Plot:
 
 
 class PidController:
-    def __init__(self, proportional_gain, integral_gain, derivative_gain,
-                 output_gain):
+    def __init__(self, proportional_gain, integral_gain, derivative_gain):
         self.proportional_gain = proportional_gain
         self.integral_gain = integral_gain
         self.derivative_gain = derivative_gain
-        self.output_gain = output_gain
         self.__previous_output = 0
         self.__previous_error = 0
         self.__integral = 0
@@ -738,11 +762,69 @@ class PidController:
         derivative = error - self.__previous_error
         output = (self.proportional_gain * error +
                   self.integral_gain * self.__integral +
-                  self.derivative_gain * derivative +
-                  self.output_gain * self.__previous_output)
+                  self.derivative_gain * derivative)
         self.__previous_output = output
         self.__previous_error = error
         return output
+
+
+Control = namedtuple('Control', ('engine_power_derivative',
+                                 'wheel_turn_derivative',
+                                 'brake'))
+
+
+class Controller:
+    ANGULAR_SPEED_GAIN = 1.0
+    WHEEL_ANGLE_GAIN = 1.0
+    SPEED_GAIN = 1.0
+    ACCELERATION_GAIN = 1.0
+    ENGINE_POWER_GAIN = 1.0
+
+    def __init__(self, distance_to_wheels, max_engine_power_derivative):
+        self.distance_to_wheels = distance_to_wheels
+        self.max_engine_power_derivative = max_engine_power_derivative
+        self.__engine_power = PidController(1.0, 0.0, 0.0)
+        self.__wheel_turn = PidController(1.0, 0.0, 0.0)
+        self.__previous_full_speed = Point(0, 0)
+
+    def __call__(self, position, angle, engine_power, wheel_turn, speed,
+                 angular_speed, target_position, target_speed):
+        position_error = target_position - position
+        target_angle = position_error.rotation(Point(1, 0))
+        angle_error = target_angle - angle
+        target_angular_speed = self.ANGULAR_SPEED_GAIN * angle_error
+        angular_speed_error = target_angular_speed - angular_speed
+        target_wheel_turn = self.WHEEL_ANGLE_GAIN * angular_speed_error
+        wheel_turn_error = target_wheel_turn - wheel_turn
+        wheel_turn_derivative = self.__wheel_turn(wheel_turn_error)
+        target_speed = max(position_error * self.SPEED_GAIN, target_speed,
+                           key=lambda x: x.norm())
+        direction = Point(1, 0).rotate(angle)
+        radius = -(direction * self.distance_to_wheels).rotate(pi / 2)
+        angular_speed_vec = Point(-radius.y, radius.x) * angular_speed
+        target_angular_speed_vec = (Point(-radius.y, radius.x) *
+                                    target_angular_speed)
+        full_speed = speed + angular_speed_vec
+        target_full_speed = target_speed + target_angular_speed_vec
+        full_speed_error = target_full_speed - full_speed
+        target_acceleration = self.ACCELERATION_GAIN * full_speed_error.norm()
+        acceleration = (full_speed - self.__previous_full_speed).norm()
+        acceleration_error = target_acceleration - acceleration
+        target_engine_power = self.ENGINE_POWER_GAIN * acceleration_error
+        engine_power_error = target_engine_power - engine_power
+        engine_power_derivative = self.__engine_power(engine_power_error)
+        brake = engine_power_derivative < -self.max_engine_power_derivative
+        self.__previous_full_speed = full_speed
+        print(
+            'target_angle:', target_angle,
+            'angle_error:', angle_error,
+            'angular_speed_error:', angular_speed_error,
+            'wheel_turn_error:', wheel_turn_error,
+            'engine_power_derivative:', engine_power_derivative,
+            'wheel_turn_derivative:', wheel_turn_derivative,
+            'brake:', brake,
+        )
+        return Control(engine_power_derivative, wheel_turn_derivative, brake)
 
 
 class Polyline:
