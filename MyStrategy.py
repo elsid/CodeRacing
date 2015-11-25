@@ -26,9 +26,14 @@ class MyStrategy:
     controller = None
 
     def __init__(self):
-        self.plot = Plot()
+        self.speed_plot = Plot()
+        self.wheel_turn_plot = Plot()
         ion()
         show()
+        self.engine_power_history = []
+        self.speed_norm_history = []
+        self.target_speed_norm_history = []
+        self.wheel_turn_history = []
 
     def move(self, me: Car, world: World, game: Game, move: Move):
         if self.controller is None:
@@ -47,7 +52,9 @@ class MyStrategy:
             'engine power:', me.engine_power,
             'wheel turn:', me.wheel_turn,
         )
-        move.engine_power = 0.3
+        self.engine_power_history.append(me.engine_power)
+        self.speed_norm_history.append(Point(me.speed_x, me.speed_y).norm())
+        self.wheel_turn_history.append(me.wheel_turn)
         matrix = AdjacencyMatrix(world.tiles_x_y)
         tile = current_tile(Point(me.x, me.y), game.track_tile_size)
         tile_index = matrix.index(tile.x, tile.y)
@@ -61,6 +68,10 @@ class MyStrategy:
         reduced_path = list(reduce_direct(shifted_path))
         reduced_path = list(reduce_diagonal_direct(reduced_path))
         reduced_path = list(reduce_direct_first_after_me(reduced_path))
+        # target_speed = ((reduced_path[1] - reduced_path[0]) +
+        #                 (reduced_path[2] - reduced_path[1])).norm()
+        target_speed = 10
+        self.target_speed_norm_history.append(target_speed)
         control = self.controller(position=Point(me.x, me.y),
                                   angle=me.angle,
                                   wheel_turn=me.wheel_turn,
@@ -68,7 +79,7 @@ class MyStrategy:
                                   speed=Point(me.speed_x, me.speed_y),
                                   angular_speed=me.angular_speed,
                                   target_position=reduced_path[0],
-                                  target_speed=Point(0, 0))
+                                  target_speed=target_speed)
         move.engine_power += control.engine_power_derivative
         move.wheel_turn += control.wheel_turn_derivative
         # path_from_me = [my_position] + reduced_path
@@ -108,7 +119,7 @@ class MyStrategy:
         #                                          my_position))
         #
         # move.engine_power = 0.5
-        # if world.tick % 50 == 0:
+        if world.tick % 50 == 0:
             # trajectory_spline = make_spline(trajectory_points)
             # trajectory_points = [p.cartesian(my_position)
             #                      for p in trajectory_points]
@@ -117,7 +128,6 @@ class MyStrategy:
             #     for r in linspace(0, path_for_spline[-1].radius, 100)]
             # trajectory_spline_points = [
             #     p.cartesian(my_position) for p in trajectory_spline_points]
-            # self.plot.clear()
             # self.plot.lines(range(len(self.engine_power_history)),
             #                 self.engine_power_history)
             # self.plot.path(path_from_me, 'o')
@@ -129,7 +139,16 @@ class MyStrategy:
             #     linspace(0, world.width * game.track_tile_size, 150),
             #     linspace(world.height * game.track_tile_size, 0, 150),
             #     passability)
-            # self.plot.draw()
+            self.speed_plot.clear()
+            self.speed_plot.lines(range(len(self.speed_norm_history)),
+                                  self.speed_norm_history)
+            self.speed_plot.lines(range(len(self.target_speed_norm_history)),
+                                  self.target_speed_norm_history)
+            self.speed_plot.draw()
+            self.wheel_turn_plot.clear()
+            self.wheel_turn_plot.lines(range(len(self.wheel_turn_history)),
+                                       self.wheel_turn_history)
+            self.wheel_turn_plot.draw()
 
 
 PathPoint = namedtuple('PathPoint', ('position', 'speed'))
@@ -284,6 +303,9 @@ class Point:
     def rotate(self, angle):
         return Point(self.x * cos(angle) - self.y * sin(angle),
                      self.y * cos(angle) - self.x * sin(angle))
+
+    def normalized(self):
+        return self / self.norm()
 
 
 class Line:
@@ -785,7 +807,7 @@ class Controller:
         self.max_engine_power_derivative = max_engine_power_derivative
         self.__engine_power = PidController(1.0, 0.0, 0.0)
         self.__wheel_turn = PidController(1.0, 0.0, 0.0)
-        self.__previous_full_speed = Point(0, 0)
+        self.__previous_full_speed = 0
 
     def __call__(self, position, angle, engine_power, wheel_turn, speed,
                  angular_speed, target_position, target_speed):
@@ -797,18 +819,20 @@ class Controller:
         target_wheel_turn = self.WHEEL_ANGLE_GAIN * angular_speed_error
         wheel_turn_error = target_wheel_turn - wheel_turn
         wheel_turn_derivative = self.__wheel_turn(wheel_turn_error)
-        target_speed = max(position_error * self.SPEED_GAIN, target_speed,
-                           key=lambda x: x.norm())
-        direction = Point(1, 0).rotate(angle)
-        radius = -(direction * self.distance_to_wheels).rotate(pi / 2)
-        angular_speed_vec = Point(-radius.y, radius.x) * angular_speed
-        target_angular_speed_vec = (Point(-radius.y, radius.x) *
-                                    target_angular_speed)
-        full_speed = speed + angular_speed_vec
-        target_full_speed = target_speed + target_angular_speed_vec
+        # target_speed = max(position_error * self.SPEED_GAIN, target_speed,
+                           # key=lambda x: x.norm())
+        # direction = Point(1, 0).rotate(angle)
+        # radius = -(direction * self.distance_to_wheels).rotate(pi / 2)
+        # angular_speed_vec = Point(-radius.y, radius.x) * angular_speed
+        # target_angular_speed_vec = (Point(-radius.y, radius.x) *
+        #                             target_angular_speed)
+        # full_speed = speed + angular_speed_vec
+        full_speed = speed.norm()
+        # target_full_speed = target_speed + target_angular_speed_vec
+        target_full_speed = target_speed
         full_speed_error = target_full_speed - full_speed
-        target_acceleration = self.ACCELERATION_GAIN * full_speed_error.norm()
-        acceleration = (full_speed - self.__previous_full_speed).norm()
+        acceleration = full_speed - self.__previous_full_speed
+        target_acceleration = self.ACCELERATION_GAIN * full_speed_error
         acceleration_error = target_acceleration - acceleration
         target_engine_power = self.ENGINE_POWER_GAIN * acceleration_error
         engine_power_error = target_engine_power - engine_power
@@ -816,12 +840,21 @@ class Controller:
         brake = engine_power_derivative < -self.max_engine_power_derivative
         self.__previous_full_speed = full_speed
         print(
-            'target_angle:', target_angle,
-            'angle_error:', angle_error,
-            'angular_speed_error:', angular_speed_error,
-            'wheel_turn_error:', wheel_turn_error,
+            # 'target_angle:', target_angle,
+            # 'angle_error:', angle_error,
+            # 'angular_speed_error:', angular_speed_error,
+            # 'wheel_turn_error:', wheel_turn_error,
+            # 'wheel_turn_derivative:', wheel_turn_derivative,
+            'full_speed:', full_speed,
+            'target_full_speed:', target_full_speed,
+            'full_speed_error:', full_speed_error,
+            'acceleration:', acceleration,
+            'target_acceleration:', target_acceleration,
+            'acceleration_error:', acceleration_error,
+            'engine_power_error:', acceleration_error,
+            'target_engine_power:', target_engine_power,
+            'engine_power_error:', engine_power_error,
             'engine_power_derivative:', engine_power_derivative,
-            'wheel_turn_derivative:', wheel_turn_derivative,
             'brake:', brake,
         )
         return Control(engine_power_derivative, wheel_turn_derivative, brake)
