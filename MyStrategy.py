@@ -34,7 +34,8 @@ class MyStrategy:
         if self.controller is None:
             self.controller = Controller(
                 distance_to_wheels=me.width / 3,
-                max_engine_power_derivative=game.car_engine_power_change_per_tick)
+                max_engine_power_derivative=game.car_engine_power_change_per_tick,
+                angular_speed_factor=game.car_angular_speed_factor)
         if world.tick < game.initial_freeze_duration_ticks:
             return
         my_position = Point(me.x, me.y)
@@ -151,8 +152,8 @@ class MyStrategy:
 # PathPoint = namedtuple('PathPoint', ('position', 'speed'))
 
 
-# def sigmoid(x):
-#     return 1 / (1 + exp(-x))
+def sigmoid(x):
+    return 1 / (1 + exp(-x))
 
 
 # def make_trajectory(passability, path_points, origin):
@@ -805,10 +806,12 @@ class Controller:
     ACCELERATION_GAIN = 1.0
     ENGINE_POWER_GAIN = 1.0
 
-    def __init__(self, distance_to_wheels, max_engine_power_derivative):
+    def __init__(self, distance_to_wheels, max_engine_power_derivative,
+                 angular_speed_factor):
         self.distance_to_wheels = distance_to_wheels
         self.max_engine_power_derivative = max_engine_power_derivative
-        self.__engine_power = PidController(1.0, 0.0, 0.0)
+        self.angular_speed_factor = angular_speed_factor
+        self.__engine_power = PidController(1.0, 0.01, 0.5)
         self.__wheel_turn = PidController(0.2, 0.1, 0.1)
         self.__previous_full_speed = Point(0, 0)
         self.engine_power_history = []
@@ -831,11 +834,11 @@ class Controller:
         target_angle = angle + angle_error
         target_angular_speed = self.ANGULAR_SPEED_GAIN * angle_error
         angular_speed_error = target_angular_speed - angular_speed
-        target_wheel_turn = self.WHEEL_ANGLE_GAIN * angular_speed_error
+        target_wheel_turn = max(-1.0, min(1.0, self.WHEEL_ANGLE_GAIN * angular_speed_error))
         wheel_turn_error = target_wheel_turn - wheel_turn
         wheel_turn_derivative = self.__wheel_turn(wheel_turn_error)
         target_speed = speed_at_target
-        # radius = -(direction * self.distance_to_wheels).rotate(pi / 2)
+        radius = -(direction * self.distance_to_wheels).rotate(pi / 2)
         # angular_speed_vec = Point(-radius.y, radius.x) * angular_speed
         angular_speed_vec = Point(0, 0)
         # target_angular_speed_vec = (Point(-radius.y, radius.x) *
@@ -853,7 +856,7 @@ class Controller:
         target_acceleration = self.ACCELERATION_GAIN * full_speed_error
         acceleration_error = target_acceleration - acceleration
         target_engine_power = self.ENGINE_POWER_GAIN * acceleration_error
-        engine_power_error = target_engine_power - engine_power
+        engine_power_error = max(-1.0, min(1.0, target_engine_power)) - engine_power
         engine_power_derivative = self.__engine_power(engine_power_error)
         brake = engine_power_derivative < -self.max_engine_power_derivative
         self.__previous_full_speed = full_speed
@@ -894,18 +897,36 @@ class Controller:
                                   self.speed_norm_history)
             self.speed_plot.lines(range(len(self.target_speed_norm_history)),
                                   self.target_speed_norm_history)
+            # self.speed_plot.lines(range(len(self.speed_norm_history)),
+            #                       array(self.speed_norm_history) /
+            #                       array(self.target_speed_norm_history))
+            # self.speed_plot.lines(range(len(self.target_speed_norm_history)),
+            #                       array(self.target_speed_norm_history) /
+            #                       array(self.target_speed_norm_history))
             self.speed_plot.draw()
             self.wheel_turn_plot.clear()
+            # self.wheel_turn_plot.lines(range(len(self.wheel_turn_history)),
+            #                            self.wheel_turn_history)
+            # self.wheel_turn_plot.lines(range(len(self.target_wheel_turn_history)),
+            #                            self.target_wheel_turn_history)
             self.wheel_turn_plot.lines(range(len(self.wheel_turn_history)),
-                                       self.wheel_turn_history)
+                                       array(self.wheel_turn_history) /
+                                       array(self.target_wheel_turn_history))
             self.wheel_turn_plot.lines(range(len(self.target_wheel_turn_history)),
-                                       self.target_wheel_turn_history)
+                                       array(self.target_wheel_turn_history) /
+                                       array(self.target_wheel_turn_history))
             self.wheel_turn_plot.draw()
             self.engine_power_plot.clear()
+            # self.engine_power_plot.lines(range(len(self.engine_power_history)),
+            #                              self.engine_power_history)
+            # self.engine_power_plot.lines(range(len(self.target_engine_power_history)),
+            #                              self.target_engine_power_history)
             self.engine_power_plot.lines(range(len(self.engine_power_history)),
-                                         self.engine_power_history)
+                                         array(self.engine_power_history) /
+                                         array(self.target_engine_power_history))
             self.engine_power_plot.lines(range(len(self.target_engine_power_history)),
-                                         self.target_engine_power_history)
+                                         array(self.target_engine_power_history) /
+                                         array(self.target_engine_power_history))
             self.engine_power_plot.draw()
 
         return Control(engine_power_derivative, wheel_turn_derivative, brake)
