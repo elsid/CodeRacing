@@ -1,5 +1,14 @@
+from itertools import islice
 from math import acos, cos, sin, sqrt
 from numpy import arctan2, sign
+
+
+def get_current_tile(point, tile_size):
+    return Point(tile_coord(point.x, tile_size), tile_coord(point.y, tile_size))
+
+
+def tile_coord(value, tile_size):
+    return int(value / tile_size)
 
 
 class Point:
@@ -109,3 +118,45 @@ class Point:
 
     def projection(self, other):
         return other * self.dot(other) / other.norm()
+
+
+class Line:
+    def __init__(self, begin: Point, end: Point):
+        self.begin = begin
+        self.end = end
+
+    def __call__(self, parameter):
+        return self.begin + (self.end - self.begin) * parameter
+
+    def distance(self, point):
+        to_end = self.end - self.begin
+        to_point = point - self.begin
+        norm = to_point.dot(to_end) / to_end.norm()
+        return sqrt(to_point.norm() ** 2 - norm ** 2)
+
+    def nearest(self, point):
+        to_end = self.end - self.begin
+        to_point = point - self.begin
+        norm = to_point.dot(to_end) / to_end.norm()
+        return self.begin + to_end / to_end.norm() * norm
+
+    def length(self):
+        return (self.end - self.begin).norm()
+
+
+class Polyline:
+    def __init__(self, points):
+        self.points = points
+
+    def distance(self, point):
+        points = islice(enumerate(self.points), len(self.points) - 1)
+        return min(Line(p, self.points[i - 1]).nearest(point).distance(point)
+                   for i, p in points)
+
+
+def get_tile_center(point: Point, size):
+    return point.map(lambda x: tile_center_coord(x, size))
+
+
+def tile_center_coord(value, size):
+    return (value + 0.5) * size

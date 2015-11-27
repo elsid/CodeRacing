@@ -2,13 +2,13 @@ from model.Car import Car
 from model.Game import Game
 from model.Move import Move
 from model.World import World
-from strategy.release import ReleaseStrategy
-from strategy.common import Point
-from debug import Plot
+from strategy_release import ReleaseStrategy
+from strategy_common import Point
 
 
 class DebugStrategy:
     def __init__(self):
+        from debug import Plot
         self.__impl = ReleaseStrategy()
         self.__plot = Plot()
 

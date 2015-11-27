@@ -2,9 +2,9 @@ from model.Car import Car
 from model.Game import Game
 from model.Move import Move
 from model.World import World
-from strategy.common import Point, get_current_tile, get_tile_center
-from strategy.control import Controller, get_speed
-from strategy.path import make_tiles_path, adjust_path, shift_on_direct
+from strategy_common import Point, get_current_tile, get_tile_center
+from strategy_control import Controller, get_speed
+from strategy_path import make_tiles_path, adjust_path, shift_on_direct
 
 
 class ReleaseStrategy:

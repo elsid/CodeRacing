@@ -1,7 +1,9 @@
 from collections import namedtuple
+from functools import reduce
+from itertools import islice
 from math import pi
-from strategy.common import Point
-from strategy.control.pid_controller import PidController
+from operator import mul
+from strategy_common import Point
 
 Control = namedtuple('Control', ('engine_power_derivative',
                                  'wheel_turn_derivative',
@@ -43,3 +45,39 @@ class Controller:
                  not self.__previous_brake)
         self.__previous_brake = brake
         return Control(engine_power_derivative, wheel_turn_derivative, brake)
+
+
+class PidController:
+    def __init__(self, proportional_gain, integral_gain, derivative_gain):
+        self.proportional_gain = proportional_gain
+        self.integral_gain = integral_gain
+        self.derivative_gain = derivative_gain
+        self.__previous_output = 0
+        self.__previous_error = 0
+        self.__integral = 0
+
+    def __call__(self, error):
+        self.__integral += error
+        derivative = error - self.__previous_error
+        output = (self.proportional_gain * error +
+                  self.integral_gain * self.__integral +
+                  self.derivative_gain * derivative)
+        self.__previous_output = output
+        self.__previous_error = error
+        return output
+
+
+def get_speed(position: Point, direction: Point, path):
+    if len(path) < 1:
+        return direction * 100
+    path = [position] + path
+
+    def generate_cos():
+        for i, current in islice(enumerate(path), 1, min(3, len(path) - 1)):
+            yield (current - path[i - 1]).cos(path[i + 1] - current)
+
+    return (path[1] - path[0]) * speed_gain(reduce(mul, generate_cos(), 1))
+
+
+def speed_gain(x):
+    return 1 - 3 / (x - 1)

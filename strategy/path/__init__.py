@@ -1,7 +1,0 @@
-from strategy.path.adjust_path import adjust_path
-from strategy.path.shift_on_direct import shift_on_direct
-from strategy.path.tiles_path import make_tiles_path
-from strategy.path.shift_to_borders import shift_to_borders
-from strategy.path.reduce_direct import reduce_direct
-from strategy.path.reduce_diagonal_direct import reduce_diagonal_direct
-from strategy.path.reduce_direct_first_after_me import reduce_direct_first_after_me

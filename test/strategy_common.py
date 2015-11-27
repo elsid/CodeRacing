@@ -1,7 +1,48 @@
 from unittest import TestCase
 from hamcrest import assert_that, equal_to, close_to
 from math import sqrt, pi
-from strategy.common import Point
+from strategy_common import (
+    Line,
+    Point,
+    get_tile_center,
+    get_current_tile,
+    tile_coord,
+    tile_center_coord
+)
+
+
+class TileCoordTest(TestCase):
+    def test_at_0_with_tile_size_100_returns_0(self):
+        assert_that(tile_coord(value=0, tile_size=100), equal_to(0))
+
+    def test_at_99_with_tile_size_100_returns_0(self):
+        assert_that(tile_coord(value=99, tile_size=100), equal_to(0))
+
+    def test_at_100_with_tile_size_100_returns_1(self):
+        assert_that(tile_coord(value=100, tile_size=100), equal_to(1))
+
+
+class CurrentTileTest(TestCase):
+    def test_at_100_100_with_tile_size_100_returns_1_1(self):
+        result = get_current_tile(point=Point(x=100, y=100), tile_size=100)
+        assert_that(result, equal_to(Point(1, 1)))
+
+
+class LineTest(TestCase):
+    def test_nearest_at_line_returns_equal(self):
+        line = Line(begin=Point(0, 0), end=Point(1, 0))
+        result = line.nearest(Point(0, 0))
+        assert_that(result, equal_to(Point(0, 0)))
+
+    def test_nearest_at_line_but_not_in_segment_returns_equal(self):
+        line = Line(begin=Point(0, 0), end=Point(1, 0))
+        result = line.nearest(Point(2, 0))
+        assert_that(result, equal_to(Point(2, 0)))
+
+    def test_nearest_not_at_line_returns_at_line(self):
+        line = Line(begin=Point(0, 0), end=Point(1, 0))
+        result = line.nearest(Point(1, 1))
+        assert_that(result, equal_to(Point(1, 0)))
 
 
 class PointTest(TestCase):
@@ -93,3 +134,21 @@ class PointTest(TestCase):
         result = Point(1, 0).projection(Point(1, 1))
         assert_that(result.x, close_to(value=sqrt(2) / 2, delta=1e-8))
         assert_that(result.y, close_to(value=sqrt(2) / 2, delta=1e-8))
+
+
+class TileCenterCoordTest(TestCase):
+    def test_at_0_for_tile_size_10_returns_5(self):
+        assert_that(tile_center_coord(value=0, size=10), equal_to(5))
+
+    def test_at_1_for_tile_size_10_returns_15(self):
+        assert_that(tile_center_coord(value=1, size=10), equal_to(15))
+
+
+class TileCenterTest(TestCase):
+    def test_at_point_0_0_for_tile_size_10_returns_point_5_5(self):
+        assert_that(get_tile_center(point=Point(0, 0), size=10),
+                    equal_to(Point(5, 5)))
+
+    def test_at_point_0_1_for_tile_size_10_returns_point_5_15(self):
+        assert_that(get_tile_center(point=Point(0, 1), size=10),
+                    equal_to(Point(5, 15)))
