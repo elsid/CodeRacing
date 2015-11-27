@@ -4,7 +4,12 @@ from model.Move import Move
 from model.World import World
 from strategy_common import Point, get_current_tile, get_tile_center
 from strategy_control import Controller, get_speed
-from strategy_path import make_tiles_path, adjust_path, shift_on_direct
+from strategy_path import (
+    make_tiles_path,
+    adjust_path,
+    shift_on_direct,
+    reduce_direct,
+)
 
 
 class ReleaseStrategy:
@@ -39,7 +44,8 @@ class ReleaseStrategy:
         path = [get_tile_center(x, game.track_tile_size) for x in path]
         self.tiles_path = path
         path = list(adjust_path(path, game.track_tile_size))
-        path = list(shift_on_direct(path))
+        path = list(reduce_direct(path))
+        # path = list(shift_on_direct(path))
         path = path[1:]
         target_speed = get_speed(position, direction, path)
         control = self.controller(
@@ -50,7 +56,8 @@ class ReleaseStrategy:
             speed=my_speed,
             angular_speed=me.angular_speed,
             speed_at_target=target_speed,
+            tick=world.tick,
         )
-        move.engine_power += control.engine_power_derivative
-        move.wheel_turn += control.wheel_turn_derivative
+        move.engine_power = me.engine_power + control.engine_power_derivative
+        move.wheel_turn = me.wheel_turn + control.wheel_turn_derivative
         self.path = path

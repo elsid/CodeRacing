@@ -39,31 +39,31 @@ def adjust_path_point(current: TypedPoint, following: TypedPoint,
         return current.position
     shift = Point(0, 0)
     if current.type in {PointType.LEFT_TOP, PointType.TOP_LEFT}:
-        shift = Point(- tile_size / 4, - tile_size / 4)
+        shift = Point(- tile_size / 5, - tile_size / 5)
         if current.type.input == following.type.output:
             shift /= 2
     elif current.type in {PointType.LEFT_BOTTOM, PointType.BOTTOM_LEFT}:
-        shift = Point(- tile_size / 4, + tile_size / 4)
+        shift = Point(- tile_size / 5, + tile_size / 5)
         if current.type.input == following.type.output:
             shift /= 2
     elif current.type in {PointType.RIGHT_TOP, PointType.TOP_RIGHT}:
-        shift = Point(+ tile_size / 4, - tile_size / 4)
+        shift = Point(+ tile_size / 5, - tile_size / 5)
         if current.type.input == following.type.output:
             shift /= 2
     elif current.type in {PointType.RIGHT_BOTTOM, PointType.BOTTOM_RIGHT}:
-        shift = Point(+ tile_size / 4, + tile_size / 4)
+        shift = Point(+ tile_size / 5, + tile_size / 5)
         if current.type.input == following.type.output:
             shift /= 2
     elif current.type in {PointType.LEFT_RIGHT, PointType.RIGHT_LEFT}:
         if following.type.output == SideType.TOP:
-            shift = Point(0, + tile_size / 4)
+            shift = Point(0, + tile_size / 5)
         else:
-            shift = Point(0, - tile_size / 4)
+            shift = Point(0, - tile_size / 5)
     elif current.type in {PointType.TOP_BOTTOM, PointType.BOTTOM_TOP}:
         if following.type.output == SideType.LEFT:
-            shift = Point(+ tile_size / 4, 0)
+            shift = Point(+ tile_size / 5, 0)
         else:
-            shift = Point(- tile_size / 4, 0)
+            shift = Point(- tile_size / 5, 0)
     return current.position + shift
 
 
