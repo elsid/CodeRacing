@@ -62,4 +62,5 @@ class ReleaseStrategy:
         )
         move.engine_power = me.engine_power + control.engine_power_derivative
         move.wheel_turn = me.wheel_turn + control.wheel_turn_derivative
+        move.use_nitro = control.use_nitro
         self.path = [position] + path

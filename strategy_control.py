@@ -7,7 +7,8 @@ from strategy_common import Point
 
 Control = namedtuple('Control', ('engine_power_derivative',
                                  'wheel_turn_derivative',
-                                 'brake'))
+                                 'brake',
+                                 'use_nitro'))
 
 
 class Controller:
@@ -56,6 +57,7 @@ class Controller:
         brake = (engine_power_derivative < -self.max_engine_power_derivative and
                  not self.__previous_brake)
         self.__previous_brake = brake
+        use_nitro = target_engine_power > 0.9 and full_speed_error > 30
         if self.__is_debug:
             self.speed_norm_history.append(full_speed.norm())
             self.target_speed_norm_history.append(target_full_speed.norm())
@@ -101,7 +103,8 @@ class Controller:
                 #                              array(self.target_engine_power_history[:-50]) /
                 #                              array(self.target_engine_power_history[:-50]))
                 self.engine_power_plot.draw()
-        return Control(engine_power_derivative, wheel_turn_derivative, brake)
+        return Control(engine_power_derivative, wheel_turn_derivative, brake,
+                       use_nitro)
 
 
 class PidController:
@@ -132,7 +135,7 @@ def get_speed(position: Point, direction: Point, path):
             yield (current - path[i - 1]).cos(path[i + 1] - current) ** 2
 
     course = path[1] - path[0]
-    return (course / 200 +
+    return (course / 150 +
             (course.normalized() *
              speed_gain(reduce(mul, generate_cos(), 1)) *
              course.cos(direction) ** 2))
