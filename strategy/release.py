@@ -11,6 +11,7 @@ class ReleaseStrategy:
     controller = None
     start = None
     path = None
+    tiles_path = None
 
     def move(self, me: Car, world: World, game: Game, move: Move):
         if self.controller is None:
