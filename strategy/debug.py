@@ -16,9 +16,12 @@ class DebugStrategy:
         self.__impl.move(me, world, game, move)
         if world.tick % 50 == 0:
             path = self.__impl.path
+            tiles_path = self.__impl.tiles_path
             if path is None:
                 return
             self.__plot.clear()
+            self.__plot.path([Point(p.x, -p.y) for p in tiles_path], 'o')
+            self.__plot.path([Point(p.x, -p.y) for p in tiles_path], '-')
             self.__plot.path([Point(p.x, -p.y) for p in path], 'o')
             self.__plot.path([Point(p.x, -p.y) for p in path], '-')
             self.__plot.draw()
