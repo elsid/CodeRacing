@@ -37,10 +37,11 @@ class ReleaseStrategy:
             tiles=world.tiles_x_y
         ))
         path = [get_tile_center(x, game.track_tile_size) for x in path]
+        self.tiles_path = path
         path = list(adjust_path(path, game.track_tile_size))
         path = list(shift_on_direct(path))
         path = path[1:]
-        target_speed = get_speed(position, path[0], path[1], direction)
+        target_speed = get_speed(position, direction, path)
         control = self.controller(
             direction=direction,
             angle_error=me.get_angle_to(path[0].x, path[0].y),

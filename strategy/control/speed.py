@@ -1,15 +1,20 @@
+from itertools import islice
+from operator import mul
+from functools import reduce
 from strategy.common import Point
 
 
-def get_speed(position: Point, following: Point, after_following: Point,
-              my_direction: Point):
-    direction = (after_following - following).normalized()
-    to_following = following - position
-    to_after_following = after_following - following
-    return (direction * get_speed_gain(to_following.cos(to_after_following) *
-                                       my_direction.cos(to_following)) +
-            to_following / 400)
+def get_speed(position: Point, direction: Point, path):
+    if len(path) < 1:
+        return direction * 100
+    path = [position] + path
+
+    def generate_cos():
+        for i, current in islice(enumerate(path), 1, min(3, len(path) - 1)):
+            yield (current - path[i - 1]).cos(path[i + 1] - current)
+
+    return (path[1] - path[0]) * speed_gain(reduce(mul, generate_cos(), 1))
 
 
-def get_speed_gain(x):
+def speed_gain(x):
     return 1 - 3 / (x - 1)
