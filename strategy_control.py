@@ -56,50 +56,51 @@ class Controller:
         brake = (engine_power_derivative < -self.max_engine_power_derivative and
                  not self.__previous_brake)
         self.__previous_brake = brake
-        self.speed_norm_history.append(full_speed.norm())
-        self.target_speed_norm_history.append(target_full_speed.norm())
-        self.wheel_turn_history.append(wheel_turn)
-        self.target_wheel_turn_history.append(target_wheel_turn)
-        self.engine_power_history.append(engine_power)
-        self.target_engine_power_history.append(target_engine_power)
-        if self.__is_debug and tick % 50 == 0:
-            from numpy import array
-            self.speed_plot.clear()
-            self.speed_plot.lines(range(len(self.speed_norm_history[:-50])),
-                                  self.speed_norm_history[:-50])
-            self.speed_plot.lines(range(len(self.target_speed_norm_history[:-50])),
-                                  self.target_speed_norm_history[:-50])
-            # self.speed_plot.lines(range(len(self.speed_norm_history)),
-            #                       array(self.speed_norm_history) /
-            #                       array(self.target_speed_norm_history))
-            # self.speed_plot.lines(range(len(self.target_speed_norm_history)),
-            #                       array(self.target_speed_norm_history) /
-            #                       array(self.target_speed_norm_history))
-            self.speed_plot.draw()
-            self.wheel_turn_plot.clear()
-            self.wheel_turn_plot.lines(range(len(self.wheel_turn_history[:-50])),
-                                       self.wheel_turn_history[:-50])
-            self.wheel_turn_plot.lines(range(len(self.target_wheel_turn_history[:-50])),
-                                       self.target_wheel_turn_history[:-50])
-            # self.wheel_turn_plot.lines(range(len(self.wheel_turn_history[:-50])),
-            #                            array(self.wheel_turn_history[:-50]) /
-            #                            array(self.target_wheel_turn_history[:-50]))
-            # self.wheel_turn_plot.lines(range(len(self.target_wheel_turn_history[:-50])),
-            #                            array(self.target_wheel_turn_history[:-50]) /
-            #                            array(self.target_wheel_turn_history[:-50]))
-            self.wheel_turn_plot.draw()
-            self.engine_power_plot.clear()
-            self.engine_power_plot.lines(range(len(self.engine_power_history[:-50])),
-                                         self.engine_power_history[:-50])
-            self.engine_power_plot.lines(range(len(self.target_engine_power_history[:-50])),
-                                         self.target_engine_power_history[:-50])
-            # self.engine_power_plot.lines(range(len(self.engine_power_history[:-50])),
-            #                              array(self.engine_power_history[:-50]) /
-            #                              array(self.target_engine_power_history[:-50]))
-            # self.engine_power_plot.lines(range(len(self.target_engine_power_history[:-50])),
-            #                              array(self.target_engine_power_history[:-50]) /
-            #                              array(self.target_engine_power_history[:-50]))
-            self.engine_power_plot.draw()
+        if self.__is_debug:
+            self.speed_norm_history.append(full_speed.norm())
+            self.target_speed_norm_history.append(target_full_speed.norm())
+            self.wheel_turn_history.append(wheel_turn)
+            self.target_wheel_turn_history.append(target_wheel_turn)
+            self.engine_power_history.append(engine_power)
+            self.target_engine_power_history.append(target_engine_power)
+            if tick % 50 == 0:
+                from numpy import array
+                self.speed_plot.clear()
+                self.speed_plot.lines(range(len(self.speed_norm_history[:-50])),
+                                      self.speed_norm_history[:-50])
+                self.speed_plot.lines(range(len(self.target_speed_norm_history[:-50])),
+                                      self.target_speed_norm_history[:-50])
+                # self.speed_plot.lines(range(len(self.speed_norm_history)),
+                #                       array(self.speed_norm_history) /
+                #                       array(self.target_speed_norm_history))
+                # self.speed_plot.lines(range(len(self.target_speed_norm_history)),
+                #                       array(self.target_speed_norm_history) /
+                #                       array(self.target_speed_norm_history))
+                self.speed_plot.draw()
+                self.wheel_turn_plot.clear()
+                self.wheel_turn_plot.lines(range(len(self.wheel_turn_history[:-50])),
+                                           self.wheel_turn_history[:-50])
+                self.wheel_turn_plot.lines(range(len(self.target_wheel_turn_history[:-50])),
+                                           self.target_wheel_turn_history[:-50])
+                # self.wheel_turn_plot.lines(range(len(self.wheel_turn_history[:-50])),
+                #                            array(self.wheel_turn_history[:-50]) /
+                #                            array(self.target_wheel_turn_history[:-50]))
+                # self.wheel_turn_plot.lines(range(len(self.target_wheel_turn_history[:-50])),
+                #                            array(self.target_wheel_turn_history[:-50]) /
+                #                            array(self.target_wheel_turn_history[:-50]))
+                self.wheel_turn_plot.draw()
+                self.engine_power_plot.clear()
+                self.engine_power_plot.lines(range(len(self.engine_power_history[:-50])),
+                                             self.engine_power_history[:-50])
+                self.engine_power_plot.lines(range(len(self.target_engine_power_history[:-50])),
+                                             self.target_engine_power_history[:-50])
+                # self.engine_power_plot.lines(range(len(self.engine_power_history[:-50])),
+                #                              array(self.engine_power_history[:-50]) /
+                #                              array(self.target_engine_power_history[:-50]))
+                # self.engine_power_plot.lines(range(len(self.target_engine_power_history[:-50])),
+                #                              array(self.target_engine_power_history[:-50]) /
+                #                              array(self.target_engine_power_history[:-50]))
+                self.engine_power_plot.draw()
         return Control(engine_power_derivative, wheel_turn_derivative, brake)
 
 
