@@ -8,6 +8,7 @@ from matplotlib.pyplot import show, ion, figure
 from mpl_toolkits.mplot3d import Axes3D
 from itertools import islice, takewhile
 from scipy.optimize import fminbound, bisect
+from enum import Enum
 
 from model.Car import Car
 from model.Game import Game
@@ -18,17 +19,18 @@ from model.RectangularUnit import RectangularUnit
 from model.CircularUnit import CircularUnit
 
 
-def make_rotate_matrix(angle):
-    return array([[cos(angle), sin(angle)], [-sin(angle), cos(angle)]])
-
-
 class MyStrategy:
     controller = None
+    path = None
+    target = None
 
     def __init__(self):
         self.plot = Plot()
         ion()
         show()
+
+    def inc_target(self):
+        self.target = (self.target + 1) % len(self.path)
 
     def move(self, me: Car, world: World, game: Game, move: Move):
         if self.controller is None:
@@ -38,7 +40,9 @@ class MyStrategy:
                 angular_speed_factor=game.car_angular_speed_factor)
         if world.tick < game.initial_freeze_duration_ticks:
             return
-        my_position = Point(me.x, me.y)
+        move.spill_oil = True
+        move.throw_projectile = True
+        position = Point(me.x, me.y)
         my_speed = Point(me.speed_x, me.speed_y)
         my_direction = Point(1, 0).rotate(me.angle)
         # print(
@@ -55,18 +59,34 @@ class MyStrategy:
         tile = current_tile(Point(me.x, me.y), game.track_tile_size)
         tile_index = matrix.index(tile.x, tile.y)
         path = list(make_path(tile_index, me.next_waypoint_index, matrix,
-                              world.waypoints))
-        tile_center_path = [tile_center(x, game.track_tile_size) for x in path]
-        shifted_path = list(shift_to_borders(tile_center_path))
-        # reduced_path = shifted_path
-        # shifted_polar_path = list(polar(my_position,
-        #                                 [my_position] + shifted_path))
+                              world.waypoints + [(tile.x, tile.y)]))
+        path = [tile_center(x, game.track_tile_size) for x in path]
+        # tile_center_path = path
+        path = list(adjust_path(path, game.track_tile_size))
+        # shifted_path = list(shift_to_borders(path))
+        # shifted_polar_path = list(polar(my_position, [my_position] + path))
         # shifted_path_for_spline = list(take_for_spline(shifted_polar_path))
-        reduced_path = list(reduce_direct(shifted_path))
-        reduced_path = list(reduce_diagonal_direct(reduced_path))
-        reduced_path = list(reduce_direct_first_after_me(reduced_path))
-        path_from_me = [my_position] + reduced_path
-        speed_at_target = (reduced_path[0] - my_position).normalized() * 25
+        # path = list(reduce_direct(path))
+        # path = list(reduce_diagonal_direct(path))
+        path = list(shift_on_direct(path))
+        self.path = path
+        self.target = 0
+        path = self.path
+        target = self.target
+        tile_size = game.track_tile_size
+        target_distance = position.distance(path[target])
+        if target_distance < 0.25 * tile_size:
+            self.inc_target()
+        if (target < len(path) - 1 and
+                position.distance(path[target + 1]) < target_distance or
+                target >= len(path) and
+                position.distance(path[0]) < target_distance):
+            self.inc_target()
+        if target < len(path) - 1:
+            target_speed = get_speed(position, path[target], path[target + 1])
+        else:
+            target_speed = get_speed(position, path[target], path[0])
+        # path = list(reduce_direct_first_after_me(path))
         # for_spline = [(x - my_position).rotate(-me.angle) for x in path_from_me]
         # for_spline = list(take_for_spline(for_spline))
         # spline = make_spline(for_spline)
@@ -75,15 +95,18 @@ class MyStrategy:
         # target = Point(target_x, target_y).rotate(me.angle) + my_position
         # path_curve = [Point(x, spline(x)).rotate(me.angle) + my_position
         #               for x in linspace(0, for_spline[-1].x, 100)]
-        control = self.controller(position=my_position,
-                                  angle=me.angle,
-                                  wheel_turn=me.wheel_turn,
-                                  engine_power=me.engine_power,
-                                  speed=my_speed,
-                                  angular_speed=me.angular_speed,
-                                  target_position=reduced_path[0],
-                                  speed_at_target=speed_at_target,
-                                  tick=world.tick)
+        control = self.controller(
+            position=position,
+            angle=me.angle,
+            angle_error=me.get_angle_to(path[target].x, path[target].y),
+            wheel_turn=me.wheel_turn,
+            engine_power=me.engine_power,
+            speed=my_speed,
+            angular_speed=me.angular_speed,
+            target_position=path[target],
+            speed_at_target=target_speed,
+            tick=world.tick
+        )
         move.engine_power += control.engine_power_derivative
         move.wheel_turn += control.wheel_turn_derivative
         # error = Polyline(path_from_me).distance(my_position)
@@ -122,7 +145,7 @@ class MyStrategy:
         #                                          my_position))
         #
         # move.engine_power = 0.5
-        if world.tick % 50 == 0:
+        # if world.tick % 50 == 0:
             # trajectory_spline = make_spline(trajectory_points)
             # trajectory_points = [p.cartesian(my_position)
             #                      for p in trajectory_points]
@@ -131,18 +154,16 @@ class MyStrategy:
             #     for r in linspace(0, path_for_spline[-1].radius, 100)]
             # trajectory_spline_points = [
             #     p.cartesian(my_position) for p in trajectory_spline_points]
-            self.plot.clear()
-            self.plot.path(tile_center_path, linestyle='o')
-            self.plot.path(tile_center_path, linestyle='-')
-            self.plot.path(reduced_path, linestyle='o')
-            self.plot.path(reduced_path, linestyle='-')
-            # self.plot.path([my_position, my_position + my_speed * 1000], linewidth=2.0)
-            self.plot.path([my_position, my_position + self.controller.angular_speed_vec * 1000], linewidth=2.0)
-            self.plot.path([my_position, my_position + self.controller.target_angular_speed_vec * 1000], linewidth=2.0)
-            # self.plot.path([my_position, my_position + my_speed * 100])
+            # self.plot.clear()
+            # self.plot.path([Point(p.x, -p.y) for p in tile_center_path], 'o')
+            # self.plot.path([Point(p.x, -p.y) for p in tile_center_path], '-')
+            # self.plot.path([Point(p.x, -p.y) for p in adjusted_path], 'o')
+            # self.plot.path([Point(p.x, -p.y) for p in adjusted_path], '-')
+            # self.plot.path([Point(p.x, -p.y) for p in path], 'o')
+            # self.plot.path([Point(p.x, -p.y) for p in path], '-')
             # self.plot.path(path_curve, '-')
             # self.plot.path([target], 'o')
-            self.plot.draw()
+            # self.plot.draw()
             # self.plot.path(trajectory_points, 'o')
             # self.plot.path(trajectory_points, '-')
             # self.plot.path(trajectory_spline_points, '-')
@@ -153,6 +174,115 @@ class MyStrategy:
 
 
 # PathPoint = namedtuple('PathPoint', ('position', 'speed'))
+
+TypedPoint = namedtuple('TypedPoint', ('position', 'type'))
+
+
+def adjust_path(path, tile_size):
+    if len(path) < 2:
+        return (x for x in path)
+
+    def generate():
+        typed_path = list(make_typed_path())
+        for i, p in islice(enumerate(typed_path), len(typed_path) - 1):
+            yield adjust_path_point(p, typed_path[i + 1], tile_size)
+        yield path[-1]
+
+    def make_typed_path():
+        yield TypedPoint(path[0],
+                         PointType(SideType.UNKNOWN,
+                                   get_point_output_type(path[0], path[1])))
+        for i, p in islice(enumerate(path), 1, len(path) - 1):
+            yield TypedPoint(p, get_point_type(path[i - 1], p, path[i + 1]))
+        yield TypedPoint(path[-1],
+                         PointType(get_point_input_type(path[-2], path[-1]),
+                                   SideType.UNKNOWN))
+
+    return generate()
+
+
+def adjust_path_point(current: TypedPoint, following: TypedPoint, tile_size):
+    if current.type == following.type:
+        return current.position
+    elif current.type in {PointType.LEFT_TOP, PointType.TOP_LEFT}:
+        return current.position + Point(- tile_size / 4, - tile_size / 4)
+    elif current.type in {PointType.LEFT_BOTTOM, PointType.BOTTOM_LEFT}:
+        return current.position + Point(- tile_size / 4, + tile_size / 4)
+    elif current.type in {PointType.RIGHT_TOP, PointType.TOP_RIGHT}:
+        return current.position + Point(+ tile_size / 4, - tile_size / 4)
+    elif current.type in {PointType.RIGHT_BOTTOM, PointType.BOTTOM_RIGHT}:
+        return current.position + Point(+ tile_size / 4, + tile_size / 4)
+    elif current.type in {PointType.LEFT_RIGHT, PointType.RIGHT_LEFT}:
+        if following.type.output == SideType.TOP:
+            return current.position + Point(0, tile_size / 4)
+        else:
+            return current.position - Point(0, tile_size / 4)
+    elif current.type in {PointType.TOP_BOTTOM, PointType.BOTTOM_TOP}:
+        if following.type.output == SideType.LEFT:
+            return current.position + Point(tile_size / 4, 0)
+        else:
+            return current.position - Point(tile_size / 4, 0)
+    else:
+        return current.position
+
+
+def get_point_type(previous, current, following):
+    return PointType(get_point_input_type(previous, current),
+                     get_point_output_type(current, following))
+
+
+def get_point_input_type(previous, current):
+    if previous.y == current.y:
+        if previous.x < current.x:
+            return SideType.LEFT
+        else:
+            return SideType.RIGHT
+    if previous.x == current.x:
+        if previous.y < current.y:
+            return SideType.TOP
+        else:
+            return SideType.BOTTOM
+    return SideType.UNKNOWN
+
+
+def get_point_output_type(current, following):
+    if current.y == following.y:
+        if current.x < following.x:
+            return SideType.RIGHT
+        else:
+            return SideType.LEFT
+    if current.x == following.x:
+        if current.y < following.y:
+            return SideType.BOTTOM
+        else:
+            return SideType.TOP
+    return SideType.UNKNOWN
+
+
+class SideType(Enum):
+    UNKNOWN = 0
+    LEFT = 1
+    RIGHT = 2
+    TOP = 3
+    BOTTOM = 4
+
+
+PointTypeImpl = namedtuple('PointType', ('input', 'output'))
+
+
+class PointType(PointTypeImpl):
+    LEFT_RIGHT = PointTypeImpl(SideType.LEFT, SideType.RIGHT)
+    LEFT_TOP = PointTypeImpl(SideType.LEFT, SideType.TOP)
+    LEFT_BOTTOM = PointTypeImpl(SideType.LEFT, SideType.BOTTOM)
+    RIGHT_LEFT = PointTypeImpl(SideType.RIGHT, SideType.LEFT)
+    RIGHT_TOP = PointTypeImpl(SideType.RIGHT, SideType.TOP)
+    RIGHT_BOTTOM = PointTypeImpl(SideType.RIGHT, SideType.BOTTOM)
+    TOP_LEFT = PointTypeImpl(SideType.TOP, SideType.LEFT)
+    TOP_RIGHT = PointTypeImpl(SideType.TOP, SideType.RIGHT)
+    TOP_BOTTOM = PointTypeImpl(SideType.TOP, SideType.BOTTOM)
+    BOTTOM_LEFT = PointTypeImpl(SideType.BOTTOM, SideType.LEFT)
+    BOTTOM_RIGHT = PointTypeImpl(SideType.BOTTOM, SideType.RIGHT)
+    BOTTOM_TOP = PointTypeImpl(SideType.BOTTOM, SideType.TOP)
 
 
 def sigmoid(x):
@@ -418,6 +548,42 @@ class AdjacencyMatrix:
 #                 pyplot.arrow(s[0], s[1], d[0], d[1], head_width=0.2, head_length=0.2, fc='k', ec='k')
 #     pyplot.axis([-1, x_max + 1, -1, y_max + 1])
 #     pyplot.show()
+
+
+PointWithSpeed = namedtuple('PointWithSpeed', ('position', 'speed'))
+MAX_SPEED = 2
+
+
+def get_speed(position, following, after_following):
+    direction = (after_following - following).normalized()
+    to_following = following - position
+    to_after_following = after_following - following
+    return (direction * get_speed_gain(to_following.cos(to_after_following)) +
+            to_following / 300)
+
+
+def get_speed_gain(x):
+    return - MAX_SPEED / (x - 1)
+
+
+def shift_on_direct(path):
+    if len(path) < 2:
+        return (x for x in path)
+    if path[0].x == path[1].x:
+        last = next((i for i, p in islice(enumerate(path), 1, len(path))
+                    if p.x != path[i - 1].x), len(path) - 1)
+        x = path[last].x
+        if x != path[0].x:
+            return chain((Point(x, p.y) for p in islice(path, last)),
+                         islice(path, last, len(path) - 1))
+    elif path[0].y == path[1].y:
+        last = next((i for i, p in islice(enumerate(path), 1, len(path))
+                    if p.y != path[i - 1].y), len(path) - 1)
+        y = path[last].y
+        if y != path[0].y:
+            return chain((Point(p.x, y) for p in islice(path, last)),
+                         islice(path, last, len(path) - 1))
+    return (x for x in path)
 
 
 def current_tile(point, tile_size):
@@ -759,17 +925,17 @@ class Plot:
         self.__axis.imshow(z, alpha=0.5,
                            extent=[x.min(), x.max(), y.min(), y.max()])
 
-    def path(self, points, **kwargs):
+    def path(self, points, *args, **kwargs):
         x = [p.x for p in points]
         y = [p.y for p in points]
-        self.__axis.plot(x, y, **kwargs)
+        self.__axis.plot(x, y, *args, **kwargs)
 
-    def curve(self, x, function, **kwargs):
+    def curve(self, x, function, *args, **kwargs):
         y = vectorize(function)(x)
-        self.__axis.plot(x, y, **kwargs)
+        self.__axis.plot(x, y, *args, **kwargs)
 
-    def lines(self, x, y, **kwargs):
-        self.__axis.plot(x, y, **kwargs)
+    def lines(self, x, y, *args, **kwargs):
+        self.__axis.plot(x, y, *args, **kwargs)
 
     def draw(self):
         if self.__title is not None:
@@ -803,18 +969,12 @@ Control = namedtuple('Control', ('engine_power_derivative',
 
 
 class Controller:
-    ANGULAR_SPEED_GAIN = 1.0
-    WHEEL_ANGLE_GAIN = 1.0
-    SPEED_GAIN = 1.0
-    ACCELERATION_GAIN = 1.0
-    ENGINE_POWER_GAIN = 1.0
-
     def __init__(self, distance_to_wheels, max_engine_power_derivative,
                  angular_speed_factor):
         self.distance_to_wheels = distance_to_wheels
         self.max_engine_power_derivative = max_engine_power_derivative
         self.angular_speed_factor = angular_speed_factor
-        self.__engine_power = PidController(1.0, 0.01, 0.5)
+        self.__engine_power = PidController(0.5, 0.1, 0.1)
         self.__wheel_turn = PidController(0.2, 0.1, 0.1)
         self.__previous_full_speed = Point(0, 0)
         self.engine_power_history = []
@@ -829,24 +989,23 @@ class Controller:
         ion()
         show()
 
-    def __call__(self, position, angle, engine_power, wheel_turn, speed,
-                 angular_speed, target_position, speed_at_target, tick):
-        position_error = target_position - position
+    def __call__(self, position, angle, angle_error, engine_power, wheel_turn,
+                 speed, angular_speed, target_position, speed_at_target, tick):
+        # position_error = target_position - position
         direction = Point(1, 0).rotate(angle)
-        angle_error = position_error.rotation(direction)
-        target_angle = angle + angle_error
-        target_angular_speed = self.ANGULAR_SPEED_GAIN * angle_error
+        # angle_error = position_error.rotation(direction)
+        # target_angle = angle + angle_error
+        target_angular_speed = angle_error
         angular_speed_error = target_angular_speed - angular_speed
-        target_wheel_turn = max(-1.0, min(1.0, self.WHEEL_ANGLE_GAIN * angular_speed_error))
+        target_wheel_turn = limit(angular_speed_error)
         wheel_turn_error = target_wheel_turn - wheel_turn
         wheel_turn_derivative = self.__wheel_turn(wheel_turn_error)
         target_speed = speed_at_target
         radius = -(direction * self.distance_to_wheels).rotate(pi / 2)
-        self.angular_speed_vec = Point(-radius.y, radius.x) * angular_speed
-        self.target_angular_speed_vec = (Point(-radius.y, radius.x) *
-                                         target_angular_speed)
-        # full_speed = speed + angular_speed_vec
-        full_speed = speed
+        angular_speed_vec = Point(-radius.y, radius.x) * angular_speed
+        # target_angular_speed_vec = (Point(-radius.y, radius.x) *
+        #                             target_angular_speed)
+        full_speed = speed + angular_speed_vec
         # full_speed = full_speed.projection(direction)
         # target_full_speed = target_speed + self.target_angular_speed_vec
         target_full_speed = target_speed
@@ -856,10 +1015,10 @@ class Controller:
         #                     full_speed_error.cos(direction))
         full_speed_error = target_full_speed.norm() - full_speed.norm()
         acceleration = (full_speed - self.__previous_full_speed).norm()
-        target_acceleration = self.ACCELERATION_GAIN * full_speed_error
+        target_acceleration = full_speed_error
         acceleration_error = target_acceleration - acceleration
-        target_engine_power = self.ENGINE_POWER_GAIN * acceleration_error
-        engine_power_error = max(-1.0, min(1.0, target_engine_power)) - engine_power
+        target_engine_power = limit(acceleration_error)
+        engine_power_error = target_engine_power - engine_power
         engine_power_derivative = self.__engine_power(engine_power_error)
         brake = engine_power_derivative < -self.max_engine_power_derivative
         self.__previous_full_speed = full_speed
@@ -871,9 +1030,10 @@ class Controller:
         self.target_engine_power_history.append(target_engine_power)
         # print(
         #     tick,
+        #     'position', position,
+        #     'target_position', target_position,
         #     'position_error', position_error.normalized(),
         #     'direction:', direction,
-        #     'direction.cos(position_error):', direction.cos(position_error),
         #     'angle:', angle,
         #     'target_angle:', target_angle,
         #     'angle_error:', angle_error,
@@ -934,6 +1094,10 @@ class Controller:
             self.engine_power_plot.draw()
 
         return Control(engine_power_derivative, wheel_turn_derivative, brake)
+
+
+def limit(value):
+    return max(-1.0, min(1.0, value))
 
 
 class Polyline:

@@ -24,6 +24,15 @@ from MyStrategy import (
     take_for_spline,
     make_tile_rectangle,
     Line,
+    get_point_input_type,
+    get_point_output_type,
+    get_point_type,
+    adjust_path,
+    adjust_path_point,
+    SideType,
+    PointType,
+    TypedPoint,
+    shift_on_direct,
 )
 
 
@@ -732,6 +741,90 @@ class LineTest(TestCase):
         line = Line(begin=Point(0, 0), end=Point(1, 0))
         result = line.nearest(Point(1, 1))
         assert_that(result, equal_to(Point(1, 0)))
+
+
+class GetPointInputTypeTest(TestCase):
+    def test_for_0_0_and_1_0_returns_left(self):
+        result = get_point_input_type(previous=Point(0, 0), current=Point(1, 0))
+        assert_that(result, equal_to(SideType.LEFT))
+
+    def test_for_1_0_and_0_0_returns_right(self):
+        result = get_point_input_type(previous=Point(1, 0), current=Point(0, 0))
+        assert_that(result, equal_to(SideType.RIGHT))
+
+    def test_for_0_0_and_0_1_returns_top(self):
+        result = get_point_input_type(previous=Point(0, 0), current=Point(0, 1))
+        assert_that(result, equal_to(SideType.TOP))
+
+    def test_for_0_1_and_0_0_returns_bottom(self):
+        result = get_point_input_type(previous=Point(0, 1), current=Point(0, 0))
+        assert_that(result, equal_to(SideType.BOTTOM))
+
+    def test_for_0_1_and_1_0_returns_unknown(self):
+        result = get_point_input_type(previous=Point(0, 1), current=Point(1, 0))
+        assert_that(result, equal_to(SideType.UNKNOWN))
+
+
+class GetPointOutputTypeTest(TestCase):
+    def test_for_0_0_and_1_0_returns_left(self):
+        result = get_point_output_type(current=Point(0, 0),
+                                       following=Point(1, 0))
+        assert_that(result, equal_to(SideType.RIGHT))
+
+    def test_for_1_0_and_0_0_returns_right(self):
+        result = get_point_output_type(current=Point(1, 0),
+                                       following=Point(0, 0))
+        assert_that(result, equal_to(SideType.LEFT))
+
+    def test_for_0_0_and_0_1_returns_top(self):
+        result = get_point_output_type(current=Point(0, 0),
+                                       following=Point(0, 1))
+        assert_that(result, equal_to(SideType.BOTTOM))
+
+    def test_for_0_1_and_0_0_returns_bottom(self):
+        result = get_point_output_type(current=Point(0, 1),
+                                       following=Point(0, 0))
+        assert_that(result, equal_to(SideType.TOP))
+
+
+class GetPointTypeTest(TestCase):
+    def test_for_0_0_and_1_0_and_2_0_returns_left_right(self):
+        result = get_point_type(previous=Point(0, 0), current=Point(1, 0),
+                                following=Point(2, 0))
+        assert_that(result, equal_to(PointType.LEFT_RIGHT))
+
+    def test_for_0_1_and_1_1_and_1_0_returns_right_top(self):
+        result = get_point_type(previous=Point(0, 1), current=Point(1, 1),
+                                following=Point(1, 0))
+        assert_that(result, equal_to(PointType.LEFT_TOP))
+
+    def test_for_0_0_and_1_0_and_1_1_returns_left_bottom(self):
+        result = get_point_type(previous=Point(0, 0), current=Point(1, 0),
+                                following=Point(1, 1))
+        assert_that(result, equal_to(PointType.LEFT_BOTTOM))
+
+
+class AdjustPathPointTest(TestCase):
+    def test_for_2_2_left_right_and_any_left_right_returns_2_2(self):
+        result = adjust_path_point(
+            current=TypedPoint(Point(2, 2), PointType.LEFT_RIGHT),
+            following=TypedPoint(Point(4, 2), PointType.LEFT_RIGHT),
+            tile_size=4)
+        assert_that(result, equal_to(Point(2, 2)))
+
+    def test_for_2_2_left_top_and_any_following_and_tile_size_4_returns_1_1(self):
+        result = adjust_path_point(
+            current=TypedPoint(Point(2, 2), PointType.LEFT_TOP),
+            following=TypedPoint(Point(2, 4), PointType.BOTTOM_TOP),
+            tile_size=4)
+        assert_that(result, equal_to(Point(1, 1)))
+
+    def test_for_2_2_left_right_and_any_left_top_following_and_tile_size_4_returns_2_3(self):
+        result = adjust_path_point(
+            current=TypedPoint(Point(2, 2), PointType.LEFT_RIGHT),
+            following=TypedPoint(Point(4, 2), PointType.LEFT_TOP),
+            tile_size=4)
+        assert_that(result, equal_to(Point(2, 3)))
 
 
 if __name__ == '__main__':
