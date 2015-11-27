@@ -13,7 +13,7 @@ class DebugStrategy:
         self.__plot = Plot()
 
     def move(self, me: Car, world: World, game: Game, move: Move):
-        self.__impl.move(me, world, game, move)
+        self.__impl.move(me, world, game, move, is_debug=True)
         if world.tick % 50 == 0:
             path = self.__impl.path
             tiles_path = self.__impl.tiles_path

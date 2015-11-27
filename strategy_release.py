@@ -18,12 +18,14 @@ class ReleaseStrategy:
     path = None
     tiles_path = None
 
-    def move(self, me: Car, world: World, game: Game, move: Move):
+    def move(self, me: Car, world: World, game: Game, move: Move,
+             is_debug=False):
         if self.controller is None:
             self.controller = Controller(
                 distance_to_wheels=me.width / 4,
                 max_engine_power_derivative=game.car_engine_power_change_per_tick,
-                angular_speed_factor=game.car_angular_speed_factor)
+                angular_speed_factor=game.car_angular_speed_factor,
+                is_debug=is_debug)
         tile = get_current_tile(Point(me.x, me.y), game.track_tile_size)
         if world.tick < game.initial_freeze_duration_ticks:
             self.start = (tile.x, tile.y)
@@ -45,7 +47,7 @@ class ReleaseStrategy:
         self.tiles_path = path
         path = list(adjust_path(path, game.track_tile_size))
         path = list(reduce_direct(path))
-        # path = list(shift_on_direct(path))
+        path = list(shift_on_direct(path))
         path = path[1:]
         target_speed = get_speed(position, direction, path)
         control = self.controller(
@@ -60,4 +62,4 @@ class ReleaseStrategy:
         )
         move.engine_power = me.engine_power + control.engine_power_derivative
         move.wheel_turn = me.wheel_turn + control.wheel_turn_derivative
-        self.path = path
+        self.path = [position] + path
