@@ -3,7 +3,7 @@ from model.Game import Game
 from model.Move import Move
 from model.World import World
 from strategy_common import Point, get_current_tile, get_tile_center
-from strategy_control import Controller, get_speed
+from strategy_control import Controller, get_target_speed
 from strategy_path import (
     make_tiles_path,
     adjust_path,
@@ -33,7 +33,7 @@ class ReleaseStrategy:
         move.spill_oil = True
         move.throw_projectile = True
         position = Point(me.x, me.y)
-        my_speed = Point(me.speed_x, me.speed_y)
+        direct_speed = Point(me.speed_x, me.speed_y)
         direction = Point(1, 0).rotate(me.angle)
         path = list(make_tiles_path(
             start=self.start,
@@ -49,15 +49,14 @@ class ReleaseStrategy:
         path = list(reduce_direct(path))
         path = list(shift_on_direct(path))
         path = path[1:]
-        target_speed = get_speed(position, direction, path)
+        target_speed = get_target_speed(position, direction, path)
         control = self.controller(
-            direction=direction,
-            angle_error=me.get_angle_to(path[0].x, path[0].y),
-            wheel_turn=me.wheel_turn,
+            angle=me.angle,
+            direct_speed=direct_speed,
+            angular_speed_angle=me.angular_speed,
             engine_power=me.engine_power,
-            speed=my_speed,
-            angular_speed=me.angular_speed,
-            speed_at_target=target_speed,
+            wheel_turn=me.wheel_turn,
+            target_speed=target_speed,
             tick=world.tick,
         )
         move.engine_power = me.engine_power + control.engine_power_derivative

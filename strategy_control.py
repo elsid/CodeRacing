@@ -1,12 +1,14 @@
-from collections import namedtuple
+from collections import namedtuple, deque
 from functools import reduce
 from itertools import islice
 from math import pi, exp
 from operator import mul
-from strategy_common import Point
+from strategy_common import Point, normalize_angle
 
 Control = namedtuple('Control', ('engine_power_derivative',
                                  'wheel_turn_derivative'))
+
+History = namedtuple('History', ('current', 'target'))
 
 
 class Controller:
@@ -15,68 +17,104 @@ class Controller:
         self.distance_to_wheels = distance_to_wheels
         self.max_engine_power_derivative = max_engine_power_derivative
         self.angular_speed_factor = angular_speed_factor
-        self.__engine_power = PidController(1.0, 0.0, 0.01)
-        self.__wheel_turn = PidController(0.2, 0.01, 0.01)
-        self.__previous_full_speed = Point(0, 0)
+        self.__speed = PidController(1 / 2, 0, 1 / 8)
+        self.__acceleration = PidController(1 / 2, 0, 1 / 8)
+        self.__engine_power = PidController(1 / 2, 0, 1 / 8)
+        self.__angle = PidController(1.0, 0, 0)
+        self.__angular_speed_angle = PidController(1.0, 0, 0)
+        self.__wheel_turn = PidController(0.5, 0, 0.1)
+        self.__previous_speed = Point(0, 0)
+        self.__previous_angluar_speed_angle = 0
+        self.__previous_brake = False
         self.__is_debug = is_debug
         if is_debug:
             from debug import Plot
-            self.engine_power_history = []
-            self.target_engine_power_history = []
-            self.speed_norm_history = []
-            self.target_speed_norm_history = []
-            self.wheel_turn_history = []
-            self.target_wheel_turn_history = []
-            self.engine_power_plot = Plot('engine power')
-            self.speed_plot = Plot('speed')
-            self.wheel_turn_plot = Plot('wheel turn')
 
-    def __call__(self, direction, angle_error, engine_power, wheel_turn,
-                 speed, angular_speed, speed_at_target, tick):
-        target_angular_speed = angle_error
-        angular_speed_error = target_angular_speed - angular_speed
-        target_wheel_turn = angular_speed_error
-        wheel_turn_error = target_wheel_turn - wheel_turn
-        wheel_turn_derivative = self.__wheel_turn(wheel_turn_error)
-        target_speed = speed_at_target
+            self.history = {}
+            self.plots = {}
+
+            def plot(name, max_size=250):
+                self.history[name] = History(deque(maxlen=max_size),
+                                             deque(maxlen=max_size))
+                self.plots[name] = Plot(name)
+
+            def point_plots(name, max_size=250):
+                # plot(name + ' x', max_size)
+                # plot(name + ' y', max_size)
+                plot(name + ' norm', max_size)
+
+            point_plots('speed')
+            point_plots('acceleration')
+            plot('engine_power')
+            # plot('angle')
+            # plot('wheel_turn')
+
+    def __call__(self, angle, direct_speed: Point, angular_speed_angle,
+                 engine_power, wheel_turn, target_speed: Point, tick):
+        direction = Point(1, 0).rotate(angle)
         radius = -(direction * self.distance_to_wheels).rotate(pi / 2)
-        angular_speed_vec = Point(-radius.y, radius.x) * angular_speed
-        full_speed = speed + angular_speed_vec
-        self.__previous_full_speed = full_speed
-        target_full_speed = target_speed
-        full_speed_error = target_full_speed.norm() - full_speed.norm()
-        acceleration = (full_speed - self.__previous_full_speed).norm()
-        target_acceleration = full_speed_error
-        acceleration_error = target_acceleration - acceleration
-        target_engine_power = sigmoid(acceleration_error)
-        engine_power_error = target_engine_power - engine_power
-        engine_power_derivative = self.__engine_power(engine_power_error)
+        angular_speed = radius.left_orthogonal() * angular_speed_angle
+        speed = direct_speed + angular_speed
+        target_acceleration = self.__speed(target_speed - speed)
+        tangential_acceleration = speed - self.__previous_speed
+        centripetal_acceleration = (-radius *
+                                    self.__previous_angluar_speed_angle ** 2)
+        acceleration = tangential_acceleration + centripetal_acceleration
+        acceleration_derivative = self.__acceleration(target_acceleration -
+                                                      acceleration)
+        target_engine_power = acceleration_derivative.norm()
+        engine_power_derivative = self.__engine_power(target_engine_power -
+                                                      engine_power)
+        target_angle = target_speed.absolute_rotation()
+        angle_error = normalize_angle(target_angle - angle)
+        angle_derivative = self.__angle(angle_error)
+        angular_speed_angle_derivative = self.__angular_speed_angle(
+            angle_derivative - angular_speed_angle)
+        wheel_turn_derivative = self.__wheel_turn(
+            angular_speed_angle_derivative - wheel_turn)
+        self.__previous_speed = speed
+        self.__previous_angluar_speed_angle = angular_speed_angle
         if self.__is_debug:
-            self.speed_norm_history.append(full_speed.norm())
-            self.target_speed_norm_history.append(target_full_speed.norm())
-            self.wheel_turn_history.append(wheel_turn)
-            self.target_wheel_turn_history.append(target_wheel_turn)
-            self.engine_power_history.append(engine_power)
-            self.target_engine_power_history.append(target_engine_power)
+
+            def append_point(name, current, target):
+                # append_value(name + ' x', current.x, target.x)
+                # append_value(name + ' y', current.y, target.y)
+                append_value(name + ' norm', current.norm(), target.norm())
+
+            def append_value(name, current, target):
+                history = self.history[name]
+                history.current.append(current)
+                history.target.append(target)
+
+            append_point('speed', speed, target_speed)
+            append_point('acceleration', acceleration, target_acceleration)
+            append_value('engine_power', engine_power, target_engine_power)
+            # append_value('angle', angle, target_angle)
+            # append_value('wheel_turn', wheel_turn,
+            #              angular_speed_angle_derivative)
+
             if tick % 50 == 0:
-                self.speed_plot.clear()
-                self.speed_plot.lines(range(len(self.speed_norm_history[:-50])),
-                                      self.speed_norm_history[:-50])
-                self.speed_plot.lines(range(len(self.target_speed_norm_history[:-50])),
-                                      self.target_speed_norm_history[:-50])
-                self.speed_plot.draw()
-                self.wheel_turn_plot.clear()
-                self.wheel_turn_plot.lines(range(len(self.wheel_turn_history[:-50])),
-                                           self.wheel_turn_history[:-50])
-                self.wheel_turn_plot.lines(range(len(self.target_wheel_turn_history[:-50])),
-                                           self.target_wheel_turn_history[:-50])
-                self.wheel_turn_plot.draw()
-                self.engine_power_plot.clear()
-                self.engine_power_plot.lines(range(len(self.engine_power_history[:-50])),
-                                             self.engine_power_history[:-50])
-                self.engine_power_plot.lines(range(len(self.target_engine_power_history[:-50])),
-                                             self.target_engine_power_history[:-50])
-                self.engine_power_plot.draw()
+
+                def draw(name):
+                    plot = self.plots[name]
+                    history = self.history[name]
+                    plot.clear()
+                    plot.lines(range(tick + 1 - len(history.current), tick + 1),
+                               history.current)
+                    plot.lines(range(tick + 1 - len(history.target), tick + 1),
+                               history.target, linestyle='--')
+                    plot.draw()
+
+                def draw_point(name):
+                    # draw(name + ' x')
+                    # draw(name + ' y')
+                    draw(name + ' norm')
+
+                draw_point('speed')
+                draw_point('acceleration')
+                draw('engine_power')
+                # draw('angle')
+                # draw('wheel_turn')
         return Control(engine_power_derivative, wheel_turn_derivative)
 
 
@@ -102,7 +140,7 @@ class PidController:
         return output
 
 
-def get_speed(position: Point, direction: Point, path):
+def get_target_speed(position: Point, direction: Point, path):
     path = [position] + path
 
     def generate_cos():
@@ -110,14 +148,14 @@ def get_speed(position: Point, direction: Point, path):
             yield (current - path[i - 1]).cos(path[i + 1] - current) ** 2
 
     course = path[1] - path[0]
-    return (course / 150 +
+    return (course / 100 +
             (course.normalized() *
              speed_gain(reduce(mul, generate_cos(), 1)) *
              course.cos(direction) ** 2))
 
 
 def speed_gain(x):
-    return - 3.5 / (x - 1)
+    return - 6 / (x - 1)
 
 
 def sigmoid(x):
