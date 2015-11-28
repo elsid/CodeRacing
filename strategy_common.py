@@ -191,3 +191,19 @@ def get_tile_center(point: Point, size):
 
 def tile_center_coord(value, size):
     return (value + 0.5) * size
+
+
+# def normalize_angle(value):
+#     while value > pi:
+#         value -= 2.0 * pi
+#     while value < -pi:
+#         value += 2.0 * pi
+#     return value
+
+
+def normalize_angle(value):
+    if value > pi:
+        return value - round(value / (2.0 * pi)) * 2.0 * pi
+    if value < -pi:
+        return value + round(abs(value) / (2.0 * pi)) * 2.0 * pi
+    return value

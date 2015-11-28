@@ -7,7 +7,8 @@ from strategy_common import (
     get_tile_center,
     get_current_tile,
     tile_coord,
-    tile_center_coord
+    tile_center_coord,
+    normalize_angle,
 )
 
 
@@ -171,3 +172,29 @@ class TileCenterTest(TestCase):
     def test_at_point_0_1_for_tile_size_10_returns_point_5_15(self):
         assert_that(get_tile_center(point=Point(0, 1), size=10),
                     equal_to(Point(5, 15)))
+
+
+class TestNormalizeAnlge(TestCase):
+    def test_for_greater_than_or_equal_minus_pi_and_less_than_or_equal_pi_returns_equal(self):
+        result = normalize_angle(0.3 * pi)
+        assert_that(result, equal_to(0.3 * pi))
+
+    def test_for_pi_returns_equal(self):
+        result = normalize_angle(pi)
+        assert_that(result, equal_to(pi))
+
+    def test_for_minus_pi_returns_equal(self):
+        result = normalize_angle(-pi)
+        assert_that(result, equal_to(-pi))
+
+    def test_for_2_pi_returns_0(self):
+        result = normalize_angle(2 * pi)
+        assert_that(result, equal_to(0))
+
+    def test_for_3_pi_returns_minus_pi(self):
+        result = normalize_angle(3 * pi)
+        assert_that(result, equal_to(-pi))
+
+    def test_for_minus_3_pi_returns_pi(self):
+        result = normalize_angle(-3 * pi)
+        assert_that(result, equal_to(pi))
