@@ -1,5 +1,5 @@
 from itertools import islice
-from math import acos, cos, sin, sqrt
+from math import acos, cos, sin, sqrt, atan2, pi
 from numpy import arctan2, sign
 
 
@@ -23,35 +23,63 @@ class Point:
         return self.x == other.x and self.y == other.y
 
     def __add__(self, other):
-        return Point(self.x + other.x, self.y + other.y)
+        if isinstance(other, Point):
+            return Point(self.x + other.x, self.y + other.y)
+        else:
+            return Point(self.x + other, self.y + other)
 
     def __sub__(self, other):
-        return Point(self.x - other.x, self.y - other.y)
+        if isinstance(other, Point):
+            return Point(self.x - other.x, self.y - other.y)
+        else:
+            return Point(self.x - other, self.y - other)
 
     def __mul__(self, other):
-        return Point(self.x * other, self.y * other)
+        if isinstance(other, Point):
+            return Point(self.x * other.x, self.y * other.y)
+        else:
+            return Point(self.x * other, self.y * other)
 
     def __truediv__(self, other):
-        return Point(self.x / other, self.y / other)
+        if isinstance(other, Point):
+            return Point(self.x / other.x, self.y / other.x)
+        else:
+            return Point(self.x / other, self.y / other)
 
     def __iadd__(self, other):
-        self.x += other.x
-        self.y += other.y
+        if isinstance(other, Point):
+            self.x += other.x
+            self.y += other.y
+        else:
+            self.x += other
+            self.y += other
         return self
 
     def __isub__(self, other):
-        self.x -= other.x
-        self.y -= other.y
+        if isinstance(other, Point):
+            self.x -= other.x
+            self.y -= other.y
+        else:
+            self.x -= other
+            self.y -= other
         return self
 
     def __imul__(self, other):
-        self.x *= other
-        self.y *= other
+        if isinstance(other, Point):
+            self.x *= other.x
+            self.y *= other.y
+        else:
+            self.x *= other
+            self.y *= other
         return self
 
     def __itruediv__(self, other):
-        self.x /= other
-        self.y /= other
+        if isinstance(other, Point):
+            self.x /= other.x
+            self.y /= other.y
+        else:
+            self.x /= other
+            self.y /= other
         return self
 
     def __neg__(self):
@@ -103,11 +131,14 @@ class Point:
             return Point(x=self.radius * cos(self.angle),
                          y=self.radius * sin(self.angle))
 
-    def orthogonal(self):
+    def left_orthogonal(self):
         return Point(-self.y, self.x)
 
+    def absolute_rotation(self):
+        return atan2(self.y, self.x)
+
     def rotation(self, other):
-        return acos(self.cos(other)) * sign(self.y * other.x - self.x * other.y)
+        return other.absolute_rotation() - self.absolute_rotation()
 
     def rotate(self, angle):
         return Point(self.x * cos(angle) - self.y * sin(angle),
