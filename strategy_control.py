@@ -20,9 +20,9 @@ class Controller:
         self.__speed = PidController(1 / 2, 0, 1 / 8)
         self.__acceleration = PidController(1 / 4, 0, 1 / 8)
         self.__engine_power = PidController(1 / 8, 0, 1 / 8)
-        self.__angle = PidController(1.0, 0, 0.1)
+        self.__angle = PidController(1.0, 0, 0.0)
         self.__angular_speed_angle = PidController(1.0, 0, 0)
-        self.__wheel_turn = PidController(1.0, 0, 0.1)
+        self.__wheel_turn = PidController(1.0, 0, 0.0)
         self.__previous_speed = Point(0, 0)
         self.__previous_angluar_speed_angle = 0
         self.__previous_brake = False
