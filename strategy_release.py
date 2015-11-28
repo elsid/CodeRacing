@@ -2,7 +2,7 @@ from model.Car import Car
 from model.Game import Game
 from model.Move import Move
 from model.World import World
-from strategy_common import Point, get_current_tile, get_tile_center
+from strategy_common import Point, Polyline, get_current_tile, get_tile_center
 from strategy_control import Controller, get_target_speed
 from strategy_path import (
     make_tiles_path,
@@ -17,6 +17,9 @@ class ReleaseStrategy:
     path = None
     tiles_path = None
     previous_tile = None
+    position = None
+    target_position = None
+    middle = None
 
     def move(self, me: Car, world: World, game: Game, move: Move,
              is_debug=False):
@@ -31,26 +34,30 @@ class ReleaseStrategy:
             self.start = (tile.x, tile.y)
             self.previous_tile = tile
             return
-        move.spill_oil = True
-        move.throw_projectile = True
-        position = Point(me.x, me.y)
-        direct_speed = Point(me.speed_x, me.speed_y)
         direction = Point(1, 0).rotate(me.angle)
-        path = list(make_tiles_path(
-            start=self.start,
-            start_tile=self.previous_tile,
-            waypoints=world.waypoints,
-            next_waypoint_index=me.next_waypoint_index,
-            tiles=world.tiles_x_y,
-        ))
-        path = [get_tile_center(x, game.track_tile_size) for x in path]
-        self.tiles_path = path
-        path = list(adjust_path(path, game.track_tile_size))
-        path = list(shift_on_direct(path))
-        path = path[1:]
-        target_speed = get_target_speed(position, direction, path)
+        direct_speed = Point(me.speed_x, me.speed_y)
+        if self.path is None or tile != self.previous_tile:
+            path = list(make_tiles_path(
+                start_tile=self.previous_tile,
+                waypoints=world.waypoints + [self.start],
+                next_waypoint_index=me.next_waypoint_index,
+                tiles=world.tiles_x_y,
+                direction=direct_speed + direction,
+            ))
+            path = [get_tile_center(x, game.track_tile_size) for x in path]
+            self.tiles_path = path
+            shift = (game.track_tile_size / 2 -
+                     game.track_tile_margin - max(me.width, me.height) / 2)
+            path = list(adjust_path(path, shift))
+            path = list(shift_on_direct(path))
+            self.path = [(path[1] + path[2]) / 2] + path[2:]
+        position = Point(me.x, me.y)
+        target_position = (Polyline([position] + self.path)
+                           .at(game.track_tile_size))
+        target_speed = get_target_speed(position, target_position, direction,
+                                        self.path)
         control = self.controller(
-            course=path[0] - position,
+            course=target_position - position,
             angle=me.angle,
             direct_speed=direct_speed,
             angular_speed_angle=me.angular_speed,
@@ -63,5 +70,9 @@ class ReleaseStrategy:
         move.wheel_turn = me.wheel_turn + control.wheel_turn_derivative
         move.brake = (-game.car_engine_power_change_per_tick >
                       control.engine_power_derivative)
-        self.path = [position] + path
+        move.spill_oil = True
+        move.throw_projectile = True
+        # move.use_nitro = True
         self.previous_tile = tile
+        self.position = position
+        self.target_position = target_position

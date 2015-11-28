@@ -1,6 +1,6 @@
 from itertools import islice
-from math import acos, cos, sin, sqrt, atan2, pi
-from numpy import arctan2, sign
+from math import cos, sin, sqrt, atan2, pi
+from numpy import arctan2
 
 
 def get_current_tile(point, tile_size):
@@ -183,6 +183,16 @@ class Polyline:
         points = islice(enumerate(self.points), len(self.points) - 1)
         return min(Line(p, self.points[i - 1]).nearest(point).distance(point)
                    for i, p in points)
+
+    def at(self, distance):
+        for i, p in islice(enumerate(self.points), len(self.points) - 1):
+            to_next = self.points[i + 1] - p
+            to_next_distance = to_next.norm()
+            if to_next_distance < distance:
+                distance -= to_next_distance
+            else:
+                return p + to_next.normalized() * distance
+        return self.points[-1]
 
 
 def get_tile_center(point: Point, size):

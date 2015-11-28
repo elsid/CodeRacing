@@ -7,17 +7,17 @@ from model.TileType import TileType
 from strategy_common import Point
 
 
-def adjust_path(path, tile_size):
+def adjust_path(path, shift):
     if len(path) < 2:
         return (x for x in path)
 
     def generate():
         typed_path = list(make_typed_path())
-        yield adjust_path_point(None, typed_path[0], typed_path[1], tile_size)
+        yield adjust_path_point(None, typed_path[0], typed_path[1], shift)
         for i, p in islice(enumerate(typed_path), 1, len(typed_path) - 1):
             yield adjust_path_point(typed_path[i - 1], p, typed_path[i + 1],
-                                    tile_size)
-        yield adjust_path_point(typed_path[-2], typed_path[-1], None, tile_size)
+                                    shift)
+        yield adjust_path_point(typed_path[-2], typed_path[-1], None, shift)
 
     def make_typed_path():
         yield TypedPoint(path[0],
@@ -35,47 +35,47 @@ def adjust_path(path, tile_size):
 TypedPoint = namedtuple('TypedPoint', ('position', 'type'))
 
 
-def adjust_path_point(previous, current: TypedPoint, following, tile_size):
+def adjust_path_point(previous, current: TypedPoint, following, shift):
     return current.position + path_point_shift(previous, current, following,
-                                               tile_size)
+                                               shift)
 
 
 def path_point_shift(previous: TypedPoint, current: TypedPoint,
-                     following: TypedPoint, tile_size):
+                     following: TypedPoint, shift):
     if current.type in {PointType.LEFT_TOP, PointType.TOP_LEFT}:
-        result = Point(- tile_size / 4, - tile_size / 4)
+        result = Point(- shift, - shift)
         if following and current.type.input == following.type.output:
             result /= 10
         return result
     elif current.type in {PointType.LEFT_BOTTOM, PointType.BOTTOM_LEFT}:
-        result = Point(- tile_size / 4, + tile_size / 4)
+        result = Point(- shift, + shift)
         if following and current.type.input == following.type.output:
             result /= 10
         return result
     elif current.type in {PointType.RIGHT_TOP, PointType.TOP_RIGHT}:
-        result = Point(+ tile_size / 4, - tile_size / 4)
+        result = Point(+ shift, - shift)
         if following and current.type.input == following.type.output:
             result /= 10
         return result
     elif current.type in {PointType.RIGHT_BOTTOM, PointType.BOTTOM_RIGHT}:
-        result = Point(+ tile_size / 4, + tile_size / 4)
+        result = Point(+ shift, + shift)
         if following and current.type.input == following.type.output:
             result /= 10
         return result
     elif current.type in {PointType.LEFT_RIGHT, PointType.RIGHT_LEFT}:
         if (following and following.type.output == SideType.TOP or
                 previous and previous.type.input == SideType.BOTTOM):
-            return Point(0, + tile_size / 4)
+            return Point(0, + shift)
         elif (following and following.type.output == SideType.BOTTOM or
                 previous and previous.type.input == SideType.TOP):
-            return Point(0, - tile_size / 4)
+            return Point(0, - shift)
     elif current.type in {PointType.TOP_BOTTOM, PointType.BOTTOM_TOP}:
         if (following and following.type.output == SideType.LEFT or
                 previous and previous.type.input == SideType.RIGHT):
-            return Point(+ tile_size / 4, 0)
+            return Point(+ shift, 0)
         elif (following and following.type.output == SideType.RIGHT or
                 previous and previous.type.input == SideType.LEFT):
-            return Point(- tile_size / 4, 0)
+            return Point(- shift, 0)
     return Point(0, 0)
 
 
@@ -209,11 +209,11 @@ def shift_to_borders(path):
     yield path[-1]
 
 
-def make_tiles_path(start, start_tile, waypoints, next_waypoint_index, tiles):
-    matrix = AdjacencyMatrix(tiles)
+def make_tiles_path(start_tile, waypoints, next_waypoint_index, tiles,
+                    direction):
+    matrix = AdjacencyMatrix(tiles, start_tile, direction)
     tile_index = matrix.index(start_tile.x, start_tile.y)
-    return make_path(tile_index, next_waypoint_index, matrix,
-                     waypoints + [start])
+    return make_path(tile_index, next_waypoint_index, matrix, waypoints)
 
 
 def make_path(start_index, next_waypoint_index, matrix, waypoints):
@@ -222,8 +222,9 @@ def make_path(start_index, next_waypoint_index, matrix, waypoints):
 
     def generate():
         yield path(start_index, matrix.index(*waypoints[next_waypoint_index]))
-        for i in range(next_waypoint_index, len(waypoints) - 1):
-            src = matrix.index(*waypoints[i])
+        for i, p in islice(enumerate(waypoints), next_waypoint_index,
+                           len(waypoints) - 1):
+            src = matrix.index(*p)
             dst = matrix.index(*waypoints[i + 1])
             yield path(src, dst)
 
@@ -235,25 +236,32 @@ def make_path(start_index, next_waypoint_index, matrix, waypoints):
             yield dst
             dst = predecessors.item(src, dst)
 
-    yield Point(matrix.x_position(start_index), matrix.y_position(start_index))
+    yield matrix.point(start_index)
     for v in chain.from_iterable(generate()):
-        yield Point(matrix.x_position(v), matrix.y_position(v))
-
-
-Node = namedtuple('Node', ('x', 'y'))
+        yield matrix.point(v)
 
 
 class AdjacencyMatrix:
-    def __init__(self, tiles):
+    def __init__(self, tiles, start_tile, direction):
         column_size = len(tiles)
         self.__row_size = len(tiles[0])
 
         def generate():
             for x, column in enumerate(tiles):
                 for y, tile in enumerate(column):
-                    yield adjacency_matrix_row(Node(x, y), tile)
+                    yield list(adjacency_matrix_row(Point(x, y), tile))
 
         def adjacency_matrix_row(node, tile):
+            def matrix_row(dst):
+                for x in range(self.__row_size * column_size):
+                    if x in dst:
+                        distance = (1 if node == start_tile
+                                    else node.distance(start_tile))
+                        yield 2 - ((self.point(x) - node).cos(direction) /
+                                   distance)
+                    else:
+                        yield 0
+
             if tile == TileType.VERTICAL:
                 return matrix_row({top(node), bottom(node)})
             elif tile == TileType.HORIZONTAL:
@@ -280,10 +288,6 @@ class AdjacencyMatrix:
             else:
                 return matrix_row({})
 
-        def matrix_row(dst):
-            return [1 if x in dst else 0
-                    for x in range(self.__row_size * column_size)]
-
         def left(node):
             return self.index(node.x - 1, node.y)
 
@@ -306,6 +310,9 @@ class AdjacencyMatrix:
 
     def y_position(self, index):
         return index % self.__row_size
+
+    def point(self, index):
+        return Point(self.x_position(index), self.y_position(index))
 
     @property
     def values(self):

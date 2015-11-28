@@ -17,12 +17,12 @@ class Controller:
         self.distance_to_wheels = distance_to_wheels
         self.max_engine_power_derivative = max_engine_power_derivative
         self.angular_speed_factor = angular_speed_factor
-        self.__speed = PidController(1 / 2, 0, 1 / 8)
-        self.__acceleration = PidController(1 / 4, 0, 1 / 8)
-        self.__engine_power = PidController(1 / 8, 0, 1 / 8)
-        self.__angle = PidController(1.0, 0, 0.0)
+        self.__speed = PidController(0.5, 0, 0.01)
+        self.__acceleration = PidController(0.3, 0, 0.01)
+        self.__engine_power = PidController(0.2, 0, 0.01)
+        self.__angle = PidController(1.0, 0, 0.1)
         self.__angular_speed_angle = PidController(1.0, 0, 0)
-        self.__wheel_turn = PidController(1.0, 0, 0.0)
+        self.__wheel_turn = PidController(1.0, 0, 0.1)
         self.__previous_speed = Point(0, 0)
         self.__previous_angluar_speed_angle = 0
         self.__previous_brake = False
@@ -62,9 +62,10 @@ class Controller:
         acceleration = tangential_acceleration + centripetal_acceleration
         acceleration_derivative = self.__acceleration(target_acceleration -
                                                       acceleration)
-        target_engine_power = acceleration_derivative.norm()
-        engine_power_derivative = self.__engine_power(target_engine_power -
-                                                      engine_power)
+        target_engine_power = (acceleration_derivative.norm() *
+                               acceleration_derivative.cos(direction))
+        engine_power_derivative = self.__engine_power(
+            target_engine_power - engine_power)
         target_angle = (target_speed.absolute_rotation() +
                         course.absolute_rotation()) / 2
         angle_error = normalize_angle(target_angle - angle)
@@ -141,28 +142,30 @@ class PidController:
         return output
 
 
-DIRECT_FACTOR = 0.01
-ANGLE_FACTOR = 4
+DIRECT_FACTOR = 1
+ANGLE_FACTOR = 1
+MAX_SPEED = 40
 
 
-def get_target_speed(position: Point, direction: Point, path):
+def get_target_speed(position: Point, target: Point, direction: Point, path):
     path = [position] + path
 
     def generate_cos():
-        for i, current in islice(enumerate(path), 1, min(3, len(path) - 1)):
+        for i, current in islice(enumerate(path), 1, min(5, len(path) - 1)):
             yield (current - path[i - 1]).cos(path[i + 1] - current)
 
-    course = ((path[1] - path[0]) + (path[0] - position)) / 2
+    course = target - position
     cos_product = max(1e-8 - 1, min(1 - 1e-8, reduce(mul, generate_cos(), 1)))
-    return (course * DIRECT_FACTOR +
-            (course.normalized() *
-             speed_gain(cos_product) *
-             course.cos(direction)) * ANGLE_FACTOR)
+    factor_sum = DIRECT_FACTOR + ANGLE_FACTOR
+    return (course * ((DIRECT_FACTOR / factor_sum +
+                       ANGLE_FACTOR / factor_sum *
+                       (course.cos(direction) * cos_product) ** 3) /
+                      course.norm() * MAX_SPEED))
 
 
 def speed_gain(x):
     return - 1 / (x - 1)
 
 
-def sigmoid(x):
-    return 2 / (1 + exp(-x)) - 1
+def sigmoid(x, kx=1, ky=1):
+    return ky * (2 / (1 + exp(-max(-100, min(100, x / kx)))) - 1)
