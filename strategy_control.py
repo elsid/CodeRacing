@@ -147,19 +147,23 @@ ANGLE_FACTOR = 1
 MAX_SPEED = 40
 
 
+def generate_cos(path):
+    for i, current in islice(enumerate(path), 1, len(path) - 1):
+        yield (current - path[i - 1]).cos(path[i + 1] - current)
+
+
+def cos_product(path):
+    return reduce(mul, generate_cos(path), 1)
+
+
 def get_target_speed(position: Point, target: Point, direction: Point, path):
-    path = [position] + path
-
-    def generate_cos():
-        for i, current in islice(enumerate(path), 1, min(5, len(path) - 1)):
-            yield (current - path[i - 1]).cos(path[i + 1] - current)
-
+    path = [position] + path[:4]
     course = target - position
-    cos_product = max(1e-8 - 1, min(1 - 1e-8, reduce(mul, generate_cos(), 1)))
+    angle = max(1e-8 - 1, min(1 - 1e-8, cos_product(path)))
     factor_sum = DIRECT_FACTOR + ANGLE_FACTOR
     return (course * ((DIRECT_FACTOR / factor_sum +
                        ANGLE_FACTOR / factor_sum *
-                       (course.cos(direction) * cos_product) ** 3) /
+                       (course.cos(direction) * angle) ** 3) /
                       course.norm() * MAX_SPEED))
 
 

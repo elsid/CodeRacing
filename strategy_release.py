@@ -3,7 +3,7 @@ from model.Game import Game
 from model.Move import Move
 from model.World import World
 from strategy_common import Point, Polyline, get_current_tile, get_tile_center
-from strategy_control import Controller, get_target_speed
+from strategy_control import Controller, get_target_speed, cos_product
 from strategy_path import (
     make_tiles_path,
     adjust_path,
@@ -54,10 +54,11 @@ class ReleaseStrategy:
         position = Point(me.x, me.y)
         target_position = (Polyline([position] + self.path)
                            .at(game.track_tile_size))
+        course = target_position - position
         target_speed = get_target_speed(position, target_position, direction,
                                         self.path)
         control = self.controller(
-            course=target_position - position,
+            course=course,
             angle=me.angle,
             direct_speed=direct_speed,
             angular_speed_angle=me.angular_speed,
@@ -72,7 +73,9 @@ class ReleaseStrategy:
                       control.engine_power_derivative)
         move.spill_oil = True
         move.throw_projectile = True
-        # move.use_nitro = True
+        move.use_nitro = (0.95 <
+                          cos_product([position] + self.path[:4]) *
+                          course.cos(direction))
         self.previous_tile = tile
         self.position = position
         self.target_position = target_position
