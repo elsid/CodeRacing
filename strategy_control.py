@@ -18,8 +18,8 @@ class Controller:
         self.max_engine_power_derivative = max_engine_power_derivative
         self.angular_speed_factor = angular_speed_factor
         self.__speed = PidController(1 / 2, 0, 1 / 8)
-        self.__acceleration = PidController(1 / 2, 0, 1 / 8)
-        self.__engine_power = PidController(1 / 2, 0, 1 / 8)
+        self.__acceleration = PidController(1 / 4, 0, 1 / 8)
+        self.__engine_power = PidController(1 / 8, 0, 1 / 8)
         self.__angle = PidController(1.0, 0, 0)
         self.__angular_speed_angle = PidController(1.0, 0, 0)
         self.__wheel_turn = PidController(0.5, 0, 0.1)
@@ -140,22 +140,26 @@ class PidController:
         return output
 
 
+DIRECT_FACTOR = 0.01
+ANGLE_FACTOR = 4
+
+
 def get_target_speed(position: Point, direction: Point, path):
     path = [position] + path
 
     def generate_cos():
         for i, current in islice(enumerate(path), 1, min(3, len(path) - 1)):
-            yield (current - path[i - 1]).cos(path[i + 1] - current) ** 2
+            yield (current - path[i - 1]).cos(path[i + 1] - current)
 
     course = path[1] - path[0]
-    return (course / 100 +
+    return (course * DIRECT_FACTOR +
             (course.normalized() *
              speed_gain(reduce(mul, generate_cos(), 1)) *
-             course.cos(direction) ** 2))
+             course.cos(direction)) * ANGLE_FACTOR)
 
 
 def speed_gain(x):
-    return - 6 / (x - 1)
+    return - 1 / (x - 1)
 
 
 def sigmoid(x):
