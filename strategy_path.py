@@ -13,9 +13,11 @@ def adjust_path(path, tile_size):
 
     def generate():
         typed_path = list(make_typed_path())
-        for i, p in islice(enumerate(typed_path), 0, len(typed_path) - 1):
-            yield adjust_path_point(p, typed_path[i + 1], tile_size)
-        yield path[-1]
+        yield adjust_path_point(None, typed_path[0], typed_path[1], tile_size)
+        for i, p in islice(enumerate(typed_path), 1, len(typed_path) - 1):
+            yield adjust_path_point(typed_path[i - 1], p, typed_path[i + 1],
+                                    tile_size)
+        yield adjust_path_point(typed_path[-2], typed_path[-1], None, tile_size)
 
     def make_typed_path():
         yield TypedPoint(path[0],
@@ -33,38 +35,48 @@ def adjust_path(path, tile_size):
 TypedPoint = namedtuple('TypedPoint', ('position', 'type'))
 
 
-def adjust_path_point(current: TypedPoint, following: TypedPoint,
-                      tile_size):
-    if current.type == following.type:
-        return current.position
-    shift = Point(0, 0)
+def adjust_path_point(previous, current: TypedPoint, following, tile_size):
+    return current.position + path_point_shift(previous, current, following,
+                                               tile_size)
+
+
+def path_point_shift(previous: TypedPoint, current: TypedPoint,
+                     following: TypedPoint, tile_size):
     if current.type in {PointType.LEFT_TOP, PointType.TOP_LEFT}:
-        shift = Point(- tile_size / 4, - tile_size / 4)
-        if current.type.input == following.type.output:
-            shift /= 10
+        result = Point(- tile_size / 4, - tile_size / 4)
+        if following and current.type.input == following.type.output:
+            result /= 10
+        return result
     elif current.type in {PointType.LEFT_BOTTOM, PointType.BOTTOM_LEFT}:
-        shift = Point(- tile_size / 4, + tile_size / 4)
-        if current.type.input == following.type.output:
-            shift /= 10
+        result = Point(- tile_size / 4, + tile_size / 4)
+        if following and current.type.input == following.type.output:
+            result /= 10
+        return result
     elif current.type in {PointType.RIGHT_TOP, PointType.TOP_RIGHT}:
-        shift = Point(+ tile_size / 4, - tile_size / 4)
-        if current.type.input == following.type.output:
-            shift /= 10
+        result = Point(+ tile_size / 4, - tile_size / 4)
+        if following and current.type.input == following.type.output:
+            result /= 10
+        return result
     elif current.type in {PointType.RIGHT_BOTTOM, PointType.BOTTOM_RIGHT}:
-        shift = Point(+ tile_size / 4, + tile_size / 4)
-        if current.type.input == following.type.output:
-            shift /= 10
+        result = Point(+ tile_size / 4, + tile_size / 4)
+        if following and current.type.input == following.type.output:
+            result /= 10
+        return result
     elif current.type in {PointType.LEFT_RIGHT, PointType.RIGHT_LEFT}:
-        if following.type.output == SideType.TOP:
-            shift = Point(0, + tile_size / 4)
-        else:
-            shift = Point(0, - tile_size / 4)
+        if (following and following.type.output == SideType.TOP or
+                previous and previous.type.input == SideType.BOTTOM):
+            return Point(0, + tile_size / 4)
+        elif (following and following.type.output == SideType.BOTTOM or
+                previous and previous.type.input == SideType.TOP):
+            return Point(0, - tile_size / 4)
     elif current.type in {PointType.TOP_BOTTOM, PointType.BOTTOM_TOP}:
-        if following.type.output == SideType.LEFT:
-            shift = Point(+ tile_size / 4, 0)
-        else:
-            shift = Point(- tile_size / 4, 0)
-    return current.position + shift
+        if (following and following.type.output == SideType.LEFT or
+                previous and previous.type.input == SideType.RIGHT):
+            return Point(+ tile_size / 4, 0)
+        elif (following and following.type.output == SideType.RIGHT or
+                previous and previous.type.input == SideType.LEFT):
+            return Point(- tile_size / 4, 0)
+    return Point(0, 0)
 
 
 def point_type(previous, current, following):

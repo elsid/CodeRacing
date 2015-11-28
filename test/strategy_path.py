@@ -85,6 +85,7 @@ class PointTypeTest(TestCase):
 class AdjustPathPointTest(TestCase):
     def test_for_2_2_left_right_and_any_left_right_returns_2_2(self):
         result = adjust_path_point(
+            previous=None,
             current=TypedPoint(Point(2, 2), PointType.LEFT_RIGHT),
             following=TypedPoint(Point(4, 2), PointType.LEFT_RIGHT),
             tile_size=4)
@@ -92,6 +93,7 @@ class AdjustPathPointTest(TestCase):
 
     def test_for_2_2_left_top_and_any_following_and_tile_size_4_returns_1_1(self):
         result = adjust_path_point(
+            previous=None,
             current=TypedPoint(Point(2, 2), PointType.LEFT_TOP),
             following=TypedPoint(Point(2, 4), PointType.BOTTOM_TOP),
             tile_size=4)
@@ -99,10 +101,19 @@ class AdjustPathPointTest(TestCase):
 
     def test_for_2_2_left_right_and_any_left_top_following_and_tile_size_4_returns_2_3(self):
         result = adjust_path_point(
+            previous=None,
             current=TypedPoint(Point(2, 2), PointType.LEFT_RIGHT),
             following=TypedPoint(Point(4, 2), PointType.LEFT_TOP),
             tile_size=4)
         assert_that(result, equal_to(Point(2, 3)))
+
+    def test_for_2_2_left_right_and_any_top_left_previous_and_tile_size_4_returns_2_3(self):
+        result = adjust_path_point(
+            previous=TypedPoint(Point(0, 2), PointType.TOP_RIGHT),
+            current=TypedPoint(Point(2, 2), PointType.LEFT_RIGHT),
+            following=None,
+            tile_size=4)
+        assert_that(result, equal_to(Point(2, 1)))
 
 
 class IsDiagonalDirectTest(TestCase):
