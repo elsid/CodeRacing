@@ -49,7 +49,7 @@ class ReleaseStrategy:
         path = list(adjust_path(path, game.track_tile_size))
         path = list(reduce_direct(path))
         path = list(shift_on_direct(path))
-        path = path[2:]
+        path = path[1:]
         target_speed = get_target_speed(position, direction, path)
         control = self.controller(
             angle=me.angle,
