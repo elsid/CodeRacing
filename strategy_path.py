@@ -4,7 +4,7 @@ from itertools import islice, chain
 from numpy import array
 from scipy.sparse.csgraph import dijkstra
 from model.TileType import TileType
-from strategy_common import get_current_tile, Point
+from strategy_common import Point
 
 
 def adjust_path(path, tile_size):
@@ -197,11 +197,9 @@ def shift_to_borders(path):
     yield path[-1]
 
 
-def make_tiles_path(start, position, waypoints, next_waypoint_index,
-                    tile_size, tiles):
-    tile = get_current_tile(position, tile_size)
+def make_tiles_path(start, start_tile, waypoints, next_waypoint_index, tiles):
     matrix = AdjacencyMatrix(tiles)
-    tile_index = matrix.index(tile.x, tile.y)
+    tile_index = matrix.index(start_tile.x, start_tile.y)
     return make_path(tile_index, next_waypoint_index, matrix,
                      waypoints + [start])
 

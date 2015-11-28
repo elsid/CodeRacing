@@ -17,6 +17,7 @@ class ReleaseStrategy:
     start = None
     path = None
     tiles_path = None
+    previous_tile = None
 
     def move(self, me: Car, world: World, game: Game, move: Move,
              is_debug=False):
@@ -29,6 +30,7 @@ class ReleaseStrategy:
         tile = get_current_tile(Point(me.x, me.y), game.track_tile_size)
         if world.tick < game.initial_freeze_duration_ticks:
             self.start = (tile.x, tile.y)
+            self.previous_tile = tile
             return
         move.spill_oil = True
         move.throw_projectile = True
@@ -37,18 +39,17 @@ class ReleaseStrategy:
         direction = Point(1, 0).rotate(me.angle)
         path = list(make_tiles_path(
             start=self.start,
-            position=position,
+            start_tile=self.previous_tile,
             waypoints=world.waypoints,
             next_waypoint_index=me.next_waypoint_index,
-            tile_size=game.track_tile_size,
-            tiles=world.tiles_x_y
+            tiles=world.tiles_x_y,
         ))
         path = [get_tile_center(x, game.track_tile_size) for x in path]
         self.tiles_path = path
         path = list(adjust_path(path, game.track_tile_size))
         path = list(reduce_direct(path))
         path = list(shift_on_direct(path))
-        path = path[1:]
+        path = path[2:]
         target_speed = get_target_speed(position, direction, path)
         control = self.controller(
             angle=me.angle,
@@ -64,3 +65,4 @@ class ReleaseStrategy:
         move.brake = (-game.car_engine_power_change_per_tick >
                       control.engine_power_derivative)
         self.path = [position] + path
+        self.previous_tile = tile
