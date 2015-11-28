@@ -152,9 +152,10 @@ def get_target_speed(position: Point, direction: Point, path):
             yield (current - path[i - 1]).cos(path[i + 1] - current)
 
     course = path[1] - path[0]
+    cos_product = max(1e-8 - 1, min(1 - 1e-8, reduce(mul, generate_cos(), 1)))
     return (course * DIRECT_FACTOR +
             (course.normalized() *
-             speed_gain(reduce(mul, generate_cos(), 1)) *
+             speed_gain(cos_product) *
              course.cos(direction)) * ANGLE_FACTOR)
 
 
