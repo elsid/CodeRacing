@@ -20,9 +20,9 @@ class Controller:
         self.__speed = PidController(1 / 2, 0, 1 / 8)
         self.__acceleration = PidController(1 / 4, 0, 1 / 8)
         self.__engine_power = PidController(1 / 8, 0, 1 / 8)
-        self.__angle = PidController(1.0, 0, 0)
+        self.__angle = PidController(1.0, 0, 0.1)
         self.__angular_speed_angle = PidController(1.0, 0, 0)
-        self.__wheel_turn = PidController(0.5, 0, 0.1)
+        self.__wheel_turn = PidController(1.0, 0, 0.1)
         self.__previous_speed = Point(0, 0)
         self.__previous_angluar_speed_angle = 0
         self.__previous_brake = False
@@ -46,10 +46,10 @@ class Controller:
             point_plots('speed')
             point_plots('acceleration')
             plot('engine_power')
-            # plot('angle')
-            # plot('wheel_turn')
+            plot('angle')
+            plot('wheel_turn')
 
-    def __call__(self, angle, direct_speed: Point, angular_speed_angle,
+    def __call__(self, course, angle, direct_speed: Point, angular_speed_angle,
                  engine_power, wheel_turn, target_speed: Point, tick):
         direction = Point(1, 0).rotate(angle)
         radius = -(direction * self.distance_to_wheels).rotate(pi / 2)
@@ -65,7 +65,8 @@ class Controller:
         target_engine_power = acceleration_derivative.norm()
         engine_power_derivative = self.__engine_power(target_engine_power -
                                                       engine_power)
-        target_angle = target_speed.absolute_rotation()
+        target_angle = (target_speed.absolute_rotation() +
+                        course.absolute_rotation()) / 2
         angle_error = normalize_angle(target_angle - angle)
         angle_derivative = self.__angle(angle_error)
         angular_speed_angle_derivative = self.__angular_speed_angle(
@@ -89,9 +90,9 @@ class Controller:
             append_point('speed', speed, target_speed)
             append_point('acceleration', acceleration, target_acceleration)
             append_value('engine_power', engine_power, target_engine_power)
-            # append_value('angle', angle, target_angle)
-            # append_value('wheel_turn', wheel_turn,
-            #              angular_speed_angle_derivative)
+            append_value('angle', angle, target_angle)
+            append_value('wheel_turn', wheel_turn,
+                         angular_speed_angle_derivative)
 
             if tick % 50 == 0:
 
@@ -113,8 +114,8 @@ class Controller:
                 draw_point('speed')
                 draw_point('acceleration')
                 draw('engine_power')
-                # draw('angle')
-                # draw('wheel_turn')
+                draw('angle')
+                draw('wheel_turn')
         return Control(engine_power_derivative, wheel_turn_derivative)
 
 
@@ -151,7 +152,7 @@ def get_target_speed(position: Point, direction: Point, path):
         for i, current in islice(enumerate(path), 1, min(3, len(path) - 1)):
             yield (current - path[i - 1]).cos(path[i + 1] - current)
 
-    course = path[1] - path[0]
+    course = ((path[1] - path[0]) + (path[0] - position)) / 2
     cos_product = max(1e-8 - 1, min(1 - 1e-8, reduce(mul, generate_cos(), 1)))
     return (course * DIRECT_FACTOR +
             (course.normalized() *

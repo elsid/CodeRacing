@@ -8,7 +8,6 @@ from strategy_path import (
     make_tiles_path,
     adjust_path,
     shift_on_direct,
-    reduce_direct,
 )
 
 
@@ -47,11 +46,11 @@ class ReleaseStrategy:
         path = [get_tile_center(x, game.track_tile_size) for x in path]
         self.tiles_path = path
         path = list(adjust_path(path, game.track_tile_size))
-        path = list(reduce_direct(path))
         path = list(shift_on_direct(path))
         path = path[1:]
         target_speed = get_target_speed(position, direction, path)
         control = self.controller(
+            course=path[0] - position,
             angle=me.angle,
             direct_speed=direct_speed,
             angular_speed_angle=me.angular_speed,
