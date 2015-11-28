@@ -113,7 +113,7 @@ class AdjustPathPointTest(TestCase):
             current=TypedPoint(Point(2, 2), PointType.LEFT_RIGHT),
             following=None,
             shift=1)
-        assert_that(result, equal_to(Point(2, 1)))
+        assert_that(result, equal_to(Point(2, 2)))
 
 
 class IsDiagonalDirectTest(TestCase):

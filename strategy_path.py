@@ -63,18 +63,14 @@ def path_point_shift(previous: TypedPoint, current: TypedPoint,
             result /= 10
         return result
     elif current.type in {PointType.LEFT_RIGHT, PointType.RIGHT_LEFT}:
-        if (following and following.type.output == SideType.TOP or
-                previous and previous.type.input == SideType.BOTTOM):
+        if following and following.type.output == SideType.TOP:
             return Point(0, + shift)
-        elif (following and following.type.output == SideType.BOTTOM or
-                previous and previous.type.input == SideType.TOP):
+        elif following and following.type.output == SideType.BOTTOM:
             return Point(0, - shift)
     elif current.type in {PointType.TOP_BOTTOM, PointType.BOTTOM_TOP}:
-        if (following and following.type.output == SideType.LEFT or
-                previous and previous.type.input == SideType.RIGHT):
+        if following and following.type.output == SideType.LEFT:
             return Point(+ shift, 0)
-        elif (following and following.type.output == SideType.RIGHT or
-                previous and previous.type.input == SideType.LEFT):
+        elif following and following.type.output == SideType.RIGHT:
             return Point(- shift, 0)
     return Point(0, 0)
 
