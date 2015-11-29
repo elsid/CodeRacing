@@ -154,7 +154,7 @@ class PidController:
 
 
 DIRECT_FACTOR = 1
-ANGLE_FACTOR = 2
+ANGLE_FACTOR = 3
 MAX_SPEED = 50
 
 

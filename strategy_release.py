@@ -56,7 +56,7 @@ class ReleaseStrategy:
 
     def _lazy_init(self, context: Context):
         self.__stuck = StuckDetector(
-            history_size=300,
+            history_size=200,
             stuck_distance=min(context.me.width, context.me.height) / 2,
             unstack_distance=context.game.track_tile_size,
         )
@@ -99,9 +99,9 @@ class ReleaseStrategy:
 
 class MoveMode:
     PATH_SIZE_FOR_TARGET_SPEED = 6
-    PATH_SIZE_FOR_USE_NITRO = 8
+    PATH_SIZE_FOR_USE_NITRO = 5
     FORWARD_WAYPOINTS_COUNT = 4
-    BACKWARD_WAYPOINTS_COUNT = 4
+    BACKWARD_WAYPOINTS_COUNT = 2
     TILES_COUNT_FOR_MAKE_PATH = 2
 
     def __init__(self, controller, start_tile, get_direction):
@@ -120,6 +120,7 @@ class MoveMode:
             waypoints_count=self.BACKWARD_WAYPOINTS_COUNT,
         )
         self.__current = self.__forward
+        self.__get_direction = get_direction
 
     @property
     def path(self):
@@ -157,17 +158,18 @@ class MoveMode:
             context.move.wheel_turn = (context.me.wheel_turn +
                                        control.wheel_turn_derivative)
             context.move.brake = (
-                context.speed.norm() > 0 and
-                context.speed.cos(target_speed) < 0 and
+                context.speed.norm() > target_speed.norm() and
                 abs(control.engine_power_derivative) >
                 context.game.car_engine_power_change_per_tick)
         context.move.spill_oil = True
         context.move.throw_projectile = True
         sub_path = self.__path[:self.PATH_SIZE_FOR_USE_NITRO]
+        if self.__path[0].distance(context.position) > 0:
+            sub_path = [context.position] + sub_path
         context.move.use_nitro = (
-            len(self.__path) > 7 and
-            0.99 < (cos_product([context.position] + sub_path)) and
-            context.world.tick > context.game.initial_freeze_duration_ticks)
+            context.world.tick > context.game.initial_freeze_duration_ticks and
+            len(sub_path) >= self.PATH_SIZE_FOR_USE_NITRO + 1 and
+            0.95 < (cos_product(sub_path)))
         self.__target_position = target_position
         self.__tile = context.tile
         self.__backward.start_tile = context.tile
@@ -228,11 +230,17 @@ class ForwardMove(BaseMove):
         return result
 
 
-class BackwardMove(BaseMove):
+class BackwardMove(ForwardMove):
     def __init__(self, start_tile, get_direction, waypoints_count):
-        super().__init__(start_tile, get_direction)
+        super().__init__(start_tile, get_direction, waypoints_count)
         self.__waypoints_count = waypoints_count
         self.__begin = None
+
+    def make_path(self, context: Context):
+        first = (context.position -
+                 self.get_direction().normalized() *
+                 context.game.track_tile_size)
+        return [first] + super().make_path(context)
 
     def _waypoints(self, next_waypoint_index, waypoints):
         if self.__begin is None:
