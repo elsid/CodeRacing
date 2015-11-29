@@ -5,7 +5,12 @@ from model.Game import Game
 from model.Move import Move
 from model.World import World
 from strategy_common import Point, Polyline, get_current_tile, get_tile_center
-from strategy_control import Controller, get_target_speed, cos_product
+from strategy_control import (
+    Controller,
+    get_target_speed,
+    cos_product,
+    StuckDetector,
+)
 from strategy_path import (
     make_tiles_path,
     adjust_path,
@@ -29,9 +34,9 @@ class ReleaseStrategy:
     middle = None
 
     def __init__(self):
-        self.position_history = deque(maxlen=100)
         self.tile_history = deque(maxlen=1)
         self.move_mode = MoveMode.FORWARD
+        self.stuck = StuckDetector(history_size=100, min_distance=10)
 
     def move(self, me: Car, world: World, game: Game, move: Move,
              is_debug=False):
@@ -55,15 +60,15 @@ class ReleaseStrategy:
                 self.move_forward(me, world, game)
             else:
                 self.build_forward_path(me, world, game)
-        if self.position_history.maxlen == len(self.position_history):
-            if Polyline(self.position_history).length() < 5:
-                if self.move_mode == MoveMode.FORWARD:
-                    self.move_backward(game)
-                elif self.move_mode == MoveMode.BACKWARD:
-                    self.move_forward(me, world, game)
-                self.position_history.clear()
+        self.stuck.update(position)
+        if self.stuck.positive_check():
+            if self.move_mode == MoveMode.FORWARD:
+                self.move_backward(game)
             elif self.move_mode == MoveMode.BACKWARD:
                 self.move_forward(me, world, game)
+            self.stuck.reset()
+        elif self.stuck.negative_check():
+            self.move_forward(me, world, game)
         direction = Point(1, 0).rotate(me.angle)
         direct_speed = Point(me.speed_x, me.speed_y)
         target_position = (Polyline([position] + self.path)
@@ -100,7 +105,6 @@ class ReleaseStrategy:
         self.previous_tile = tile
         self.position = position
         self.target_position = target_position
-        self.position_history.append(position)
 
     def move_forward(self, me: Car, world: World, game: Game):
         self.move_mode = MoveMode.FORWARD

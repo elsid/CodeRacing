@@ -3,7 +3,7 @@ from functools import reduce
 from itertools import islice
 from math import pi, exp
 from operator import mul
-from strategy_common import Point, normalize_angle
+from strategy_common import Point, normalize_angle, Polyline
 
 Control = namedtuple('Control', ('engine_power_derivative',
                                  'wheel_turn_derivative'))
@@ -187,3 +187,23 @@ def speed_gain(x):
 
 def sigmoid(x, kx=1, ky=1):
     return ky * (2 / (1 + exp(-max(-100, min(100, x / kx)))) - 1)
+
+
+class StuckDetector:
+    def __init__(self, history_size, min_distance):
+        self.__positions = deque(maxlen=history_size)
+        self.__min_distance = min_distance
+
+    def update(self, position):
+        self.__positions.append(position)
+
+    def positive_check(self):
+        return (self.__positions.maxlen == len(self.__positions) and
+                Polyline(self.__positions).length() < self.__min_distance)
+
+    def negative_check(self):
+        return (self.__positions.maxlen == len(self.__positions) and
+                Polyline(self.__positions).length() >= self.__min_distance)
+
+    def reset(self):
+        self.__positions.clear()
