@@ -19,7 +19,7 @@ class Controller:
     __angular_speed_angle = None
     __wheel_turn = None
     __previous_speed = None
-    __previous_angluar_speed_angle = None
+    __previous_angular_speed_angle = None
 
     def __init__(self, distance_to_wheels, max_engine_power_derivative,
                  angular_speed_factor, is_debug):
@@ -58,7 +58,7 @@ class Controller:
         self.__angular_speed_angle = PidController(1.0, 0, 0)
         self.__wheel_turn = PidController(1.0, 0, 0.1)
         self.__previous_speed = Point(0, 0)
-        self.__previous_angluar_speed_angle = 0
+        self.__previous_angular_speed_angle = 0
 
     def __call__(self, course, angle, direct_speed: Point, angular_speed_angle,
                  engine_power, wheel_turn, target_speed: Point, tick):
@@ -69,7 +69,7 @@ class Controller:
         target_acceleration = self.__speed(target_speed - speed)
         tangential_acceleration = speed - self.__previous_speed
         centripetal_acceleration = (-radius *
-                                    self.__previous_angluar_speed_angle ** 2)
+                                    self.__previous_angular_speed_angle ** 2)
         acceleration = tangential_acceleration + centripetal_acceleration
         acceleration_derivative = self.__acceleration(target_acceleration -
                                                       acceleration)
@@ -86,7 +86,7 @@ class Controller:
         wheel_turn_derivative = self.__wheel_turn(
             angular_speed_angle_derivative - wheel_turn)
         self.__previous_speed = speed
-        self.__previous_angluar_speed_angle = angular_speed_angle
+        self.__previous_angular_speed_angle = angular_speed_angle
         if self.__is_debug:
 
             def append_point(name, current, target):

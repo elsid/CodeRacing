@@ -58,7 +58,7 @@ class ReleaseStrategy:
         if self.position_history.maxlen == len(self.position_history):
             if Polyline(self.position_history).length() < 5:
                 if self.move_mode == MoveMode.FORWARD:
-                    self.move_backward(world, game)
+                    self.move_backward(game)
                 elif self.move_mode == MoveMode.BACKWARD:
                     self.move_forward(me, world, game)
                 self.position_history.clear()
@@ -107,7 +107,7 @@ class ReleaseStrategy:
         self.controller.reset()
         self.build_forward_path(me, world, game)
 
-    def move_backward(self, world: World, game: Game):
+    def move_backward(self, game: Game):
         self.move_mode = MoveMode.BACKWARD
         self.controller.reset()
         self.build_backward_path(game)
