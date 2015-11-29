@@ -50,12 +50,13 @@ class ReleaseStrategy:
             self.position = position
             return
         if self.path is None or tile != self.previous_tile:
+            self.position_history.clear()
             self.build_forward_path(me, world, game)
         if (self.position_history.maxlen == len(self.position_history) and
                 Polyline(self.position_history).length() < 5):
             self.position_history.clear()
             if self.move_mode == MoveMode.FORWARD:
-                self.build_backward_path(me, world, game)
+                self.build_backward_path(game)
             elif self.move_mode == MoveMode.BACKWARD:
                 self.build_forward_path(me, world, game)
         direction = Point(1, 0).rotate(me.angle)
@@ -110,12 +111,13 @@ class ReleaseStrategy:
         path = [get_tile_center(x, game.track_tile_size) for x in path]
         self.tiles_path = path
         shift = (game.track_tile_size / 2 -
-                 game.track_tile_margin - max(me.width, me.height) / 2)
+                 game.track_tile_margin - 1.5 * max(me.width, me.height) / 2)
         path = list(adjust_path(path, shift))
         path = list(shift_on_direct(path))
         self.path = [(path[1] + path[2]) / 2] + path[2:]
 
-    def build_backward_path(self, me: Car, world: World, game: Game):
+    def build_backward_path(self, game: Game):
         self.move_mode = MoveMode.BACKWARD
         self.path = ([get_tile_center(x, game.track_tile_size)
                       for x in reversed(self.tile_history)])
+        self.previous_tile = tile
