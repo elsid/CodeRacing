@@ -142,8 +142,8 @@ class PidController:
 
 
 DIRECT_FACTOR = 1
-ANGLE_FACTOR = 1
-MAX_SPEED = 40
+ANGLE_FACTOR = 1.5
+MAX_SPEED = 50
 
 
 def generate_cos(path):
@@ -156,7 +156,7 @@ def cos_product(path):
 
 
 def get_target_speed(position: Point, target: Point, direction: Point, path):
-    path = [position] + path[:4]
+    path = [position] + path[:6]
     course = target - position
     angle = max(1e-8 - 1, min(1 - 1e-8, cos_product(path)))
     factor_sum = DIRECT_FACTOR + ANGLE_FACTOR
