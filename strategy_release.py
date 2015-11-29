@@ -76,25 +76,32 @@ class ReleaseStrategy:
         if self.__first_move:
             self._lazy_init(context)
             self.__first_move = False
-        self.__stuck.update(context.position)
-        if self.__stuck.positive_check():
+        if context.world.tick < context.game.initial_freeze_duration_ticks + 1000:
+            self.__stuck.update(context.position)
+            if self.__stuck.positive_check():
+                self.__move_mode.use_backward()
+            elif self.__stuck.negative_check():
+                self.__move_mode.use_forward()
+        elif context.world.tick == context.game.initial_freeze_duration_ticks + 1000:
             self.__move_mode.use_backward()
-        elif self.__stuck.negative_check():
-            self.__move_mode.use_forward()
         self.__move_mode.move(context)
 
 
 class MoveMode:
     PATH_SIZE_FOR_TARGET_SPEED = 6
     PATH_SIZE_FOR_USE_NITRO = 8
+    FORWARD_WAYPOINTS_COUNT = 5
+    BACKWARD_WAYPOINTS_COUNT = 3
 
     def __init__(self, controller, start_tile):
         self.__controller = controller
         self.__path = []
         self.__tile = None
         self.__target_position = None
-        self.__forward = ForwardMove(start_tile)
-        self.__backward = BackwardMove(start_tile)
+        self.__forward = ForwardMove(start_tile,
+                                     self.FORWARD_WAYPOINTS_COUNT)
+        self.__backward = BackwardMove(start_tile,
+                                       self.BACKWARD_WAYPOINTS_COUNT)
         self.__current = self.__forward
 
     @property
@@ -106,8 +113,7 @@ class MoveMode:
         return self.__target_position
 
     def move(self, context: Context):
-        self.__forward.update(context)
-        self.__backward.update(context)
+        self.__backward.set_start_tile(context.tile)
         if not self.__path or self.__tile != context.tile:
             self.__path = self.__current.make_path(context)
         target_position = (Polyline([context.position] + self.__path)
@@ -140,6 +146,7 @@ class MoveMode:
                     course.cos(context.direction)))
         self.__tile = context.tile
         self.__target_position = target_position
+        self.__forward.set_start_tile(context.tile)
 
     def use_forward(self):
         self.__current = self.__forward
@@ -148,25 +155,18 @@ class MoveMode:
         self.__current = self.__forward
 
 
-class ForwardMove:
-    WAYPOINTS_COUNT = 5
-
+class BaseMove:
     def __init__(self, start_tile):
         self.__start_tile = start_tile
 
     def make_path(self, context: Context):
-        direction = Point(1, 0).rotate(context.me.angle)
-        direct_speed = Point(context.me.speed_x, context.me.speed_y)
-        start = context.me.next_waypoint_index
-        waypoints = context.world.waypoints[start:start + self.WAYPOINTS_COUNT]
-        if len(waypoints) < self.WAYPOINTS_COUNT:
-            left = self.WAYPOINTS_COUNT - len(waypoints)
-            waypoints += context.world.waypoints[:left]
+        waypoints = self._waypoints(context.me.next_waypoint_index,
+                                    context.world.waypoints)
         path = make_tiles_path(
             start_tile=self.__start_tile,
             waypoints=waypoints,
             tiles=context.world.tiles_x_y,
-            direction=direct_speed + direction,
+            direction=context.speed + context.direction,
         )
         path = [get_tile_center(x, context.game.track_tile_size) for x in path]
         shift = (context.game.track_tile_size / 2 -
@@ -176,8 +176,17 @@ class ForwardMove:
         path = list(shift_on_direct(path))
         return [(path[1] + path[2]) / 2] + path[2:]
 
-    def update(self, context: Context):
-        self.__start_tile = context.tile
+    def set_start_tile(self, value: Point):
+        self.__start_tile = value
+
+    def _waypoints(self, begin, waypoints):
+        raise NotImplementedError()
+
+
+class ForwardMove(BaseMove):
+    def __init__(self, start_tile, waypoints_count=5):
+        super().__init__(start_tile)
+        self.__waypoints_count = waypoints_count
 
     @staticmethod
     def is_brake(context: Context, control: Control):
@@ -188,20 +197,25 @@ class ForwardMove:
     def adjust_angle(value):
         return value
 
+    def _waypoints(self, begin, waypoints):
+        end = begin + self.__waypoints_count
+        waypoints = waypoints[begin:end]
+        if len(waypoints) < self.__waypoints_count:
+            left = self.__waypoints_count - len(waypoints)
+            waypoints += waypoints[:left]
 
-class BackwardMove:
-    def __init__(self, start_tile):
-        self.__tile_history = deque([start_tile], maxlen=10)
 
-    def make_path(self, context: Context):
-        return ([get_tile_center(x, context.game.track_tile_size)
-                 for x in reversed(self.__tile_history)])
+class BackwardMove(BaseMove):
+    def __init__(self, start_tile, waypoints_count=5):
+        super().__init__(start_tile)
+        self.__waypoints_count = waypoints_count
 
-    def update(self, context: Context):
-        position = Point(context.me.x, context.me.y)
-        tile = get_current_tile(position, context.game.track_tile_size)
-        if tile != self.__tile_history[-1]:
-            self.__tile_history.append(tile)
+    def _waypoints(self, begin, waypoints):
+        result = waypoints[:begin + 1][-self.__waypoints_count:]
+        left = self.__waypoints_count - len(result)
+        if left > 0:
+            result = waypoints[-left:] + result
+        return result
 
     @staticmethod
     def is_brake(context: Context, control: Control):
