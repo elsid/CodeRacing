@@ -43,25 +43,25 @@ def adjust_path_point(previous, current: TypedPoint, following, shift):
 def path_point_shift(previous: TypedPoint, current: TypedPoint,
                      following: TypedPoint, shift):
     if current.type in {PointType.LEFT_TOP, PointType.TOP_LEFT}:
-        result = Point(- shift, - shift)
         if following and current.type.input == following.type.output:
-            result /= 10
-        return result
+            return Point(+ shift, + shift) / 2
+        else:
+            return Point(- shift, - shift)
     elif current.type in {PointType.LEFT_BOTTOM, PointType.BOTTOM_LEFT}:
-        result = Point(- shift, + shift)
         if following and current.type.input == following.type.output:
-            result /= 10
-        return result
+            return Point(+ shift, - shift) / 2
+        else:
+            return Point(- shift, + shift)
     elif current.type in {PointType.RIGHT_TOP, PointType.TOP_RIGHT}:
-        result = Point(+ shift, - shift)
         if following and current.type.input == following.type.output:
-            result /= 10
-        return result
+            return Point(- shift, + shift) / 2
+        else:
+            return Point(+ shift, - shift)
     elif current.type in {PointType.RIGHT_BOTTOM, PointType.BOTTOM_RIGHT}:
-        result = Point(+ shift, + shift)
         if following and current.type.input == following.type.output:
-            result /= 10
-        return result
+            return Point(- shift, - shift) / 2
+        else:
+            return Point(+ shift, + shift)
     elif current.type in {PointType.LEFT_RIGHT, PointType.RIGHT_LEFT}:
         if following and following.type.output == SideType.TOP:
             return Point(0, + shift)
