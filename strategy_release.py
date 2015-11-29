@@ -1,5 +1,3 @@
-from collections import deque
-from math import pi
 from model.Car import Car
 from model.Game import Game
 from model.Move import Move
@@ -10,7 +8,6 @@ from strategy_control import (
     get_target_speed,
     cos_product,
     StuckDetector,
-    Control,
 )
 from strategy_path import (
     make_tiles_path,
