@@ -1,5 +1,5 @@
 from strategy_release import ReleaseStrategy, Context
-from strategy_common import Point
+from strategy_common import Point, get_tile_center
 from strategy_control import Controller
 
 
@@ -15,14 +15,18 @@ class DebugStrategy:
             path = self.__impl.path
             position = context.position
             target = self.__impl.target_position
-            if path is None or target is None or position is None:
-                return
+            tile_size = context.game.track_tile_size
+            waypoints = (get_tile_center(Point(p[0], p[1]), tile_size)
+                         for p in context.world.waypoints)
             self.__plot.clear()
-            self.__plot.path([Point(p.x, -p.y) for p in path], 'o')
-            self.__plot.path([Point(p.x, -p.y) for p in path], '-')
-            self.__plot.path([Point(p.x, -p.y) for p in [position, target]], '-')
+            if path is not None:
+                self.__plot.path([Point(p.x, -p.y) for p in path], 'o')
+                self.__plot.path([Point(p.x, -p.y) for p in path], '-')
+            if target is not None:
+                self.__plot.path([Point(p.x, -p.y) for p in [position, target]], '-')
+                self.__plot.path([Point(p.x, -p.y) for p in [target]], 's')
             self.__plot.path([Point(p.x, -p.y) for p in [position]], 'o')
-            self.__plot.path([Point(p.x, -p.y) for p in [target]], 'x')
+            self.__plot.path([Point(p.x, -p.y) for p in waypoints], 'D')
             self.__plot.draw()
 
 

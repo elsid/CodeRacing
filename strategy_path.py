@@ -250,9 +250,9 @@ class AdjacencyMatrix:
             def matrix_row(dst):
                 for x in range(self.__row_size * column_size):
                     if x in dst:
-                        distance = (1 if node == start_tile
+                        distance = (0.5 if node == start_tile
                                     else node.distance(start_tile))
-                        yield 2 - ((self.point(x) - node).cos(direction) /
+                        yield 3 - ((self.point(x) - node).cos(direction) /
                                    distance)
                     else:
                         yield 0

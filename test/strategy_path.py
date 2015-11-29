@@ -313,7 +313,7 @@ class AdjacencyMatrixTest(TestCase):
         ], direction=Point(1, 0), start_tile=Point(1, 0))
         assert_that(matrix.values, equal_to([
             [0, 0, 0],
-            [2, 0, 2],
+            [3, 0, 3],
             [0, 0, 0],
         ]))
 
@@ -325,7 +325,7 @@ class AdjacencyMatrixTest(TestCase):
         ], direction=Point(0, 1), start_tile=Point(0, 1))
         assert_that(matrix.values, equal_to([
             [0, 0, 0],
-            [2, 0, 2],
+            [3, 0, 3],
             [0, 0, 0],
         ]))
 

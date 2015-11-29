@@ -177,7 +177,10 @@ def get_target_speed(position: Point, target: Point, path):
                  max(1e-8 - 1, min(1 - 1e-8, cos_product(path))) ** 3)
     else:
         angle = 0
-    return course * MAX_SPEED / course.norm() * (direct + angle)
+    if course.norm() > 0:
+        return course * MAX_SPEED / course.norm() * (direct + angle)
+    else:
+        return Point(0, 0)
 
 
 def speed_gain(x):
@@ -202,8 +205,22 @@ class StuckDetector:
                 Polyline(self.__positions).length() < self.__stuck_distance)
 
     def negative_check(self):
-        return (self.__positions.maxlen == len(self.__positions) and
-                Polyline(self.__positions).length() > self.__unstack_distance)
+        return Polyline(self.__positions).length() > self.__unstack_distance
 
     def reset(self):
         self.__positions.clear()
+
+
+class DirectionDetector:
+    def __init__(self, begin: Point, end: Point, min_distance):
+        self.__begin = begin
+        self.__end = end
+        self.__min_distance = min_distance
+
+    def update(self, position):
+        if self.__end.distance(position) >= self.__min_distance:
+            self.__begin = self.__end
+            self.__end = position
+
+    def __call__(self):
+        return self.__end - self.__begin
