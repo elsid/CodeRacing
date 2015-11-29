@@ -55,7 +55,7 @@ class Controller:
         self.__acceleration = PidController(0.3, 0, 0.01)
         self.__engine_power = PidController(0.2, 0, 0.01)
         self.__angle = PidController(1.0, 0, 0.1)
-        self.__angular_speed_angle = PidController(1.0, 0, 0)
+        self.__angular_speed_angle = PidController(1.0, 0, 0.0)
         self.__wheel_turn = PidController(1.0, 0, 0.1)
         self.__previous_speed = Point(0, 0)
         self.__previous_angular_speed_angle = 0
@@ -167,15 +167,14 @@ def cos_product(path):
     return reduce(mul, generate_cos(path), 1)
 
 
-def get_target_speed(position: Point, target: Point, direction: Point, path):
+def get_target_speed(position: Point, target: Point, path):
     course = target - position
     path = [position] + path
     factor_sum = DIRECT_FACTOR + ANGLE_FACTOR
     direct = DIRECT_FACTOR / factor_sum
     if len(path) > 2:
         angle = (ANGLE_FACTOR / factor_sum *
-                 (max(1e-8 - 1, min(1 - 1e-8, cos_product(path))) *
-                  course.cos(direction)) ** 3)
+                 max(1e-8 - 1, min(1 - 1e-8, cos_product(path))) ** 3)
     else:
         angle = 0
     return course * MAX_SPEED / course.norm() * (direct + angle)
@@ -190,20 +189,21 @@ def sigmoid(x, kx=1, ky=1):
 
 
 class StuckDetector:
-    def __init__(self, history_size, min_distance):
+    def __init__(self, history_size, stuck_distance, unstack_distance):
         self.__positions = deque(maxlen=history_size)
-        self.__min_distance = min_distance
+        self.__stuck_distance = stuck_distance
+        self.__unstack_distance = unstack_distance
 
     def update(self, position):
         self.__positions.append(position)
 
     def positive_check(self):
         return (self.__positions.maxlen == len(self.__positions) and
-                Polyline(self.__positions).length() < self.__min_distance)
+                Polyline(self.__positions).length() < self.__stuck_distance)
 
     def negative_check(self):
         return (self.__positions.maxlen == len(self.__positions) and
-                Polyline(self.__positions).length() >= self.__min_distance)
+                Polyline(self.__positions).length() > self.__unstack_distance)
 
     def reset(self):
         self.__positions.clear()

@@ -21,7 +21,8 @@ class DebugStrategy:
             self.__plot.path([Point(p.x, -p.y) for p in path], 'o')
             self.__plot.path([Point(p.x, -p.y) for p in path], '-')
             self.__plot.path([Point(p.x, -p.y) for p in [position, target]], '-')
-            self.__plot.path([Point(p.x, -p.y) for p in [position, target]], 'o')
+            self.__plot.path([Point(p.x, -p.y) for p in [position]], 'o')
+            self.__plot.path([Point(p.x, -p.y) for p in [target]], 'x')
             self.__plot.draw()
 
 
