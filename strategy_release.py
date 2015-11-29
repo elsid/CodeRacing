@@ -30,7 +30,7 @@ class ReleaseStrategy:
 
     def __init__(self):
         self.position_history = deque(maxlen=100)
-        self.tile_history = deque(maxlen=2)
+        self.tile_history = deque(maxlen=1)
         self.move_mode = MoveMode.FORWARD
 
     def move(self, me: Car, world: World, game: Game, move: Move,
@@ -40,7 +40,8 @@ class ReleaseStrategy:
                 distance_to_wheels=me.width / 4,
                 max_engine_power_derivative=game.car_engine_power_change_per_tick,
                 angular_speed_factor=game.car_angular_speed_factor,
-                is_debug=is_debug)
+                is_debug=is_debug,
+            )
         position = Point(me.x, me.y)
         speed = Point(me.speed_x, me.speed_y)
         tile = get_current_tile(position, game.track_tile_size)
@@ -50,15 +51,19 @@ class ReleaseStrategy:
             self.position = position
             return
         if self.path is None or tile != self.previous_tile:
-            self.position_history.clear()
-            self.build_forward_path(me, world, game)
-        if (self.position_history.maxlen == len(self.position_history) and
-                Polyline(self.position_history).length() < 5):
-            self.position_history.clear()
-            if self.move_mode == MoveMode.FORWARD:
-                self.build_backward_path(me, game)
-            elif self.move_mode == MoveMode.BACKWARD:
+            if self.move_mode != MoveMode.FORWARD:
+                self.move_forward(me, world, game)
+            else:
                 self.build_forward_path(me, world, game)
+        if self.position_history.maxlen == len(self.position_history):
+            if Polyline(self.position_history).length() < 5:
+                if self.move_mode == MoveMode.FORWARD:
+                    self.move_backward(world, game)
+                elif self.move_mode == MoveMode.BACKWARD:
+                    self.move_forward(me, world, game)
+                self.position_history.clear()
+            elif self.move_mode == MoveMode.BACKWARD:
+                self.move_forward(me, world, game)
         direction = Point(1, 0).rotate(me.angle)
         direct_speed = Point(me.speed_x, me.speed_y)
         target_position = (Polyline([position] + self.path)
@@ -78,7 +83,7 @@ class ReleaseStrategy:
         )
         move.engine_power = me.engine_power + control.engine_power_derivative
         move.wheel_turn = me.wheel_turn + control.wheel_turn_derivative
-        if speed.norm() > 0:
+        if speed.norm() / target_speed.norm() > 1:
             if self.move_mode == MoveMode.FORWARD:
                 move.brake = (-game.car_engine_power_change_per_tick >
                               control.engine_power_derivative)
@@ -87,7 +92,7 @@ class ReleaseStrategy:
                               control.engine_power_derivative)
         move.spill_oil = True
         move.throw_projectile = True
-        move.use_nitro = (0.95 <
+        move.use_nitro = (len(self.path) > 7 and 0.95 <
                           cos_product([position] + self.path[:8]) *
                           course.cos(direction))
         if self.previous_tile != tile:
@@ -96,6 +101,16 @@ class ReleaseStrategy:
         self.position = position
         self.target_position = target_position
         self.position_history.append(position)
+
+    def move_forward(self, me: Car, world: World, game: Game):
+        self.move_mode = MoveMode.FORWARD
+        self.controller.reset()
+        self.build_forward_path(me, world, game)
+
+    def move_backward(self, world: World, game: Game):
+        self.move_mode = MoveMode.BACKWARD
+        self.controller.reset()
+        self.build_backward_path(game)
 
     def build_forward_path(self, me: Car, world: World, game: Game):
         self.move_mode = MoveMode.FORWARD
@@ -116,9 +131,6 @@ class ReleaseStrategy:
         path = list(shift_on_direct(path))
         self.path = [(path[1] + path[2]) / 2] + path[2:]
 
-    def build_backward_path(self, me: Car, game: Game):
-        self.move_mode = MoveMode.BACKWARD
+    def build_backward_path(self, game: Game):
         self.path = ([get_tile_center(x, game.track_tile_size)
                       for x in reversed(self.tile_history)])
-        position = Point(me.x, me.y)
-        self.previous_tile = get_current_tile(position, game.track_tile_size)

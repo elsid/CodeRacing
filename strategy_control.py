@@ -12,19 +12,21 @@ History = namedtuple('History', ('current', 'target'))
 
 
 class Controller:
+    __speed = None
+    __acceleration = None
+    __engine_power = None
+    __angle = None
+    __angular_speed_angle = None
+    __wheel_turn = None
+    __previous_speed = None
+    __previous_angluar_speed_angle = None
+
     def __init__(self, distance_to_wheels, max_engine_power_derivative,
                  angular_speed_factor, is_debug):
         self.distance_to_wheels = distance_to_wheels
         self.max_engine_power_derivative = max_engine_power_derivative
         self.angular_speed_factor = angular_speed_factor
-        self.__speed = PidController(0.5, 0, 0.01)
-        self.__acceleration = PidController(0.3, 0, 0.01)
-        self.__engine_power = PidController(0.2, 0, 0.01)
-        self.__angle = PidController(1.0, 0, 0.1)
-        self.__angular_speed_angle = PidController(1.0, 0, 0)
-        self.__wheel_turn = PidController(1.0, 0, 0.1)
-        self.__previous_speed = Point(0, 0)
-        self.__previous_angluar_speed_angle = 0
+        self.reset()
         self.__is_debug = is_debug
         if is_debug:
             from debug import Plot
@@ -47,6 +49,16 @@ class Controller:
             plot('engine_power')
             plot('angle')
             plot('wheel_turn')
+
+    def reset(self):
+        self.__speed = PidController(0.5, 0, 0.01)
+        self.__acceleration = PidController(0.3, 0, 0.01)
+        self.__engine_power = PidController(0.2, 0, 0.01)
+        self.__angle = PidController(1.0, 0, 0.1)
+        self.__angular_speed_angle = PidController(1.0, 0, 0)
+        self.__wheel_turn = PidController(1.0, 0, 0.1)
+        self.__previous_speed = Point(0, 0)
+        self.__previous_angluar_speed_angle = 0
 
     def __call__(self, course, angle, direct_speed: Point, angular_speed_angle,
                  engine_power, wheel_turn, target_speed: Point, tick):
@@ -156,14 +168,17 @@ def cos_product(path):
 
 
 def get_target_speed(position: Point, target: Point, direction: Point, path):
-    path = [position] + path[:6]
     course = target - position
-    angle = max(1e-8 - 1, min(1 - 1e-8, cos_product(path)))
+    path = [position] + path[:6]
     factor_sum = DIRECT_FACTOR + ANGLE_FACTOR
-    return (course * ((DIRECT_FACTOR / factor_sum +
-                       ANGLE_FACTOR / factor_sum *
-                       (course.cos(direction) * angle) ** 3) /
-                      course.norm() * MAX_SPEED))
+    direct = DIRECT_FACTOR / factor_sum
+    if len(path) > 2:
+        angle = (ANGLE_FACTOR / factor_sum *
+                 (max(1e-8 - 1, min(1 - 1e-8, cos_product(path))) *
+                  course.cos(direction)) ** 3)
+    else:
+        angle = 0
+    return course * MAX_SPEED / course.norm() * (direct + angle)
 
 
 def speed_gain(x):
