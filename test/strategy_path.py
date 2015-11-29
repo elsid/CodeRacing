@@ -436,7 +436,6 @@ class MakePathTest(TestCase):
     def test_from_vertical_to_next_vertical_returns_first_and_second_point(self):
         path = make_path(
             start_index=1,
-            next_waypoint_index=1,
             matrix=AdjacencyMatrix(tiles=[
                 [TileType.EMPTY, TileType.VERTICAL,
                  TileType.VERTICAL, TileType.EMPTY],
@@ -447,7 +446,6 @@ class MakePathTest(TestCase):
     def test_over_three_vertical_returns_three_points(self):
         path = make_path(
             start_index=1,
-            next_waypoint_index=1,
             matrix=AdjacencyMatrix(tiles=[
                 [TileType.EMPTY,
                  TileType.VERTICAL, TileType.VERTICAL, TileType.VERTICAL,

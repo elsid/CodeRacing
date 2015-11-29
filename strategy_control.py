@@ -22,7 +22,7 @@ class Controller:
     __previous_angular_speed_angle = None
 
     def __init__(self, distance_to_wheels, max_engine_power_derivative,
-                 angular_speed_factor, is_debug):
+                 angular_speed_factor, is_debug=False):
         self.distance_to_wheels = distance_to_wheels
         self.max_engine_power_derivative = max_engine_power_derivative
         self.angular_speed_factor = angular_speed_factor
@@ -169,7 +169,7 @@ def cos_product(path):
 
 def get_target_speed(position: Point, target: Point, direction: Point, path):
     course = target - position
-    path = [position] + path[:6]
+    path = [position] + path
     factor_sum = DIRECT_FACTOR + ANGLE_FACTOR
     direct = DIRECT_FACTOR / factor_sum
     if len(path) > 2:

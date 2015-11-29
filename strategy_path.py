@@ -205,21 +205,20 @@ def shift_to_borders(path):
     yield path[-1]
 
 
-def make_tiles_path(start_tile, waypoints, next_waypoint_index, tiles,
+def make_tiles_path(start_tile, waypoints,  tiles,
                     direction):
     matrix = AdjacencyMatrix(tiles, start_tile, direction)
     tile_index = matrix.index(start_tile.x, start_tile.y)
-    return make_path(tile_index, next_waypoint_index, matrix, waypoints)
+    return make_path(tile_index, matrix, waypoints)
 
 
-def make_path(start_index, next_waypoint_index, matrix, waypoints):
+def make_path(start_index, matrix, waypoints):
     graph = array(matrix.values)
     _, predecessors = dijkstra(graph, return_predecessors=True)
 
     def generate():
-        yield path(start_index, matrix.index(*waypoints[next_waypoint_index]))
-        for i, p in islice(enumerate(waypoints), next_waypoint_index,
-                           len(waypoints) - 1):
+        yield path(start_index, matrix.index(*waypoints[0]))
+        for i, p in islice(enumerate(waypoints), len(waypoints) - 1):
             src = matrix.index(*p)
             dst = matrix.index(*waypoints[i + 1])
             yield path(src, dst)
