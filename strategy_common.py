@@ -194,6 +194,14 @@ class Polyline:
                 return p + to_next.normalized() * distance
         return self.points[-1]
 
+    def length(self):
+        if not self.points:
+            return 0
+        result = 0
+        for i, p in islice(enumerate(self.points), len(self.points) - 1):
+            result += p.distance(self.points[i + 1])
+        return result
+
 
 def get_tile_center(point: Point, size):
     return point.map(lambda x: tile_center_coord(x, size))

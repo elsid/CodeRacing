@@ -25,7 +25,6 @@ class Controller:
         self.__wheel_turn = PidController(1.0, 0, 0.1)
         self.__previous_speed = Point(0, 0)
         self.__previous_angluar_speed_angle = 0
-        self.__previous_brake = False
         self.__is_debug = is_debug
         if is_debug:
             from debug import Plot
