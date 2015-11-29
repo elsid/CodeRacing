@@ -56,7 +56,7 @@ class ReleaseStrategy:
                 Polyline(self.position_history).length() < 5):
             self.position_history.clear()
             if self.move_mode == MoveMode.FORWARD:
-                self.build_backward_path(game)
+                self.build_backward_path(me, game)
             elif self.move_mode == MoveMode.BACKWARD:
                 self.build_forward_path(me, world, game)
         direction = Point(1, 0).rotate(me.angle)
@@ -116,8 +116,9 @@ class ReleaseStrategy:
         path = list(shift_on_direct(path))
         self.path = [(path[1] + path[2]) / 2] + path[2:]
 
-    def build_backward_path(self, game: Game):
+    def build_backward_path(self, me: Car, game: Game):
         self.move_mode = MoveMode.BACKWARD
         self.path = ([get_tile_center(x, game.track_tile_size)
                       for x in reversed(self.tile_history)])
-        self.previous_tile = tile
+        position = Point(me.x, me.y)
+        self.previous_tile = get_current_tile(position, game.track_tile_size)
