@@ -63,7 +63,7 @@ class ReleaseStrategy:
         self.__direction = DirectionDetector(
             begin=context.position,
             end=context.position + context.direction,
-            min_distance=max(context.me.width, context.me.height) * 2,
+            min_distance=max(context.me.width, context.me.height),
         )
         self.__controller = self.__make_controller(context)
         self.__move_mode = MoveMode(
@@ -85,6 +85,10 @@ class ReleaseStrategy:
             self._lazy_init(context)
             self.__first_move = False
         self.__direction.update(context.position)
+        if context.world.tick == 400:
+            self.__move_mode.use_backward()
+            self.__stuck.reset()
+            self.__controller.reset()
         self.__stuck.update(context.position)
         if self.__stuck.positive_check():
             self.__move_mode.switch()
@@ -98,11 +102,10 @@ class ReleaseStrategy:
 
 
 class MoveMode:
-    PATH_SIZE_FOR_TARGET_SPEED = 6
+    PATH_SIZE_FOR_TARGET_SPEED = 3
     PATH_SIZE_FOR_USE_NITRO = 5
     FORWARD_WAYPOINTS_COUNT = 4
-    BACKWARD_WAYPOINTS_COUNT = 2
-    TILES_COUNT_FOR_MAKE_PATH = 2
+    BACKWARD_WAYPOINTS_COUNT = 3
 
     def __init__(self, controller, start_tile, get_direction):
         self.__controller = controller
@@ -157,10 +160,19 @@ class MoveMode:
                                          control.engine_power_derivative)
             context.move.wheel_turn = (context.me.wheel_turn +
                                        control.wheel_turn_derivative)
-            context.move.brake = (
-                context.speed.norm() > target_speed.norm() and
-                abs(control.engine_power_derivative) >
-                context.game.car_engine_power_change_per_tick)
+            if (target_speed.norm() == 0 or
+                (context.speed.norm() > 5 and
+                 (context.speed.norm() > target_speed.norm() and
+                  context.speed.cos(target_speed) >= 0 or
+                  context.speed.cos(target_speed) < 0))):
+                if context.speed.cos(context.direction) >= 0:
+                    context.move.brake = (
+                        -context.game.car_engine_power_change_per_tick >
+                        control.engine_power_derivative)
+                else:
+                    context.move.brake = (
+                        context.game.car_engine_power_change_per_tick >
+                        control.engine_power_derivative)
         context.move.spill_oil = True
         context.move.throw_projectile = True
         sub_path = self.__path[:self.PATH_SIZE_FOR_USE_NITRO]
@@ -210,7 +222,7 @@ class BaseMove:
                  1.5 * max(context.me.width, context.me.height) / 2)
         path = list(adjust_path(path, shift))
         path = list(shift_on_direct(path))
-        return [(path[1] + path[2]) / 2] + path[2:]
+        return path
 
     def _waypoints(self, next_waypoint_index, waypoints):
         raise NotImplementedError()
@@ -221,6 +233,10 @@ class ForwardMove(BaseMove):
         super().__init__(start_tile, get_direction)
         self.__waypoints_count = waypoints_count
 
+    def make_path(self, context: Context):
+        result = super().make_path(context)
+        return [(result[1] + result[2]) / 2] + result[2:]
+
     def _waypoints(self, next_waypoint_index, waypoints):
         end = next_waypoint_index + self.__waypoints_count
         result = waypoints[next_waypoint_index:end]
@@ -230,17 +246,20 @@ class ForwardMove(BaseMove):
         return result
 
 
-class BackwardMove(ForwardMove):
+class BackwardMove(BaseMove):
     def __init__(self, start_tile, get_direction, waypoints_count):
-        super().__init__(start_tile, get_direction, waypoints_count)
+        super().__init__(start_tile, get_direction)
         self.__waypoints_count = waypoints_count
         self.__begin = None
 
     def make_path(self, context: Context):
-        first = (context.position -
-                 self.get_direction().normalized() *
-                 context.game.track_tile_size)
-        return [first] + super().make_path(context)
+        result = super().make_path(context)[1:]
+        if context.speed.norm() < 1:
+            first = (context.position -
+                     self.get_direction().normalized() *
+                     context.game.track_tile_size)
+            result = [first] + result
+        return result
 
     def _waypoints(self, next_waypoint_index, waypoints):
         if self.__begin is None:
