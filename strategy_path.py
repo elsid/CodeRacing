@@ -3,6 +3,8 @@ from collections import namedtuple
 from itertools import islice, chain
 from numpy import array
 from scipy.sparse.csgraph import dijkstra
+from collections import defaultdict, deque
+from heapq import heappop, heappush
 from model.TileType import TileType
 from strategy_common import Point
 
@@ -312,3 +314,105 @@ class AdjacencyMatrix:
     @property
     def values(self):
         return self.__values
+
+
+# def make_tiles_path(start_tile, waypoints, tiles, direction):
+#     row_size = len(tiles[0])
+#     graph = make_graph(tiles)
+#
+#     def generate():
+#         first = waypoints[0]
+#         yield shortest_path(graph, get_point_index(start_tile, row_size),
+#                             get_index(first[0], first[1], row_size))
+#         for i, p in islice(enumerate(waypoints), len(waypoints) - 1):
+#             src = get_index(p[0], p[1], row_size)
+#             following = waypoints[i + 1]
+#             dst = get_index(following[0], following[1], row_size)
+#             yield shortest_path(graph, src, dst)
+#
+#     yield start_tile
+#     for v in chain.from_iterable(generate()):
+#         yield v
+#
+#
+# def make_graph(tiles):
+#     column_size = len(tiles)
+#     row_size = len(tiles[0])
+#
+#     def left(pos):
+#         return get_index(pos.x - 1, pos.y, row_size)
+#
+#     def right(pos):
+#         return get_index(pos.x + 1, pos.y, row_size)
+#
+#     def top(pos):
+#         return get_index(pos.x, pos.y - 1, row_size)
+#
+#     def bottom(pos):
+#         return get_index(pos.x, pos.y + 1, row_size)
+#
+#     def tile_neighbors(pos, tile_type):
+#         if tile_type == TileType.VERTICAL:
+#             return top(pos), bottom(pos)
+#         elif tile_type == TileType.HORIZONTAL:
+#             return left(pos), right(pos)
+#         elif tile_type == TileType.LEFT_TOP_CORNER:
+#             return right(pos), bottom(pos)
+#         elif tile_type == TileType.RIGHT_TOP_CORNER:
+#             return left(pos), bottom(pos)
+#         elif tile_type == TileType.LEFT_BOTTOM_CORNER:
+#             return right(pos), top(pos)
+#         elif tile_type == TileType.RIGHT_BOTTOM_CORNER:
+#             return left(pos), top(pos)
+#         elif tile_type == TileType.LEFT_HEADED_T:
+#             return left(pos), top(pos), bottom(pos)
+#         elif tile_type == TileType.RIGHT_HEADED_T:
+#             return right(pos), top(pos), bottom(pos)
+#         elif tile_type == TileType.TOP_HEADED_T:
+#             return top(pos), left(pos), right(pos)
+#         elif tile_type == TileType.BOTTOM_HEADED_T:
+#             return bottom(pos), left(pos), right(pos)
+#         elif tile_type == TileType.CROSSROADS:
+#             return left(pos), right(pos), top(pos), bottom(pos)
+#         else:
+#             return tuple()
+#
+#     result = Graph(frozenset(range(column_size * row_size)))
+#     for x, column in enumerate(tiles):
+#         for y, tile in enumerate(column):
+#             for neighbor in tile_neighbors(Point(x, y), tile):
+#                 result.add_edge(get_index(x, y, row_size), neighbor, 1)
+#     return result
+#
+#
+# def get_point_index(point, row_size):
+#     return get_index(point.x, point.y, row_size)
+#
+#
+# def get_index(x, y, row_size):
+#     return x * row_size + y
+#
+#
+# def shortest_path(src, dst, direction):
+#     queue = [(0, src, direction)]
+#     distances = {src: 0}
+#     previous_nodes = {}
+#     while queue:
+#         distance, vertex, direction = heappop(queue)
+#         for neighbor in vertex.neighbors:
+#             direction_to = neighbor - vertex
+#             distance_to = distance + (2 - direction.cos(direction_to))
+#             heappush(queue, (direction_to, neighbor, distance_to))
+#             if distance_to < distances.get(neighbor, float('inf')):
+#                 distances[neighbor] = distance_to
+#                 previous_nodes[neighbor] = vertex
+#     result = deque()
+#     vertex = dst
+#     while True:
+#         previous_nodes = previous_nodes.get(vertex)
+#         if previous_nodes is None:
+#             break
+#         result.appendleft(previous_nodes)
+#         vertex = previous_nodes
+#     result.append(src)
+#     return result

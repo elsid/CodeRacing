@@ -18,6 +18,10 @@ from strategy_path import (
     PointType,
     point_type,
     adjust_path_point,
+    make_tiles_path,
+    # shortest_path,
+    # Graph,
+    # make_graph,
 )
 
 
@@ -454,3 +458,60 @@ class MakePathTest(TestCase):
             waypoints=[[0, 1], [0, 2], [0, 3]])
         assert_that(list(path),
                     equal_to([Point(0, 1), Point(0, 2), Point(0, 3)]))
+
+
+class MakeTilesPathTest(TestCase):
+    def test_from_vertical_to_next_vertical_returns_first_and_second_point(self):
+        result = make_tiles_path(
+            start_tile=Point(0, 1),
+            waypoints=[[0, 1], [0, 2]],
+            tiles=[
+                [TileType.EMPTY, TileType.VERTICAL,
+                 TileType.VERTICAL, TileType.EMPTY],
+            ],
+            direction=Point(1, 0),
+        )
+        assert_that(list(result), equal_to([Point(0, 1), Point(0, 2)]))
+
+    def test_over_three_vertical_returns_three_points(self):
+        result = make_tiles_path(
+            start_tile=Point(0, 1),
+            tiles=[
+                [TileType.EMPTY,
+                 TileType.VERTICAL, TileType.VERTICAL, TileType.VERTICAL,
+                 TileType.EMPTY],
+            ],
+            direction=Point(1, 0),
+            waypoints=[[0, 1], [0, 2], [0, 3]],
+        )
+        assert_that(list(result),
+                    equal_to([Point(0, 1), Point(0, 2), Point(0, 3)]))
+
+
+# class MakeGraphTest(TestCase):
+#     def test_for_two_vertical_between_empty(self):
+#         result = make_graph(
+#             tiles=[
+#                 [TileType.EMPTY, TileType.VERTICAL,
+#                  TileType.VERTICAL, TileType.EMPTY],
+#             ],
+#         )
+#         assert_that(result.nodes, equal_to({0, 1, 2, 3}))
+#         assert_that(result.edges, equal_to({1: [0, 2], 2: [1, 3]}))
+#         assert_that(result.distances, equal_to({(1, 2): 1, (1, 0): 1,
+#                                                 (2, 1): 1, (2, 3): 1}))
+#
+#
+# class DijkstraWithsCostTest(TestCase):
+#     def test_example(self):
+#         graph = Graph({'A', 'B', 'C', 'D', 'E', 'F', 'G'})
+#         graph.add_edge('A', 'B', 10)
+#         graph.add_edge('A', 'C', 20)
+#         graph.add_edge('B', 'D', 15)
+#         graph.add_edge('C', 'D', 30)
+#         graph.add_edge('B', 'E', 50)
+#         graph.add_edge('D', 'E', 30)
+#         graph.add_edge('E', 'F', 5)
+#         graph.add_edge('F', 'G', 2)
+#         result = shortest_path(graph, 'A', 'D')
+#         assert_that(result, equal_to((25, ['B', 'D'])))
