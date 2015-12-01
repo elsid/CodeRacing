@@ -85,6 +85,11 @@ class Point:
     def __neg__(self):
         return Point(-self.x, -self.y)
 
+    def __lt__(self, other):
+        if self.x != other.x:
+            return self.x < other.x
+        return self.y < other.y
+
     @property
     def radius(self):
         return self.x
@@ -149,6 +154,9 @@ class Point:
 
     def projection(self, other):
         return other * self.dot(other) / other.norm()
+
+    def manhattan(self, other):
+        return abs(self.x - other.x) + abs(self.y - other.y)
 
 
 class Line:
