@@ -57,7 +57,7 @@ class ReleaseStrategy:
     def _lazy_init(self, context: Context):
         self.__stuck = StuckDetector(
             history_size=200,
-            stuck_distance=min(context.me.width, context.me.height) / 10,
+            stuck_distance=min(context.me.width, context.me.height) / 5,
             unstack_distance=context.game.track_tile_size / 2,
         )
         self.__direction = DirectionDetector(
@@ -85,10 +85,6 @@ class ReleaseStrategy:
             self._lazy_init(context)
             self.__first_move = False
         self.__direction.update(context.position)
-        if context.world.tick == 400:
-            self.__move_mode.use_backward()
-            self.__stuck.reset()
-            self.__controller.reset()
         self.__stuck.update(context.position)
         if self.__stuck.positive_check():
             self.__move_mode.switch()
