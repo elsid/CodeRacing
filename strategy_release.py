@@ -84,8 +84,9 @@ class ReleaseStrategy:
         if self.__first_move:
             self._lazy_init(context)
             self.__first_move = False
-        self.__direction.update(context.position)
-        self.__stuck.update(context.position)
+        if context.world.tick > context.game.initial_freeze_duration_ticks:
+            self.__stuck.update(context.position)
+            self.__direction.update(context.position)
         if self.__stuck.positive_check():
             self.__move_mode.switch()
             self.__stuck.reset()
