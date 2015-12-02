@@ -529,13 +529,13 @@ class ShortestPathWitDirectionTest(TestCase):
     def test_for_graph_with_one_node_without_arcs_returns_empty(self):
         graph = {0: Node(position=Point(0, 0), arcs=[])}
         result = shortest_path_with_direction(graph=graph, src=0, dst=0,
-                                              direction=Point(1, 0))
+                                              initial_direction=Point(1, 0))
         assert_that(list(result), equal_to([]))
 
     def test_for_graph_with_one_node_with_arc_returns_empty(self):
         graph = {0: Node(position=Point(0, 0), arcs=[Arc(dst=0, weight=1)])}
         result = shortest_path_with_direction(graph=graph, src=0, dst=0,
-                                              direction=Point(1, 0))
+                                              initial_direction=Point(1, 0))
         assert_that(list(result), equal_to([]))
 
     def test_for_graph_with_two_connected_nodes_returns_second(self):
@@ -544,7 +544,7 @@ class ShortestPathWitDirectionTest(TestCase):
             1: Node(position=Point(1, 0), arcs=[]),
         }
         result = shortest_path_with_direction(graph=graph, src=0, dst=1,
-                                              direction=Point(1, 0))
+                                              initial_direction=Point(1, 0))
         assert_that(list(result), equal_to([1]))
 
     def test_for_graph_with_two_disconnected_nodes_returns_empty(self):
@@ -553,7 +553,7 @@ class ShortestPathWitDirectionTest(TestCase):
             1: Node(position=Point(1, 0), arcs=[]),
         }
         result = shortest_path_with_direction(graph=graph, src=0, dst=1,
-                                              direction=Point(1, 0))
+                                              initial_direction=Point(1, 0))
         assert_that(list(result), equal_to([]))
 
     def test_for_quadrant_from_left_top_to_right_bottom_with_direction_to_right_returns_path_over_right_top(self):
@@ -565,7 +565,7 @@ class ShortestPathWitDirectionTest(TestCase):
             3: Node(position=Point(1, 1), arcs=[]),
         }
         result = shortest_path_with_direction(graph=graph, src=0, dst=3,
-                                              direction=Point(1, 0))
+                                              initial_direction=Point(1, 0))
         assert_that(list(result), equal_to([2, 3]))
 
     def test_for_quadrant_from_left_top_to_right_bottom_with_direction_to_bottom_returns_path_over_left_bottom(self):
@@ -577,7 +577,7 @@ class ShortestPathWitDirectionTest(TestCase):
             3: Node(position=Point(1, 1), arcs=[]),
         }
         result = shortest_path_with_direction(graph=graph, src=0, dst=3,
-                                              direction=Point(0, 1))
+                                              initial_direction=Point(0, 1))
         assert_that(list(result), equal_to([1, 3]))
 
     def test_for_quadrant_from_left_top_to_right_top_with_direction_to_bottom_returns_path_direct_to_right_top(self):
@@ -589,5 +589,63 @@ class ShortestPathWitDirectionTest(TestCase):
             3: Node(position=Point(1, 1), arcs=[Arc(dst=2, weight=1)]),
         }
         result = shortest_path_with_direction(graph=graph, src=0, dst=2,
-                                              direction=Point(0, 1))
+                                              initial_direction=Point(0, 1))
         assert_that(list(result), equal_to([2]))
+
+    def test_for_graph_with_two_alternatives_with_initial_direction_to_right_bottom_returns_over_bottom(self):
+        graph = {
+            0: Node(position=Point(0, 1), arcs=[Arc(dst=1, weight=1),
+                                                Arc(dst=2, weight=1)]),
+            1: Node(position=Point(0, 0), arcs=[Arc(dst=3, weight=1)]),
+            2: Node(position=Point(0, 2), arcs=[Arc(dst=4, weight=1)]),
+            3: Node(position=Point(1, 0), arcs=[Arc(dst=5, weight=1)]),
+            4: Node(position=Point(1, 2), arcs=[Arc(dst=5, weight=1)]),
+            5: Node(position=Point(1, 1), arcs=[]),
+        }
+        result = shortest_path_with_direction(graph=graph, src=0, dst=5,
+                                              initial_direction=Point(1, -1))
+        assert_that(list(result), equal_to([1, 3, 5]))
+
+    def test_for_graph_with_two_alternatives_with_initial_direction_to_right_top_returns_over_top(self):
+        graph = {
+            0: Node(position=Point(0, 1), arcs=[Arc(dst=1, weight=1),
+                                                Arc(dst=2, weight=1)]),
+            1: Node(position=Point(0, 0), arcs=[Arc(dst=3, weight=1)]),
+            2: Node(position=Point(0, 2), arcs=[Arc(dst=4, weight=1)]),
+            3: Node(position=Point(1, 0), arcs=[Arc(dst=5, weight=1)]),
+            4: Node(position=Point(1, 2), arcs=[Arc(dst=5, weight=1)]),
+            5: Node(position=Point(1, 1), arcs=[]),
+        }
+        result = shortest_path_with_direction(graph=graph, src=0, dst=5,
+                                              initial_direction=Point(1, 1))
+        assert_that(list(result), equal_to([2, 4, 5]))
+
+    def test_for_graph_with_1(self):
+        graph = {
+            0: Node(position=Point(0, 1), arcs=[Arc(dst=1, weight=0),
+                                                Arc(dst=2, weight=0)]),
+            1: Node(position=Point(0, 0), arcs=[Arc(dst=3, weight=0)]),
+            2: Node(position=Point(0, 2), arcs=[Arc(dst=4, weight=0)]),
+            3: Node(position=Point(1, 0), arcs=[Arc(dst=5, weight=0)]),
+            4: Node(position=Point(1, 2), arcs=[Arc(dst=6, weight=0)]),
+            5: Node(position=Point(1, 1), arcs=[Arc(dst=6, weight=0)]),
+            6: Node(position=Point(2, 2), arcs=[]),
+        }
+        result = shortest_path_with_direction(graph=graph, src=0, dst=6,
+                                              initial_direction=Point(1, -1))
+        assert_that(list(result), equal_to([1, 3, 5, 6]))
+
+    def test_for_graph_with_2(self):
+        graph = {
+            0: Node(position=Point(0, 1), arcs=[Arc(dst=1, weight=0),
+                                                Arc(dst=2, weight=0)]),
+            1: Node(position=Point(0, 0), arcs=[Arc(dst=3, weight=0)]),
+            2: Node(position=Point(0, 2), arcs=[Arc(dst=4, weight=0)]),
+            3: Node(position=Point(1, 0), arcs=[Arc(dst=5, weight=0)]),
+            4: Node(position=Point(1, 2), arcs=[Arc(dst=6, weight=0)]),
+            5: Node(position=Point(1, 1), arcs=[Arc(dst=6, weight=0)]),
+            6: Node(position=Point(2, 2), arcs=[]),
+        }
+        result = shortest_path_with_direction(graph=graph, src=0, dst=6,
+                                              initial_direction=Point(1, 1))
+        assert_that(list(result), equal_to([2, 4, 6]))

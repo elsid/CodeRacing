@@ -410,27 +410,44 @@ def get_point(index, row_size):
     return Point(int(index / row_size), index % row_size)
 
 
-def shortest_path_with_direction(graph, src, dst, direction):
-    queue = [(0, src, direction)]
+def shortest_path_with_direction(graph, src, dst, initial_direction):
+    queue = [(0, src, initial_direction.normalized())]
     distances = {src: 0}
     previous_nodes = {}
     visited = defaultdict(list)
+    print(initial_direction, graph[src])
     while queue:
         distance, node_index, direction = heappop(queue)
         visited[node_index].append(direction)
         node = graph[node_index]
+        previous = previous_nodes.get(node_index)
+        # previous_position = (initial_direction.normalized()
+        #                      if previous is None else graph[previous].position)
         for neighbor_index, weight in node.arcs:
-            direction_to = graph[neighbor_index].position - node.position
-            if direction_to in visited[neighbor_index]:
+            direction_from = graph[neighbor_index].position - node.position
+            if direction_from in visited[neighbor_index]:
                 continue
+            # direction_to = node.position - previous_position
+            new_direction = direction_from
+            # new_direction = (direction_from + direction_to) / 2
+            # if new_direction.norm() == 0:
+            #     new_direction = direction_from
             current_distance = distances.get(neighbor_index, float('inf'))
-            distance_to = distance + weight
-            if direction_to.norm() > 0:
-                distance_to += 1 - direction.cos(direction_to)
-            if distance_to < current_distance:
-                distances[neighbor_index] = distance_to
+            new_distance = distance
+            if new_direction.norm() > 0:
+                new_distance += 1 - direction.cos(new_direction)
+            # if direction_to.norm() > 0:
+            #     new_distance += 1 - direction.cos(direction_to)
+            # if direction_from.norm() > 0:
+            #     new_distance += 1 - direction.cos(direction_from)
+            # if direction_to.norm() > 0 and direction_from.norm() > 0:
+            #     new_distance += 1 - direction_to.cos(direction_from)
+            # print(node_index, neighbor_index, current_distance, new_distance, direction_to, direction_from)
+            if new_distance < current_distance:
+                distances[neighbor_index] = new_distance
                 previous_nodes[neighbor_index] = node_index
-                heappush(queue, (distance_to, neighbor_index, direction_to))
+                heappush(queue, (new_distance, neighbor_index, new_direction))
+    # print(distances)
     result = deque()
     node_index = dst
     while node_index is not None:
