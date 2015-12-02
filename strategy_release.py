@@ -141,35 +141,36 @@ class MoveMode:
         sub_path = self.__path[:self.PATH_SIZE_FOR_TARGET_SPEED]
         target_speed = get_target_speed(context.position, target_position,
                                         sub_path)
-        if target_speed.norm() > 0:
-            course = target_position - context.position
-            control = self.__controller(
-                course=course,
-                angle=context.me.angle,
-                direct_speed=context.speed,
-                angular_speed_angle=context.me.angular_speed,
-                engine_power=context.me.engine_power,
-                wheel_turn=context.me.wheel_turn,
-                target_speed=target_speed,
-                tick=context.world.tick,
-            )
-            context.move.engine_power = (context.me.engine_power +
-                                         control.engine_power_derivative)
-            context.move.wheel_turn = (context.me.wheel_turn +
-                                       control.wheel_turn_derivative)
-            if (target_speed.norm() == 0 or
-                (context.speed.norm() > 5 and
-                 (context.speed.norm() > target_speed.norm() and
-                  context.speed.cos(target_speed) >= 0 or
-                  context.speed.cos(target_speed) < 0))):
-                if context.speed.cos(context.direction) >= 0:
-                    context.move.brake = (
-                        -context.game.car_engine_power_change_per_tick >
-                        control.engine_power_derivative)
-                else:
-                    context.move.brake = (
-                        context.game.car_engine_power_change_per_tick >
-                        control.engine_power_derivative)
+        if target_speed.norm() == 0:
+            return
+        course = target_position - context.position
+        control = self.__controller(
+            course=course,
+            angle=context.me.angle,
+            direct_speed=context.speed,
+            angular_speed_angle=context.me.angular_speed,
+            engine_power=context.me.engine_power,
+            wheel_turn=context.me.wheel_turn,
+            target_speed=target_speed,
+            tick=context.world.tick,
+        )
+        context.move.engine_power = (context.me.engine_power +
+                                     control.engine_power_derivative)
+        context.move.wheel_turn = (context.me.wheel_turn +
+                                   control.wheel_turn_derivative)
+        if (target_speed.norm() == 0 or
+            (context.speed.norm() > 5 and
+             (context.speed.norm() > target_speed.norm() and
+              context.speed.cos(target_speed) >= 0 or
+              context.speed.cos(target_speed) < 0))):
+            if context.speed.cos(context.direction) >= 0:
+                context.move.brake = (
+                    -context.game.car_engine_power_change_per_tick >
+                    control.engine_power_derivative)
+            else:
+                context.move.brake = (
+                    context.game.car_engine_power_change_per_tick >
+                    control.engine_power_derivative)
         context.move.spill_oil = True
         context.move.throw_projectile = True
         sub_path = self.__path[:self.PATH_SIZE_FOR_USE_NITRO]
