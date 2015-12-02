@@ -207,11 +207,11 @@ def shift_to_borders(path):
     yield path[-1]
 
 
-def make_tiles_path(start_tile, waypoints,  tiles,
-                    direction):
-    matrix = AdjacencyMatrix(tiles, start_tile, direction)
-    tile_index = matrix.index(start_tile.x, start_tile.y)
-    return make_path(tile_index, matrix, waypoints)
+# def make_tiles_path(start_tile, waypoints,  tiles,
+#                     direction):
+#     matrix = AdjacencyMatrix(tiles, start_tile, direction)
+#     tile_index = matrix.index(start_tile.x, start_tile.y)
+#     return make_path(tile_index, matrix, waypoints)
 
 
 def make_path(start_index, matrix, waypoints):
@@ -316,15 +316,15 @@ class AdjacencyMatrix:
         return self.__values
 
 
-# def make_tiles_path(start_tile, waypoints, tiles, direction):
-#     row_size = len(tiles[0])
-#     start = get_point_index(start_tile, row_size)
-#     waypoints = [get_index(x[0], x[1], row_size) for x in waypoints]
-#     if start != waypoints[0]:
-#         waypoints = [start] + waypoints
-#     graph = make_graph(tiles)
-#     for x in multi_path(graph, waypoints, direction):
-#         yield get_point(x, row_size)
+def make_tiles_path(start_tile, waypoints, tiles, direction):
+    row_size = len(tiles[0])
+    start = get_point_index(start_tile, row_size)
+    waypoints = [get_index(x[0], x[1], row_size) for x in waypoints]
+    if start != waypoints[0]:
+        waypoints = [start] + waypoints
+    graph = make_graph(tiles)
+    for x in multi_path(graph, waypoints, direction):
+        yield get_point(x, row_size)
 
 
 def multi_path(graph, waypoints, direction):
@@ -415,8 +415,6 @@ def shortest_path_with_direction(graph, src, dst, direction):
     distances = {src: 0}
     previous_nodes = {}
     visited = defaultdict(list)
-    src_position = graph[src].position
-    # max_distances = shortest_distances(graph, src)
     while queue:
         distance, node_index, direction = heappop(queue)
         visited[node_index].append(direction)
@@ -426,21 +424,13 @@ def shortest_path_with_direction(graph, src, dst, direction):
             if direction_to in visited[neighbor_index]:
                 continue
             current_distance = distances.get(neighbor_index, float('inf'))
-            min_distance = (graph[neighbor_index].position
-                            .manhattan(src_position) + 1)
-            if current_distance <= min_distance:
-                continue
             distance_to = distance + weight
-            # if distance_to > 4 * min_distance:
-            #     continue
             if direction_to.norm() > 0:
                 distance_to += 1 - direction.cos(direction_to)
-            # if distance_to > 1.51 * max_distances[neighbor_index]:
-            #     continue
-            heappush(queue, (distance_to, neighbor_index, direction_to))
             if distance_to < current_distance:
                 distances[neighbor_index] = distance_to
                 previous_nodes[neighbor_index] = node_index
+                heappush(queue, (distance_to, neighbor_index, direction_to))
     result = deque()
     node_index = dst
     while node_index is not None:
@@ -450,16 +440,3 @@ def shortest_path_with_direction(graph, src, dst, direction):
     if result[0] != src:
         return []
     return islice(result, 1, len(result))
-
-
-def shortest_distances(graph, src):
-    distances = [float('inf')] * len(graph)
-    queue = [(0, src)]
-    while queue:
-        distance, node = heappop(queue)
-        if distances[node] == float('inf'):
-            distances[node] = distance
-            for neighbor, weight in graph[node].arcs:
-                if distances[neighbor] == float('inf'):
-                    heappush(queue, (distance + weight, neighbor))
-    return distances
