@@ -317,6 +317,9 @@ class AdjacencyMatrix:
 
 
 def make_tiles_path(start_tile, waypoints, tiles, direction):
+    print()
+    print('start_tile=', start_tile)
+    print('waypoints=', waypoints)
     row_size = len(tiles[0])
     start = get_point_index(start_tile, row_size)
     waypoints = [get_index(x[0], x[1], row_size) for x in waypoints]
@@ -394,7 +397,7 @@ def make_graph(tiles):
                 if neighbor is None:
                     neighbor = Node(get_point(index, row_size), [])
                     result[index] = neighbor
-                node.arcs.append(Arc(index, 1))
+                node.arcs.append(Arc(index, 0.1))
     return result
 
 
@@ -411,16 +414,21 @@ def get_point(index, row_size):
 
 
 def shortest_path_with_direction(graph, src, dst, initial_direction):
-    queue = [(0, src, initial_direction.normalized())]
+    initial_direction = initial_direction.normalized()
+    queue = [(0, src, initial_direction)]
     distances = {src: 0}
     previous_nodes = {}
     visited = defaultdict(list)
-    print(initial_direction, graph[src])
+    # print()
+    # print('graph=', graph)
+    # print('src=', src)
+    # print('dst=', dst)
+    # print('initial_direction=', initial_direction)
     while queue:
         distance, node_index, direction = heappop(queue)
         visited[node_index].append(direction)
         node = graph[node_index]
-        previous = previous_nodes.get(node_index)
+        # previous = previous_nodes.get(node_index)
         # previous_position = (initial_direction.normalized()
         #                      if previous is None else graph[previous].position)
         for neighbor_index, weight in node.arcs:
@@ -442,7 +450,7 @@ def shortest_path_with_direction(graph, src, dst, initial_direction):
             #     new_distance += 1 - direction.cos(direction_from)
             # if direction_to.norm() > 0 and direction_from.norm() > 0:
             #     new_distance += 1 - direction_to.cos(direction_from)
-            # print(node_index, neighbor_index, current_distance, new_distance, direction_to, direction_from)
+            # print(node_index, neighbor_index, current_distance, new_distance, new_direction)
             if new_distance < current_distance:
                 distances[neighbor_index] = new_distance
                 previous_nodes[neighbor_index] = node_index

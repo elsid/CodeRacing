@@ -208,12 +208,17 @@ class BaseMove:
     def make_path(self, context: Context):
         waypoints = self._waypoints(context.me.next_waypoint_index,
                                     context.world.waypoints)
+        direction = self.get_direction().normalized()
+        if context.speed.norm() > 0:
+            direction += context.speed.normalized()
         path = list(make_tiles_path(
-            start_tile=self.start_tile,
+            start_tile=context.tile,
             waypoints=waypoints,
             tiles=context.world.tiles_x_y,
-            direction=self.get_direction().normalized() + context.speed,
+            direction=direction,
         ))
+        if self.start_tile != path[0]:
+            path = [self.start_tile] + path
         path = [get_tile_center(x, context.game.track_tile_size) for x in path]
         shift = (context.game.track_tile_size / 2 -
                  context.game.track_tile_margin -
