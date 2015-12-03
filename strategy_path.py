@@ -1,12 +1,13 @@
 from enum import Enum
 from collections import namedtuple
-from itertools import islice, chain
+from itertools import islice, chain, groupby
 from numpy import array
+from sys import maxsize
 from scipy.sparse.csgraph import dijkstra
 from collections import defaultdict, deque
 from heapq import heappop, heappush
 from model.TileType import TileType
-from strategy_common import Point
+from strategy_common import Point, get_current_tile
 
 
 def adjust_path(path, shift):
@@ -317,17 +318,16 @@ class AdjacencyMatrix:
 
 
 def make_tiles_path(start_tile, waypoints, tiles, direction):
-    print()
-    print('start_tile=', start_tile)
-    print('waypoints=', waypoints)
     row_size = len(tiles[0])
     start = get_point_index(start_tile, row_size)
     waypoints = [get_index(x[0], x[1], row_size) for x in waypoints]
     if start != waypoints[0]:
         waypoints = [start] + waypoints
     graph = make_graph(tiles)
-    for x in multi_path(graph, waypoints, direction):
-        yield get_point(x, row_size)
+    graph = split_arcs(graph)
+    graph = add_diagonal_arcs(graph)
+    path = multi_path(graph, waypoints, direction)
+    return remove_split(list(graph[x].position for x in path))
 
 
 def multi_path(graph, waypoints, direction):
@@ -390,15 +390,70 @@ def make_graph(tiles):
     result = {}
     for x, column in enumerate(tiles):
         for y, tile in enumerate(column):
-            node = Node(Point(x, y), [])
+            position = Point(x, y)
+            node = Node(position, [])
             result[get_index(x, y, row_size)] = node
             for index in tile_arcs(node.position, tile):
                 neighbor = result.get(index)
                 if neighbor is None:
-                    neighbor = Node(get_point(index, row_size), [])
+                    neighbor_position = get_point(index, row_size)
+                    neighbor = Node(neighbor_position, [])
                     result[index] = neighbor
-                node.arcs.append(Arc(index, 0.1))
+                else:
+                    neighbor_position = neighbor.position
+                weight = position.distance(neighbor_position)
+                node.arcs.append(Arc(index, weight))
     return result
+
+
+def split_arcs(graph):
+    node_ids = iter(range(len(graph), maxsize))
+    middles = {}
+    result = {}
+    for index, node in graph.items():
+        for arc in node.arcs:
+            middle_id = middles.get((index, arc.dst))
+            dst = graph[arc.dst]
+            if middle_id is None:
+                if index not in result:
+                    result[index] = Node(node.position, [])
+                if arc.dst not in result:
+                    result[arc.dst] = Node(dst.position, [])
+                middle_id = next(node_ids)
+                middles[(arc.dst, index)] = middle_id
+                result[index].arcs.append(Arc(middle_id, arc.weight / 2))
+                result[arc.dst].arcs.append(Arc(middle_id, arc.weight / 2))
+            result[middle_id] = Node((node.position + dst.position) / 2,
+                                     [Arc(index, arc.weight / 2),
+                                      Arc(arc.dst, arc.weight / 2)])
+    return result
+
+
+def add_diagonal_arcs(graph):
+    def new_arcs():
+        result = defaultdict(list)
+        for index, node in graph.items():
+            arcs = zip(islice(node.arcs, len(node.arcs) - 1),
+                       islice(node.arcs, 1, len(node.arcs)))
+            for first_arc, second_arc in arcs:
+                first_node = graph[first_arc.dst]
+                second_node = graph[second_arc.dst]
+                first_direction = first_node.position - node.position
+                second_direction = second_node.position - node.position
+                distance = first_node.position.distance(second_node.position)
+                if ((first_arc.dst, second_arc.dst) not in result and
+                        (second_arc.dst, first_arc.dst) not in result and
+                        first_direction.cos(second_direction) >= 0):
+                    result[first_arc.dst].append(Arc(second_arc.dst, distance))
+                    result[second_arc.dst].append(Arc(first_arc.dst, distance))
+        return result
+
+    def generate():
+        arcs = new_arcs()
+        for index, node in graph.items():
+            yield index, Node(node.position, node.arcs + arcs[index])
+
+    return dict(generate())
 
 
 def get_point_index(point, row_size):
@@ -419,43 +474,22 @@ def shortest_path_with_direction(graph, src, dst, initial_direction):
     distances = {src: 0}
     previous_nodes = {}
     visited = defaultdict(list)
-    # print()
-    # print('graph=', graph)
-    # print('src=', src)
-    # print('dst=', dst)
-    # print('initial_direction=', initial_direction)
     while queue:
         distance, node_index, direction = heappop(queue)
         visited[node_index].append(direction)
         node = graph[node_index]
-        # previous = previous_nodes.get(node_index)
-        # previous_position = (initial_direction.normalized()
-        #                      if previous is None else graph[previous].position)
         for neighbor_index, weight in node.arcs:
             direction_from = graph[neighbor_index].position - node.position
-            if direction_from in visited[neighbor_index]:
+            if (direction_from in visited[neighbor_index] or
+                    direction_from.norm() == 0):
                 continue
-            # direction_to = node.position - previous_position
             new_direction = direction_from
-            # new_direction = (direction_from + direction_to) / 2
-            # if new_direction.norm() == 0:
-            #     new_direction = direction_from
             current_distance = distances.get(neighbor_index, float('inf'))
-            new_distance = distance
-            if new_direction.norm() > 0:
-                new_distance += 1 - direction.cos(new_direction)
-            # if direction_to.norm() > 0:
-            #     new_distance += 1 - direction.cos(direction_to)
-            # if direction_from.norm() > 0:
-            #     new_distance += 1 - direction.cos(direction_from)
-            # if direction_to.norm() > 0 and direction_from.norm() > 0:
-            #     new_distance += 1 - direction_to.cos(direction_from)
-            # print(node_index, neighbor_index, current_distance, new_distance, new_direction)
+            new_distance = distance + weight + 1 - direction.cos(new_direction)
             if new_distance < current_distance:
                 distances[neighbor_index] = new_distance
                 previous_nodes[neighbor_index] = node_index
                 heappush(queue, (new_distance, neighbor_index, new_direction))
-    # print(distances)
     result = deque()
     node_index = dst
     while node_index is not None:
@@ -465,3 +499,13 @@ def shortest_path_with_direction(graph, src, dst, initial_direction):
     if result[0] != src:
         return []
     return islice(result, 1, len(result))
+
+
+def remove_split(path):
+    def generate():
+        for i, p in islice(enumerate(path), len(path) - 1):
+            middle = (p + path[i + 1]) / 2
+            yield get_current_tile(middle, 1)
+        yield path[-1]
+
+    return (x[0] for x in groupby(generate()))

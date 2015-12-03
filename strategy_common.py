@@ -46,42 +46,6 @@ class Point:
         else:
             return Point(self.x / other, self.y / other)
 
-    def __iadd__(self, other):
-        if isinstance(other, Point):
-            self.x += other.x
-            self.y += other.y
-        else:
-            self.x += other
-            self.y += other
-        return self
-
-    def __isub__(self, other):
-        if isinstance(other, Point):
-            self.x -= other.x
-            self.y -= other.y
-        else:
-            self.x -= other
-            self.y -= other
-        return self
-
-    def __imul__(self, other):
-        if isinstance(other, Point):
-            self.x *= other.x
-            self.y *= other.y
-        else:
-            self.x *= other
-            self.y *= other
-        return self
-
-    def __itruediv__(self, other):
-        if isinstance(other, Point):
-            self.x /= other.x
-            self.y /= other.y
-        else:
-            self.x /= other
-            self.y /= other
-        return self
-
     def __neg__(self):
         return Point(-self.x, -self.y)
 

@@ -101,7 +101,7 @@ class ReleaseStrategy:
 class MoveMode:
     PATH_SIZE_FOR_TARGET_SPEED = 3
     PATH_SIZE_FOR_USE_NITRO = 5
-    FORWARD_WAYPOINTS_COUNT = 4
+    FORWARD_WAYPOINTS_COUNT = 5
     BACKWARD_WAYPOINTS_COUNT = 3
 
     def __init__(self, controller, start_tile, get_direction):
@@ -210,7 +210,7 @@ class BaseMove:
                                     context.world.waypoints)
         direction = self.get_direction().normalized()
         if context.speed.norm() > 0:
-            direction += context.speed.normalized()
+            direction = direction + context.speed.normalized()
         path = list(make_tiles_path(
             start_tile=context.tile,
             waypoints=waypoints,
