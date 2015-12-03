@@ -26,6 +26,9 @@ from strategy_path import (
     Arc,
     split_arcs,
     add_diagonal_arcs,
+    shift_on_direct,
+    shift_on_direct_x,
+    shift_on_direct_y,
 )
 
 
@@ -723,3 +726,31 @@ class AddDiagonalArcsTest(TestCase):
                           Arc(dst=5, weight=sqrt(2) / 2),
                           Arc(dst=6, weight=sqrt(2) / 2)]),
         }))
+
+
+class ShiftOnDirectXTest(TestCase):
+    def test(self):
+        last, points = shift_on_direct_x([Point(0, 0), Point(0, 1),
+                                          Point(1, 2)])
+        assert_that(last, equal_to(2))
+        assert_that(list(points), equal_to([Point(1, 0), Point(1, 1)]))
+
+
+class ShiftOnDirectYTest(TestCase):
+    def test(self):
+        last, points = shift_on_direct_y([Point(0, 0), Point(1, 0),
+                                          Point(2, 1)])
+        assert_that(last, equal_to(2))
+        assert_that(list(points), equal_to([Point(0, 1), Point(1, 1)]))
+
+
+class ShiftOnDirectTest(TestCase):
+    def test(self):
+        result = shift_on_direct([
+            Point(0, 0), Point(1, 0), Point(2, 0), Point(3, 1),
+            Point(3, 2), Point(3, 3), Point(3, 4), Point(4, 5),
+        ])
+        assert_that(list(result), equal_to([
+            Point(0, 0), Point(1, 1), Point(2, 1), Point(3, 1),
+            Point(4, 2), Point(4, 3), Point(4, 4), Point(4, 5),
+        ]))

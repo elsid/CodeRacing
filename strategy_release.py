@@ -70,6 +70,8 @@ class ReleaseStrategy:
             start_tile=context.tile,
             controller=self.__controller,
             get_direction=self.__direction,
+            waypoints_count=(len(context.world.waypoints) *
+                             context.game.lap_count)
         )
 
     @property
@@ -104,17 +106,17 @@ class MoveMode:
     FORWARD_WAYPOINTS_COUNT = 5
     BACKWARD_WAYPOINTS_COUNT = 3
 
-    def __init__(self, controller, start_tile, get_direction):
+    def __init__(self, controller, start_tile, get_direction, waypoints_count):
         self.__controller = controller
         self.__path = []
         self.__tile = None
         self.__target_position = None
-        self.__forward = ForwardMove(
+        self.__forward = ForwardPathBuilder(
             start_tile=start_tile,
             get_direction=get_direction,
-            waypoints_count=self.FORWARD_WAYPOINTS_COUNT,
+            waypoints_count=waypoints_count,
         )
-        self.__backward = BackwardMove(
+        self.__backward = BackwardPathBuilder(
             start_tile=start_tile,
             get_direction=get_direction,
             waypoints_count=self.BACKWARD_WAYPOINTS_COUNT,
@@ -134,13 +136,12 @@ class MoveMode:
         return self.__current == self.__backward
 
     def move(self, context: Context):
-        if not self.__path or self.__tile != context.tile:
-            self.__path = self.__current.make_path(context)
+        self.__update_path(context)
         target_position = (Polyline([context.position] + self.__path)
-                           .at(context.game.track_tile_size))
-        sub_path = self.__path[:self.PATH_SIZE_FOR_TARGET_SPEED]
+                           .at(0.6 * context.game.track_tile_size))
+        speed_path = self.__path[:self.PATH_SIZE_FOR_TARGET_SPEED]
         target_speed = get_target_speed(context.position, target_position,
-                                        sub_path)
+                                        speed_path)
         if target_speed.norm() == 0:
             return
         course = target_position - context.position
@@ -159,7 +160,7 @@ class MoveMode:
         context.move.wheel_turn = (context.me.wheel_turn +
                                    control.wheel_turn_derivative)
         if (target_speed.norm() == 0 or
-            (context.speed.norm() > 5 and
+            (context.speed.norm() > 0 and
              (context.speed.norm() > target_speed.norm() and
               context.speed.cos(target_speed) >= 0 or
               context.speed.cos(target_speed) < 0))):
@@ -173,13 +174,12 @@ class MoveMode:
                     control.engine_power_derivative)
         context.move.spill_oil = True
         context.move.throw_projectile = True
-        sub_path = self.__path[:self.PATH_SIZE_FOR_USE_NITRO]
-        if self.__path[0].distance(context.position) > 0:
-            sub_path = [context.position] + sub_path
+        nitro_path = ([context.position] +
+                      self.__path[:self.PATH_SIZE_FOR_USE_NITRO])
         context.move.use_nitro = (
             context.world.tick > context.game.initial_freeze_duration_ticks and
-            len(sub_path) >= self.PATH_SIZE_FOR_USE_NITRO + 1 and
-            0.95 < (cos_product(sub_path)))
+            len(nitro_path) >= self.PATH_SIZE_FOR_USE_NITRO + 1 and
+            0.95 < (cos_product(nitro_path)))
         self.__target_position = target_position
         self.__tile = context.tile
         self.__backward.start_tile = context.tile
@@ -199,13 +199,23 @@ class MoveMode:
         else:
             self.use_forward()
 
+    def __update_path(self, context: Context):
+        if (not self.__path or
+                context.position.distance(self.__path[0]) >
+                2 * context.game.track_tile_size):
+            self.__path = self.__current.make(context)
+        while (self.__path and
+               context.position.distance(self.__path[0]) <
+               0.6 * context.game.track_tile_size):
+            self.__path = self.__path[1:]
 
-class BaseMove:
+
+class BasePathBuilder:
     def __init__(self, start_tile, get_direction):
         self.start_tile = start_tile
         self.get_direction = get_direction
 
-    def make_path(self, context: Context):
+    def make(self, context: Context):
         waypoints = self._waypoints(context.me.next_waypoint_index,
                                     context.world.waypoints)
         direction = self.get_direction().normalized()
@@ -219,10 +229,11 @@ class BaseMove:
         ))
         if self.start_tile != path[0]:
             path = [self.start_tile] + path
-        path = [get_tile_center(x, context.game.track_tile_size) for x in path]
+        path = [(x + Point(0.5, 0.5)) * context.game.track_tile_size
+                for x in path]
         shift = (context.game.track_tile_size / 2 -
                  context.game.track_tile_margin -
-                 1.5 * max(context.me.width, context.me.height) / 2)
+                 max(context.me.width, context.me.height))
         path = list(adjust_path(path, shift))
         path = list(shift_on_direct(path))
         return path
@@ -231,32 +242,34 @@ class BaseMove:
         raise NotImplementedError()
 
 
-class ForwardMove(BaseMove):
+class ForwardPathBuilder(BasePathBuilder):
     def __init__(self, start_tile, get_direction, waypoints_count):
         super().__init__(start_tile, get_direction)
         self.__waypoints_count = waypoints_count
 
-    def make_path(self, context: Context):
-        result = super().make_path(context)
-        return [(result[1] + result[2]) / 2] + result[2:]
+    # def make(self, context: Context):
+    #     result = super().make(context)
+    #     return [(result[1] + result[2]) / 2] + result[2:]
 
     def _waypoints(self, next_waypoint_index, waypoints):
         end = next_waypoint_index + self.__waypoints_count
         result = waypoints[next_waypoint_index:end]
         left = self.__waypoints_count - len(result)
-        if left > 0:
-            result += waypoints[:left]
+        while left > 0:
+            add = waypoints[:left]
+            result += add
+            left -= len(add)
         return result
 
 
-class BackwardMove(BaseMove):
+class BackwardPathBuilder(BasePathBuilder):
     def __init__(self, start_tile, get_direction, waypoints_count):
         super().__init__(start_tile, get_direction)
         self.__waypoints_count = waypoints_count
         self.__begin = None
 
-    def make_path(self, context: Context):
-        result = super().make_path(context)[1:]
+    def make(self, context: Context):
+        result = super().make(context)[1:]
         if context.speed.norm() < 1:
             first = (context.position -
                      self.get_direction().normalized() *
@@ -273,6 +286,8 @@ class BackwardMove(BaseMove):
         begin = self.__begin
         result = list(reversed(waypoints[:begin][-self.__waypoints_count:]))
         left = self.__waypoints_count - len(result)
-        if left > 0:
-            result += list(reversed(waypoints[-left:]))
+        while left > 0:
+            add = list(reversed(waypoints[-left:]))
+            result += add
+            left -= len(add)
         return result

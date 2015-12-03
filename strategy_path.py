@@ -181,21 +181,43 @@ def reduce_base_on_three(path, need_reduce):
 def shift_on_direct(path):
     if len(path) < 2:
         return (x for x in path)
-    if path[0].x == path[1].x:
-        last = next((i for i, p in islice(enumerate(path), 1, len(path))
-                    if p.x != path[i - 1].x), len(path) - 1)
-        x = path[last].x
-        if x != path[0].x:
-            return chain((Point(x, p.y) for p in islice(path, last)),
-                         islice(path, last, len(path) - 1))
-    elif path[0].y == path[1].y:
-        last = next((i for i, p in islice(enumerate(path), 1, len(path))
-                    if p.y != path[i - 1].y), len(path) - 1)
-        y = path[last].y
-        if y != path[0].y:
-            return chain((Point(p.x, y) for p in islice(path, last)),
-                         islice(path, last, len(path) - 1))
-    return (x for x in path)
+    last = 1
+    yield path[0]
+    while last < len(path) - 1:
+        if (path[last - 1].x == path[last].x and
+                path[last].x == path[last + 1].x):
+            shift, points = shift_on_direct_x(path[last:])
+            last += shift
+            for p in points:
+                yield p
+        elif (path[last - 1].y == path[last].y and
+                path[last].y == path[last + 1].y):
+            shift, points = shift_on_direct_y(path[last:])
+            last += shift
+            for p in points:
+                yield p
+        yield path[last]
+        last += 1
+    if last < len(path):
+        yield path[last]
+
+
+def shift_on_direct_x(path):
+    last = next((i for i, p in islice(enumerate(path), 1, len(path))
+                if p.x != path[i - 1].x), len(path) - 1)
+    x = path[last].x
+    if x != path[0].x:
+        return last, (Point(x, p.y) for p in islice(path, last))
+    return last, (p for p in path)
+
+
+def shift_on_direct_y(path):
+    last = next((i for i, p in islice(enumerate(path), 1, len(path))
+                 if p.y != path[i - 1].y), len(path) - 1)
+    y = path[last].y
+    if y != path[0].y:
+        return last, (Point(p.x, y) for p in islice(path, last))
+    return last, (p for p in path)
 
 
 def shift_to_borders(path):
@@ -327,7 +349,7 @@ def make_tiles_path(start_tile, waypoints, tiles, direction):
     graph = split_arcs(graph)
     graph = add_diagonal_arcs(graph)
     path = multi_path(graph, waypoints, direction)
-    return remove_split(list(graph[x].position for x in path))
+    return remove_split(list(graph[x].position + Point(0.5, 0.5) for x in path))
 
 
 def multi_path(graph, waypoints, direction):
@@ -506,6 +528,5 @@ def remove_split(path):
         for i, p in islice(enumerate(path), len(path) - 1):
             middle = (p + path[i + 1]) / 2
             yield get_current_tile(middle, 1)
-        yield path[-1]
 
     return (x[0] for x in groupby(generate()))
