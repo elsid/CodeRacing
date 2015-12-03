@@ -54,7 +54,7 @@ class ReleaseStrategy:
         self.__first_move = True
         self.__make_controller = make_controller
 
-    def _lazy_init(self, context: Context):
+    def __lazy_init(self, context: Context):
         self.__stuck = StuckDetector(
             history_size=300,
             stuck_distance=min(context.me.width, context.me.height) / 5,
@@ -83,21 +83,26 @@ class ReleaseStrategy:
         return self.__move_mode.target_position
 
     def move(self, context: Context):
-        if self.__first_move:
-            self._lazy_init(context)
-            self.__first_move = False
-        if context.world.tick > context.game.initial_freeze_duration_ticks:
-            self.__stuck.update(context.position)
-            self.__direction.update(context.position)
-        if self.__stuck.positive_check():
-            self.__move_mode.switch()
-            self.__stuck.reset()
-            self.__controller.reset()
-        elif self.__move_mode.is_backward() and self.__stuck.negative_check():
-            self.__move_mode.use_forward()
-            self.__stuck.reset()
-            self.__controller.reset()
-        self.__move_mode.move(context)
+        try:
+            if self.__first_move:
+                self.__lazy_init(context)
+                self.__first_move = False
+            if context.world.tick > context.game.initial_freeze_duration_ticks:
+                self.__stuck.update(context.position)
+                self.__direction.update(context.position)
+            if self.__stuck.positive_check():
+                self.__move_mode.switch()
+                self.__stuck.reset()
+                self.__controller.reset()
+            elif self.__move_mode.is_backward() and self.__stuck.negative_check():
+                self.__move_mode.use_forward()
+                self.__stuck.reset()
+                self.__controller.reset()
+            self.__move_mode.move(context)
+        except Exception:
+            self.__lazy_init(context)
+        except BaseException:
+            self.__lazy_init(context)
 
 
 class MoveMode:

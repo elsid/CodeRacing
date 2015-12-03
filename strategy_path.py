@@ -341,11 +341,8 @@ class AdjacencyMatrix:
 
 def make_tiles_path(start_tile, waypoints, tiles, direction):
     graph = make_graph(tiles)
-    verify_graph(graph, 'make_graph')
     graph = split_arcs(graph)
-    verify_graph(graph, 'split_arcs')
     graph = add_diagonal_arcs(graph)
-    verify_graph(graph, 'add_diagonal_arcs')
     row_size = len(tiles[0])
     start = get_point_index(start_tile, row_size)
     waypoints = [get_index(x[0], x[1], row_size) for x in waypoints]
@@ -495,8 +492,6 @@ def get_point(index, row_size):
 
 
 def shortest_path_with_direction(graph, src, dst, initial_direction):
-    assert src in graph, 'src %s not in graph %s' % (src, graph)
-    assert dst in graph, 'dst %s not in graph %s' % (dst, graph)
     initial_direction = initial_direction.normalized()
     queue = [(0, src, initial_direction)]
     distances = {src: 0}
@@ -536,11 +531,3 @@ def remove_split(path):
             yield get_current_tile(middle, 1)
 
     return (x[0] for x in groupby(generate()))
-
-
-def verify_graph(graph, name):
-    for index, node in graph.items():
-        for arc in node.arcs:
-            assert arc.dst in graph, (
-                '"%s" graph verification failed: '
-                'node %s arc dst %s not in graph %s' % (name, node, arc, graph))
