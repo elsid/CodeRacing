@@ -436,11 +436,11 @@ def split_arcs(graph):
         for arc in node.arcs:
             middle_id = middles.get((index, arc.dst))
             dst = graph[arc.dst]
+            if index not in result:
+                result[index] = Node(node.position, [])
+            if arc.dst not in result:
+                result[arc.dst] = Node(dst.position, [])
             if middle_id is None:
-                if index not in result:
-                    result[index] = Node(node.position, [])
-                if arc.dst not in result:
-                    result[arc.dst] = Node(dst.position, [])
                 middle_id = next(node_ids)
                 middles[(arc.dst, index)] = middle_id
                 result[index].arcs.append(Arc(middle_id, arc.weight / 2))
