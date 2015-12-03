@@ -160,7 +160,9 @@ MAX_SPEED = 50
 
 def generate_cos(path):
     for i, current in islice(enumerate(path), 1, len(path) - 1):
-        yield (current - path[i - 1]).cos(path[i + 1] - current)
+        a = current - path[i - 1]
+        b = path[i + 1] - current
+        yield 1 if a.norm() == 0 or b.norm() == 0 else a.cos(b)
 
 
 def cos_product(path):

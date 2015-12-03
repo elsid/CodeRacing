@@ -648,8 +648,8 @@ class SplitArcsTest(TestCase):
         assert_that(result, equal_to({
             0: Node(position=Point(0, 0), arcs=[Arc(dst=2, weight=0.5)]),
             1: Node(position=Point(0, 1), arcs=[Arc(dst=2, weight=0.5)]),
-            2: Node(position=Point(0, 0.5), arcs=[Arc(dst=1, weight=0.5),
-                                                  Arc(dst=0, weight=0.5)]),
+            2: Node(position=Point(0, 0.5), arcs=[Arc(dst=0, weight=0.5),
+                                                  Arc(dst=1, weight=0.5)]),
         }))
 
     def test_for_quadrant_from_left_top_to_right_bottom_returns_with_new_four_nodes(self):

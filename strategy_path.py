@@ -340,14 +340,17 @@ class AdjacencyMatrix:
 
 
 def make_tiles_path(start_tile, waypoints, tiles, direction):
+    graph = make_graph(tiles)
+    verify_graph(graph, 'make_graph')
+    graph = split_arcs(graph)
+    verify_graph(graph, 'split_arcs')
+    graph = add_diagonal_arcs(graph)
+    verify_graph(graph, 'add_diagonal_arcs')
     row_size = len(tiles[0])
     start = get_point_index(start_tile, row_size)
     waypoints = [get_index(x[0], x[1], row_size) for x in waypoints]
-    if start != waypoints[0]:
+    if start != waypoints[0] and start in graph:
         waypoints = [start] + waypoints
-    graph = make_graph(tiles)
-    graph = split_arcs(graph)
-    graph = add_diagonal_arcs(graph)
     path = multi_path(graph, waypoints, direction)
     return remove_split(list(graph[x].position + Point(0.5, 0.5) for x in path))
 
@@ -357,8 +360,9 @@ def multi_path(graph, waypoints, direction):
         return []
     path = [waypoints[0]]
     for i, w in islice(enumerate(waypoints), 0, len(waypoints) - 1):
-        path += list(shortest_path_with_direction(graph, w, waypoints[i + 1],
-                                                  direction))
+        if w in graph and waypoints[i + 1] in graph:
+            path += list(shortest_path_with_direction(
+                graph, w, waypoints[i + 1], direction))
         if len(path) > 2:
             direction = graph[path[-1]].position - graph[path[-2]].position
     return path
@@ -445,9 +449,9 @@ def split_arcs(graph):
                 middles[(arc.dst, index)] = middle_id
                 result[index].arcs.append(Arc(middle_id, arc.weight / 2))
                 result[arc.dst].arcs.append(Arc(middle_id, arc.weight / 2))
-            result[middle_id] = Node((node.position + dst.position) / 2,
-                                     [Arc(index, arc.weight / 2),
-                                      Arc(arc.dst, arc.weight / 2)])
+                result[middle_id] = Node((node.position + dst.position) / 2,
+                                         [Arc(index, arc.weight / 2),
+                                          Arc(arc.dst, arc.weight / 2)])
     return result
 
 
@@ -491,6 +495,8 @@ def get_point(index, row_size):
 
 
 def shortest_path_with_direction(graph, src, dst, initial_direction):
+    assert src in graph, 'src %s not in graph %s' % (src, graph)
+    assert dst in graph, 'dst %s not in graph %s' % (dst, graph)
     initial_direction = initial_direction.normalized()
     queue = [(0, src, initial_direction)]
     distances = {src: 0}
@@ -530,3 +536,11 @@ def remove_split(path):
             yield get_current_tile(middle, 1)
 
     return (x[0] for x in groupby(generate()))
+
+
+def verify_graph(graph, name):
+    for index, node in graph.items():
+        for arc in node.arcs:
+            assert arc.dst in graph, (
+                '"%s" graph verification failed: '
+                'node %s arc dst %s not in graph %s' % (name, node, arc, graph))
