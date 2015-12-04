@@ -65,7 +65,7 @@ class ReleaseStrategy:
 
     def __lazy_init(self, context: Context):
         self.__stuck = StuckDetector(
-            history_size=300,
+            history_size=250,
             stuck_distance=min(context.me.width, context.me.height) / 5,
             unstack_distance=context.game.track_tile_size / 2,
         )
@@ -185,16 +185,12 @@ class MoveMode:
             context.me.oil_canister_count > 1 or
             make_has_intersection(
                 position=context.position,
-                course=(-context.direction *
-                        (context.world.width + context.world.height) *
-                        context.game.track_tile_size),
+                course=(-context.direction * context.game.track_tile_size),
                 barriers=list(generate_cars_barriers(context)),
             )(0))
         context.move.throw_projectile = make_has_intersection(
             position=context.position,
-            course=(context.direction *
-                    (context.world.width + context.world.height) *
-                    context.game.track_tile_size),
+            course=(context.direction * context.game.track_tile_size),
             barriers=list(generate_cars_barriers(context)),
         )(0)
         nitro_path = ([context.position] +
