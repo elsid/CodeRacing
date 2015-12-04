@@ -1,4 +1,4 @@
-from collections import deque, namedtuple
+from collections import deque
 from math import pi
 from itertools import chain
 from model.Car import Car
@@ -67,9 +67,9 @@ class ReleaseStrategy:
 
     def __lazy_init(self, context: Context):
         self.__stuck = StuckDetector(
-            history_size=250,
+            history_size=100,
             stuck_distance=min(context.me.width, context.me.height) / 5,
-            unstack_distance=context.game.track_tile_size / 2,
+            unstack_distance=max(context.me.width, context.me.height) * 2,
         )
         self.__direction = DirectionDetector(
             begin=context.position,
@@ -135,11 +135,12 @@ class MoveMode:
             get_direction=get_direction,
             waypoints_count=self.BACKWARD_WAYPOINTS_COUNT,
         )
-        self.__unstuck = UnstuckPathBuilder(get_direction=get_direction)
+        self.__unstuck_backward = UnstuckPathBuilder(-1.5)
+        self.__unstuck_forward = UnstuckPathBuilder(1.5)
         self.__states = {
-            id(self.__forward): self.__backward,
-            id(self.__backward): self.__unstuck,
-            id(self.__unstuck): self.__forward,
+            id(self.__forward): self.__unstuck_backward,
+            id(self.__unstuck_backward): self.__unstuck_forward,
+            id(self.__unstuck_forward): self.__unstuck_backward,
         }
         self.__current = self.__forward
         self.__get_direction = get_direction
@@ -224,14 +225,6 @@ class MoveMode:
 
     def use_forward(self):
         self.__current = self.__forward
-        self.__path.clear()
-
-    def use_backward(self):
-        self.__current = self.__backward
-        self.__path.clear()
-
-    def use_unstuck(self):
-        self.__current = self.__unstuck
         self.__path.clear()
 
     def switch(self):
@@ -339,15 +332,12 @@ class BackwardWaypointsPathBuilder(WaypointsPathBuilder):
 
 
 class UnstuckPathBuilder:
-    def __init__(self, get_direction):
-        self.__get_direction = get_direction
+    def __init__(self, factor):
+        self.__factor = factor
 
     def make(self, context: Context):
-        direction = self.__get_direction().normalized()
-        if context.speed.norm() > 0:
-            direction = direction + context.speed.normalized()
-        return [context.position + direction *
-                0.9 * context.game.track_tile_size]
+        return [context.position + context.direction * self.__factor *
+                context.game.track_tile_size]
 
 
 class Course:
