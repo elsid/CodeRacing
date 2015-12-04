@@ -19,7 +19,7 @@ from strategy_path import (
     shift_on_direct,
     get_point_index,
 )
-from strategy_barriers import make_tiles_barriers
+from strategy_barriers import make_tiles_barriers, make_units_barriers
 
 
 class Context:
@@ -310,8 +310,7 @@ class Course:
                 size=context.game.track_tile_size,
             )
         tile_size = context.game.track_tile_size
-        target_position = (Polyline([context.position] + path)
-                           .at(0.75 * tile_size))
+        target_position = Polyline([context.position] + path).at(tile_size)
         course = target_position - context.position
         current_tile = context.tile
         target_tile = get_current_tile(target_position, tile_size)
@@ -332,18 +331,22 @@ class Course:
         def generate_barriers():
             for tile in generate_tiles():
                 yield self.__tile_barriers[get_point_index(tile, row_size)]
+            yield make_units_barriers(context.world.projectiles)
+            cars = (x for x in context.world.cars if x.id != context.me.id)
+            yield make_units_barriers(cars)
 
         barriers = list(chain.from_iterable(generate_barriers()))
 
         def has_intersection(current_angle):
             end = context.position + course.rotate(current_angle)
             line = Line(context.position, end)
-            return next((1 for x in barriers if x.has_intersection(line)), 0)
+            return next((1 for x in barriers
+                         if x.has_intersection_with_line(line)), 0)
 
-        angle = find_false(-cos(1), cos(1), has_intersection, 0.1)
+        angle = find_false(-cos(1), cos(1), has_intersection, 2 ** -4)
         if angle is not None:
             return course.rotate(angle)
-        angle = find_false(-cos(1) - pi, cos(1) - pi, has_intersection, 0.1)
+        angle = find_false(-cos(1) - pi, cos(1) - pi, has_intersection, 2 ** -4)
         if angle is not None:
             return course.rotate(angle)
         return course

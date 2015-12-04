@@ -24,7 +24,7 @@ class Circle:
         distance = (self.position - position).norm()
         return float(distance > self.radius + radius)
 
-    def has_intersection(self, line: Line):
+    def has_intersection_with_line(self, line: Line):
         nearest = line.nearest(self.position)
         if nearest.distance(self.position) > self.radius:
             return False
@@ -165,7 +165,7 @@ class Rectangle:
                 k2 = self.point_code(Point(x2, y2))
         return Line(Point(x1, y1), Point(x2, y2))
 
-    def has_intersection(self, line: Line):
+    def has_intersection_with_line(self, line: Line):
         return line != self.clip_line(line)
 
 
@@ -243,6 +243,9 @@ class Unit:
             distance = (self.__position - position).norm()
             return (distance / (self.__radius + radius)) ** 2
 
+    def has_intersection_with_line(self, line: Line):
+        return self.__circle.has_intersection_with_line(line)
+
     def __repr__(self):
         return 'Unit(position={p}, radius={r}, speed={s})'.format(
             p=repr(self.__position), r=repr(self.__radius),
@@ -260,7 +263,7 @@ def make_units_barriers(units):
 
 def unit_barriers(unit):
     if isinstance(unit, RectangularUnit):
-        radius = min((unit.height, unit.width)) / 2
+        radius = max((unit.height, unit.width)) / 2
     elif isinstance(unit, CircularUnit):
         radius = unit.radius
     else:
