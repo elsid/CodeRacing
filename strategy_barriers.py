@@ -4,7 +4,7 @@ from model.TileType import TileType
 from numpy import sign
 from scipy.optimize import bisect
 from strategy_common import Point, Line
-from strategy_path import get_point_index
+from strategy_path import get_point_index, get_current_tile
 
 
 class Circle:
@@ -58,8 +58,11 @@ class Circle:
         return list(generate())
 
 
-def make_passability_function(barriers, radius, speed):
+def make_passability_function(barriers, radius, speed, tiles, tile_size):
     def impl(x, y):
+        tile = get_current_tile(Point(x, y), tile_size)
+        if tile not in tiles:
+            return 0.0
         return min((b.passability(Point(x, y), radius, speed)
                     for b in barriers), default=1.0)
     return impl
