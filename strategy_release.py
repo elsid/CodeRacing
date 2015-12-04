@@ -103,10 +103,11 @@ class ReleaseStrategy:
         self.__stuck.update(context.position)
         self.__direction.update(context.position)
         if self.__stuck.positive_check():
-            self.__move_mode.use_unstuck()
+            self.__move_mode.switch()
             self.__stuck.reset()
             self.__controller.reset()
-        elif not self.__move_mode.is_forward() and self.__stuck.negative_check():
+        elif (not self.__move_mode.is_forward() and
+              self.__stuck.negative_check()):
             self.__move_mode.use_forward()
             self.__stuck.reset()
             self.__controller.reset()
@@ -135,6 +136,11 @@ class MoveMode:
             waypoints_count=self.BACKWARD_WAYPOINTS_COUNT,
         )
         self.__unstuck = UnstuckPathBuilder()
+        self.__states = {
+            id(self.__forward): self.__unstuck,
+            id(self.__unstuck): self.__backward,
+            id(self.__backward): self.__forward,
+        }
         self.__current = self.__forward
         self.__get_direction = get_direction
         self.__course = Course()
@@ -228,11 +234,9 @@ class MoveMode:
         self.__current = self.__unstuck
         self.__path.clear()
 
-    # def switch(self):
-    #     if self.__current == self.__forward:
-    #         self.use_backward()
-    #     else:
-    #         self.use_forward()
+    def switch(self):
+        self.__current = self.__states[id(self.__current)]
+        self.__path.clear()
 
     def __update_path(self, context: Context):
         if (not self.__path or
