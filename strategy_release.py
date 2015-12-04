@@ -286,10 +286,6 @@ class ForwardWaypointsPathBuilder(WaypointsPathBuilder):
         super().__init__(start_tile, get_direction)
         self.__waypoints_count = waypoints_count
 
-    # def make(self, context: Context):
-    #     result = super().make(context)
-    #     return [(result[1] + result[2]) / 2] + result[2:]
-
     def _waypoints(self, next_waypoint_index, waypoints):
         end = next_waypoint_index + self.__waypoints_count
         result = waypoints[next_waypoint_index:end]
