@@ -270,3 +270,12 @@ def unit_barriers(unit):
         radius = 1.0
     return Unit(position=Point(unit.x, unit.y), radius=radius,
                 speed=Point(unit.speed_x, unit.speed_y))
+
+
+def make_has_intersection(position, course, barriers):
+    def impl(angle):
+        end = position + course.rotate(angle)
+        line = Line(position, end)
+        return next((1 for x in barriers
+                     if x.has_intersection_with_line(line)), 0)
+    return impl
