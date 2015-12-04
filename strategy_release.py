@@ -1,10 +1,11 @@
-from collections import deque
+from collections import deque, namedtuple
 from math import cos, pi
 from itertools import chain
 from model.Car import Car
 from model.Game import Game
 from model.Move import Move
 from model.World import World
+from model.CarType import CarType
 from strategy_common import Point, Polyline, get_current_tile
 from strategy_control import (
     Controller,
@@ -22,7 +23,8 @@ from strategy_path import (
 from strategy_barriers import (
     make_tiles_barriers,
     make_units_barriers,
-    make_has_intersection,
+    make_has_intersection_with_line,
+    make_has_intersection_with_lane,
 )
 
 
@@ -190,15 +192,18 @@ class MoveMode:
                     control.engine_power_derivative / 2)
         context.move.spill_oil = (
             context.me.oil_canister_count > 1 or
-            make_has_intersection(
+            make_has_intersection_with_line(
                 position=context.position,
                 course=(-context.direction * context.game.track_tile_size),
                 barriers=list(generate_cars_barriers(context)),
             )(0))
-        context.move.throw_projectile = make_has_intersection(
+        context.move.throw_projectile = make_has_intersection_with_lane(
             position=context.position,
             course=(context.direction * context.game.track_tile_size),
             barriers=list(generate_cars_barriers(context)),
+            width=(context.game.washer_radius
+                   if context.me.type == CarType.BUGGY
+                   else context.game.tire_radius)
         )(0)
         nitro_path = ([context.position] +
                       self.__path[:self.PATH_SIZE_FOR_USE_NITRO])
@@ -329,6 +334,10 @@ class UnstuckPathBuilder:
                 0.9 * context.game.track_tile_size]
 
 
+Params = namedtuple('Params', ('course', 'barriers', 'width',
+                               'make_has_intersection'))
+
+
 class Course:
     def __init__(self):
         self.__tile_barriers = None
@@ -367,27 +376,37 @@ class Course:
             return chain.from_iterable(impl())
 
         tiles_barriers = list(generate_tiles_barriers())
-        new_course = adjust_course(
-            course=course,
-            has_intersection=make_has_intersection(
-                position=context.position,
-                course=course,
-                barriers=list(chain(tiles_barriers,
-                                    generate_units_barriers(context))),
-            ),
-        )
-        if new_course is not None:
-            return new_course
-        new_course = adjust_course(
-            course=course,
-            has_intersection=make_has_intersection(
-                position=context.position,
-                course=course,
-                barriers=tiles_barriers,
-            ),
-        )
-        if new_course is not None:
-            return new_course
+        all_barriers = list(chain(tiles_barriers,
+                                  generate_units_barriers(context)))
+        width = max(context.me.width, context.me.height)
+        params = [
+            Params(course=course, barriers=all_barriers, width=width,
+                   make_has_intersection=make_has_intersection_with_lane),
+            Params(course=course, barriers=all_barriers, width=None,
+                   make_has_intersection=make_has_intersection_with_line),
+            Params(course=course, barriers=tiles_barriers, width=width,
+                   make_has_intersection=make_has_intersection_with_lane),
+            Params(course=course, barriers=tiles_barriers, width=None,
+                   make_has_intersection=make_has_intersection_with_line),
+            Params(course=-course, barriers=all_barriers, width=width,
+                   make_has_intersection=make_has_intersection_with_lane),
+            Params(course=-course, barriers=all_barriers, width=None,
+                   make_has_intersection=make_has_intersection_with_line),
+            Params(course=-course, barriers=tiles_barriers, width=width,
+                   make_has_intersection=make_has_intersection_with_lane),
+            Params(course=-course, barriers=tiles_barriers, width=None,
+                   make_has_intersection=make_has_intersection_with_line),
+        ]
+        for x in params:
+            has_intersection = (
+                x.make_has_intersection(context.position, x.course, x.barriers)
+                if x.width is None else
+                x.make_has_intersection(context.position, x.course, x.barriers,
+                                        x.width)
+            )
+            new_course = adjust_course(x.course, has_intersection)
+            if new_course is not None:
+                return new_course
         return course
 
 
@@ -405,9 +424,6 @@ def generate_cars_barriers(context: Context):
 
 def adjust_course(course, has_intersection):
     angle = find_false(-cos(1), cos(1), has_intersection, 2 ** -4)
-    if angle is not None:
-        return course.rotate(angle)
-    angle = find_false(-cos(1) - pi, cos(1) - pi, has_intersection, 2 ** -4)
     if angle is not None:
         return course.rotate(angle)
     return None

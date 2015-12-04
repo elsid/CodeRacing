@@ -275,10 +275,38 @@ def unit_barriers(unit):
                 speed=Point(unit.speed_x, unit.speed_y))
 
 
-def make_has_intersection(position, course, barriers):
+def make_has_intersection_with_line(position, course, barriers):
     def impl(angle):
         end = position + course.rotate(angle)
         line = Line(position, end)
         return next((True for x in barriers
                      if x.has_intersection_with_line(line)), False)
+    return impl
+
+
+def make_has_intersection_with_lane(position, course, barriers, width):
+    orthogonal = course.left_orthogonal().normalized() * width / 2
+    left = position + orthogonal * width / 2
+    right = position - orthogonal * width / 2
+    left_has_intersection = make_has_intersection_with_line(
+        position=left,
+        course=course,
+        barriers=barriers,
+    )
+    middle_has_intersection = make_has_intersection_with_line(
+        position=position,
+        course=course,
+        barriers=barriers,
+    )
+    right_has_intersection = make_has_intersection_with_line(
+        position=right,
+        course=course,
+        barriers=barriers,
+    )
+
+    def impl(angle):
+        return (left_has_intersection(angle) or
+                middle_has_intersection(angle) or
+                right_has_intersection(angle))
+
     return impl
