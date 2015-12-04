@@ -681,7 +681,7 @@ class SplitArcsTest(TestCase):
 
 
 class AddDiagonalArcsTest(TestCase):
-    def test_for_splitted_quadrant_from_left_top_to_right_bottom_add_eight_new_arcs(self):
+    def test_for_split_quadrant_from_left_top_to_right_bottom_add_eight_new_arcs(self):
         result = add_diagonal_arcs(graph={
             0: Node(position=Point(x=0, y=0),
                     arcs=[Arc(dst=4, weight=0.5), Arc(dst=5, weight=0.5)]),

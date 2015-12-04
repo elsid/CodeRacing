@@ -174,7 +174,7 @@ class TileCenterTest(TestCase):
                     equal_to(Point(5, 15)))
 
 
-class TestNormalizeAnlge(TestCase):
+class TestNormalizeAngle(TestCase):
     def test_for_greater_than_or_equal_minus_pi_and_less_than_or_equal_pi_returns_equal(self):
         result = normalize_angle(0.3 * pi)
         assert_that(result, equal_to(0.3 * pi))

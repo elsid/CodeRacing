@@ -1,5 +1,5 @@
 from unittest import TestCase
-from hamcrest import assert_that, equal_to, close_to
+from hamcrest import assert_that, equal_to
 from strategy_common import Point
 from strategy_control import DirectionDetector
 

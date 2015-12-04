@@ -23,7 +23,8 @@ class DebugStrategy:
                 self.__plot.path([Point(p.x, -p.y) for p in path], 'o')
                 self.__plot.path([Point(p.x, -p.y) for p in path], '-')
             if target is not None:
-                self.__plot.path([Point(p.x, -p.y) for p in [position, target]], '-')
+                self.__plot.path([Point(p.x, -p.y) for p in [position, target]],
+                                 '-')
                 self.__plot.path([Point(p.x, -p.y) for p in [target]], 's')
             self.__plot.path([Point(p.x, -p.y) for p in [position]], 'o')
             self.__plot.path([Point(p.x, -p.y) for p in waypoints], 'D')
