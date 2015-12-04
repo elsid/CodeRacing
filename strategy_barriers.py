@@ -228,7 +228,7 @@ def make_tile_barriers(tile_type: TileType, position: Point, margin, size):
     elif tile_type == TileType.CROSSROADS:
         return [left_top, left_bottom, right_top, right_bottom]
     else:
-        return []
+        return [Rectangle(left_top=point(0, 0), right_bottom=point(size, size))]
 
 
 class Unit:

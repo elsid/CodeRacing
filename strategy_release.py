@@ -390,13 +390,6 @@ class Course:
                 width=width,
             )
 
-        def with_line(current_barriers):
-            return make_has_intersection_with_line(
-                position=context.position,
-                course=course,
-                barriers=current_barriers,
-            )
-
         def adjust_forward(has_intersection):
             return adjust_course_forward(course, has_intersection)
 
@@ -405,13 +398,9 @@ class Course:
 
         variants = [
             lambda: adjust_forward(with_lane(all_barriers)),
-            lambda: adjust_forward(with_line(all_barriers)),
             lambda: adjust_forward(with_lane(tiles_barriers)),
-            lambda: adjust_forward(with_line(tiles_barriers)),
             lambda: adjust_backward(with_lane(all_barriers)),
-            lambda: adjust_backward(with_line(all_barriers)),
             lambda: adjust_backward(with_lane(tiles_barriers)),
-            lambda: adjust_backward(with_line(tiles_barriers)),
         ]
         for f in variants:
             new_course = f()
@@ -434,28 +423,39 @@ def generate_cars_barriers(context: Context):
 
 
 def adjust_course_forward(course, has_intersection):
-    angle = find_false(-0.5, 0.5, has_intersection, 2 ** -4)
-    if angle is not None:
-        return course.rotate(angle)
-    return None
+    return adjust_course(course, has_intersection, -1, 1)
 
 
 def adjust_course_backward(course, has_intersection):
-    angle = find_false(-0.5 - pi, 0.5 - pi, has_intersection, 2 ** -4)
+    return adjust_course(course, has_intersection, -1 - pi, 1 - pi)
+
+
+def adjust_course(course, has_intersection, begin, end):
+    angle = find_false(begin, end, has_intersection, 2 ** -3)
     if angle is not None:
         return course.rotate(angle)
     return None
 
 
-def find_false(begin, end, function, min_interval):
+def find_false(begin, end, is_true, min_interval):
+    center = (begin + end) / 2
+    if not is_true(center):
+        return center
+    nearest = None
     queue = deque([(begin, end)])
     while queue:
         begin, end = queue.popleft()
         if end - begin < min_interval:
-            return None
+            break
         middle = (begin + end) / 2
-        if not function(middle):
-            return middle
-        queue.append((begin, middle))
-        queue.append((middle, end))
-    return None
+        if is_true(middle):
+            queue.append((begin, middle))
+            queue.append((middle, end))
+        else:
+            if nearest is None or abs(center - middle) < abs(center - nearest):
+                nearest = middle
+            if middle < center:
+                queue.append((middle, end))
+            else:
+                queue.append((begin, middle))
+    return nearest
