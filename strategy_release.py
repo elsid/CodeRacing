@@ -1,5 +1,5 @@
 from collections import deque, namedtuple
-from math import cos, pi
+from math import pi
 from itertools import chain
 from model.Car import Car
 from model.Game import Game
@@ -421,14 +421,14 @@ class Course:
                    adjust_course=adjust_course_backward,
                    make_has_intersection=make_has_intersection_with_line),
         ]
-        for x in params:
+        for v in params:
             has_intersection = (
-                x.make_has_intersection(context.position, course, x.barriers)
-                if x.width is None else
-                x.make_has_intersection(context.position, course, x.barriers,
-                                        x.width)
+                v.make_has_intersection(context.position, course, v.barriers)
+                if v.width is None else
+                v.make_has_intersection(context.position, course, v.barriers,
+                                        v.width)
             )
-            new_course = x.adjust_course(course, has_intersection)
+            new_course = v.adjust_course(course, has_intersection)
             if new_course is not None:
                 return new_course
         return course
@@ -436,6 +436,7 @@ class Course:
 
 def generate_units_barriers(context: Context):
     return chain.from_iterable([
+        make_units_barriers(context.world.oil_slicks),
         make_units_barriers(context.world.projectiles),
         generate_cars_barriers(context),
     ])
