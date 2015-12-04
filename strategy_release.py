@@ -350,10 +350,6 @@ class UnstuckPathBuilder:
                 0.9 * context.game.track_tile_size]
 
 
-Params = namedtuple('Params', ('adjust_course', 'barriers', 'width',
-                               'make_has_intersection'))
-
-
 class Course:
     def __init__(self):
         self.__tile_barriers = None
@@ -395,40 +391,40 @@ class Course:
         all_barriers = list(chain(tiles_barriers,
                                   generate_units_barriers(context)))
         width = max(context.me.width, context.me.height)
-        params = [
-            Params(barriers=all_barriers, width=width,
-                   adjust_course=adjust_course_forward,
-                   make_has_intersection=make_has_intersection_with_lane),
-            Params(barriers=all_barriers, width=None,
-                   adjust_course=adjust_course_forward,
-                   make_has_intersection=make_has_intersection_with_line),
-            Params(barriers=tiles_barriers, width=width,
-                   adjust_course=adjust_course_forward,
-                   make_has_intersection=make_has_intersection_with_lane),
-            Params(barriers=tiles_barriers, width=None,
-                   adjust_course=adjust_course_forward,
-                   make_has_intersection=make_has_intersection_with_line),
-            Params(barriers=all_barriers, width=width,
-                   adjust_course=adjust_course_backward,
-                   make_has_intersection=make_has_intersection_with_lane),
-            Params(barriers=all_barriers, width=None,
-                   adjust_course=adjust_course_backward,
-                   make_has_intersection=make_has_intersection_with_line),
-            Params(barriers=tiles_barriers, width=width,
-                   adjust_course=adjust_course_backward,
-                   make_has_intersection=make_has_intersection_with_lane),
-            Params(barriers=tiles_barriers, width=None,
-                   adjust_course=adjust_course_backward,
-                   make_has_intersection=make_has_intersection_with_line),
-        ]
-        for v in params:
-            has_intersection = (
-                v.make_has_intersection(context.position, course, v.barriers)
-                if v.width is None else
-                v.make_has_intersection(context.position, course, v.barriers,
-                                        v.width)
+
+        def with_lane(current_barriers):
+            return make_has_intersection_with_lane(
+                position=context.position,
+                course=course,
+                barriers=current_barriers,
+                width=width,
             )
-            new_course = v.adjust_course(course, has_intersection)
+
+        def with_line(current_barriers):
+            return make_has_intersection_with_line(
+                position=context.position,
+                course=course,
+                barriers=current_barriers,
+            )
+
+        def adjust_forward(has_intersection):
+            return adjust_course_forward(course, has_intersection)
+
+        def adjust_backward(has_intersection):
+            return adjust_course_forward(course, has_intersection)
+
+        variants = [
+            lambda: adjust_forward(with_lane(all_barriers)),
+            lambda: adjust_forward(with_line(all_barriers)),
+            lambda: adjust_forward(with_lane(tiles_barriers)),
+            lambda: adjust_forward(with_line(tiles_barriers)),
+            lambda: adjust_backward(with_lane(all_barriers)),
+            lambda: adjust_backward(with_line(all_barriers)),
+            lambda: adjust_backward(with_lane(tiles_barriers)),
+            lambda: adjust_backward(with_line(tiles_barriers)),
+        ]
+        for f in variants:
+            new_course = f()
             if new_course is not None:
                 return new_course
         return course
