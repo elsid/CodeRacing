@@ -95,14 +95,16 @@ class ReleaseStrategy:
         if self.__first_move:
             self.__lazy_init(context)
             self.__first_move = False
-        if context.world.tick > context.game.initial_freeze_duration_ticks:
-            self.__stuck.update(context.position)
-            self.__direction.update(context.position)
+        if context.world.tick < context.game.initial_freeze_duration_ticks:
+            context.me.engine_power = 1
+            return
+        self.__stuck.update(context.position)
+        self.__direction.update(context.position)
         if self.__stuck.positive_check():
             self.__move_mode.use_unstuck()
             self.__stuck.reset()
             self.__controller.reset()
-        elif self.__move_mode.is_backward() and self.__stuck.negative_check():
+        elif not self.__move_mode.is_forward() and self.__stuck.negative_check():
             self.__move_mode.use_forward()
             self.__stuck.reset()
             self.__controller.reset()
@@ -145,6 +147,9 @@ class MoveMode:
 
     def is_backward(self):
         return self.__current == self.__backward
+
+    def is_forward(self):
+        return self.__current == self.__forward
 
     def move(self, context: Context):
         self.__update_path(context)

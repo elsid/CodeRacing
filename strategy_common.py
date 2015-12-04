@@ -147,8 +147,7 @@ class Line:
         if to_end_norm == 0:
             return Point(self.begin.x, self.begin.y)
         to_point = point - self.begin
-        norm = to_point.dot(to_end) / to_end.norm()
-        return self.begin + to_end / to_end.norm() * norm
+        return self.begin + to_end * to_point.dot(to_end) / (to_end_norm ** 2)
 
     def length(self):
         return (self.end - self.begin).norm()
