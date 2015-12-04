@@ -143,7 +143,7 @@ class MoveMode:
     def move(self, context: Context):
         self.__update_path(context)
         target_position = (Polyline([context.position] + self.__path)
-                           .at(0.6 * context.game.track_tile_size))
+                           .at(0.75 * context.game.track_tile_size))
         speed_path = self.__path[:self.PATH_SIZE_FOR_TARGET_SPEED]
         target_speed = get_target_speed(context.position, target_position,
                                         speed_path)
@@ -211,7 +211,7 @@ class MoveMode:
             self.__path = self.__current.make(context)
         while (self.__path and
                context.position.distance(self.__path[0]) <
-               0.6 * context.game.track_tile_size):
+               0.75 * context.game.track_tile_size):
             self.__path = self.__path[1:]
 
 
