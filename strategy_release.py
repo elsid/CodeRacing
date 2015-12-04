@@ -155,9 +155,10 @@ class MoveMode:
         self.__update_path(context)
         course = self.__course.get(context, self.__path)
         target_position = context.position + course
-        speed_path = self.__path[:self.PATH_SIZE_FOR_TARGET_SPEED]
-        target_speed = get_target_speed(context.position, target_position,
-                                        speed_path)
+        speed_path = ([context.position - self.__get_direction(),
+                      context.position] +
+                      self.__path[:self.PATH_SIZE_FOR_TARGET_SPEED])
+        target_speed = get_target_speed(course, speed_path)
         if target_speed.norm() == 0:
             return
         control = self.__controller(
@@ -182,11 +183,11 @@ class MoveMode:
             if context.speed.cos(context.direction) >= 0:
                 context.move.brake = (
                     -context.game.car_engine_power_change_per_tick >
-                    control.engine_power_derivative)
+                    control.engine_power_derivative / 2)
             else:
                 context.move.brake = (
                     context.game.car_engine_power_change_per_tick >
-                    control.engine_power_derivative)
+                    control.engine_power_derivative / 2)
         context.move.spill_oil = (
             context.me.oil_canister_count > 1 or
             make_has_intersection(
@@ -262,7 +263,7 @@ class WaypointsPathBuilder:
                 for x in path]
         shift = (context.game.track_tile_size / 2 -
                  context.game.track_tile_margin -
-                 max(context.me.width, context.me.height))
+                 max(context.me.width, context.me.height) / 2)
         path = list(adjust_path(path, shift))
         path = list(shift_on_direct(path))
         return path
