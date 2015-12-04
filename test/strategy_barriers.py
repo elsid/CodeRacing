@@ -149,10 +149,12 @@ class RectangleTest(TestCase):
 
 
 class MakeTileBarriersTest(TestCase):
-    def test_for_empty_returns_empty_list(self):
+    def test_for_empty_returns_tile_rectangle(self):
         result = make_tile_barriers(tile_type=TileType.EMPTY,
                                     position=Point(10, 10), margin=1, size=3)
-        assert_that(result, equal_to([]))
+        assert_that(result, equal_to([
+            Rectangle(left_top=Point(30, 30), right_bottom=Point(33, 33))
+        ]))
 
     def test_for_vertical_returns_two_rectangles(self):
         result = make_tile_barriers(tile_type=TileType.VERTICAL,
