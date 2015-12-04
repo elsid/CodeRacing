@@ -55,8 +55,8 @@ class Controller:
         self.__acceleration = PidController(0.3, 0, 0.01)
         self.__engine_power = PidController(0.2, 0, 0.01)
         self.__angle = PidController(1.0, 0, 0.1)
-        self.__angular_speed_angle = PidController(1.0, 0, 0.0)
-        self.__wheel_turn = PidController(1.0, 0, 0.1)
+        self.__angular_speed_angle = PidController(2.0, 0, 0.0)
+        self.__wheel_turn = PidController(2.0, 0, 0.1)
         self.__previous_speed = Point(0, 0)
         self.__previous_angular_speed_angle = 0
 
@@ -77,8 +77,14 @@ class Controller:
                                acceleration_derivative.cos(direction))
         engine_power_derivative = self.__engine_power(
             target_engine_power - engine_power)
-        target_angle = (target_speed.absolute_rotation() +
-                        course.absolute_rotation()) / 2
+        if (angle < course.absolute_rotation() <
+                target_speed.absolute_rotation() or
+                angle > course.absolute_rotation() >
+                target_speed.absolute_rotation()):
+            target_angle = (target_speed.absolute_rotation() +
+                            course.absolute_rotation()) / 2
+        else:
+            target_angle = course.absolute_rotation()
         angle_error = normalize_angle(target_angle - angle)
         angle_derivative = self.__angle(angle_error)
         angular_speed_angle_derivative = self.__angular_speed_angle(
@@ -154,7 +160,7 @@ class PidController:
 
 
 DIRECT_FACTOR = 1
-ANGLE_FACTOR = 2
+ANGLE_FACTOR = 4
 MAX_SPEED = 50
 
 
@@ -176,7 +182,7 @@ def get_target_speed(position: Point, target: Point, path):
     direct = DIRECT_FACTOR / factor_sum
     if len(path) > 2:
         angle = (ANGLE_FACTOR / factor_sum *
-                 max(1e-8 - 1, min(1 - 1e-8, cos_product(path))) ** 3)
+                 max(1e-8 - 1, min(1 - 1e-8, cos_product(path))))
     else:
         angle = 0
     if course.norm() > 0:

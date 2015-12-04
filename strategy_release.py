@@ -2,7 +2,7 @@ from model.Car import Car
 from model.Game import Game
 from model.Move import Move
 from model.World import World
-from strategy_common import Point, Polyline, get_current_tile, get_tile_center
+from strategy_common import Point, Polyline, get_current_tile
 from strategy_control import (
     Controller,
     get_target_speed,
