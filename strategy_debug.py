@@ -11,13 +11,15 @@ class DebugStrategy:
 
     def move(self, context: Context):
         self.__impl.move(context)
-        if context.world.tick % 50 == 0:
+        if (context.world.tick > context.game.initial_freeze_duration_ticks and
+                context.world.tick % 50 == 0):
             path = self.__impl.path
             position = context.position
             target = self.__impl.target_position
             tile_size = context.game.track_tile_size
-            waypoints = (get_tile_center(Point(p[0], p[1]), tile_size)
-                         for p in context.world.waypoints)
+            waypoints = [get_tile_center(Point(p[0], p[1]), tile_size)
+                         for p in context.world.waypoints]
+            next_waypoint = waypoints[context.me.next_waypoint_index]
             self.__plot.clear()
             if path is not None:
                 self.__plot.path([Point(p.x, -p.y) for p in path], 'o')
@@ -28,6 +30,7 @@ class DebugStrategy:
                 self.__plot.path([Point(p.x, -p.y) for p in [target]], 's')
             self.__plot.path([Point(p.x, -p.y) for p in [position]], 'o')
             self.__plot.path([Point(p.x, -p.y) for p in waypoints], 'D')
+            self.__plot.path([Point(p.x, -p.y) for p in [next_waypoint]], 'D')
             self.__plot.draw()
 
 

@@ -512,9 +512,9 @@ def shortest_path_with_direction(graph, src, dst, initial_direction):
             if direction.cos(new_direction) < -1e-3:
                 continue
             elif direction.cos(new_direction) < 1e-3:
-                new_distance = distance + (6 * (1 - cos_value) + 1) * weight
-            else:
                 new_distance = distance + (2 * (1 - cos_value) + 1) * weight
+            else:
+                new_distance = distance + (1 * (1 - cos_value) + 1) * weight
             if new_distance < current_distance:
                 distances[neighbor_index] = new_distance
                 previous_nodes[neighbor_index] = node_index

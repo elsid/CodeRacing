@@ -169,7 +169,8 @@ def generate_cos(path):
     for i, current in islice(enumerate(path), 1, len(path) - 1):
         a = current - path[i - 1]
         b = path[i + 1] - current
-        yield 1 if a.norm() == 0 or b.norm() == 0 else a.cos(b) ** (power - i)
+        yield (1 if abs(a.norm()) < 1e-3 or abs(b.norm()) < 1e-3
+               else a.cos(b) ** (power - i))
 
 
 def cos_product(path):
