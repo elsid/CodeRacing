@@ -184,7 +184,7 @@ def get_target_speed(position: Point, target: Point, path):
         angle = (ANGLE_FACTOR / factor_sum *
                  max(1e-8 - 1, min(1 - 1e-8, cos_product(path))))
     else:
-        angle = 0
+        angle = 1
     if course.norm() > 0:
         return course * MAX_SPEED / course.norm() * (direct + angle)
     else:

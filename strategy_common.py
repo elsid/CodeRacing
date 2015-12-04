@@ -131,6 +131,10 @@ class Line:
     def __call__(self, parameter):
         return self.begin + (self.end - self.begin) * parameter
 
+    def __repr__(self):
+        return 'Line(begin={b}, end={e})'.format(
+            b=repr(self.begin), e=repr(self.end))
+
     def distance(self, point):
         to_end = self.end - self.begin
         to_point = point - self.begin
@@ -139,6 +143,9 @@ class Line:
 
     def nearest(self, point):
         to_end = self.end - self.begin
+        to_end_norm = to_end.norm()
+        if to_end_norm == 0:
+            return Point(self.begin.x, self.begin.y)
         to_point = point - self.begin
         norm = to_point.dot(to_end) / to_end.norm()
         return self.begin + to_end / to_end.norm() * norm

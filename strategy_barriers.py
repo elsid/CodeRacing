@@ -279,6 +279,6 @@ def make_has_intersection(position, course, barriers):
     def impl(angle):
         end = position + course.rotate(angle)
         line = Line(position, end)
-        return next((1 for x in barriers
-                     if x.has_intersection_with_line(line)), 0)
+        return next((True for x in barriers
+                     if x.has_intersection_with_line(line)), False)
     return impl

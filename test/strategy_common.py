@@ -45,6 +45,11 @@ class LineTest(TestCase):
         result = line.nearest(Point(1, 1))
         assert_that(result, equal_to(Point(1, 0)))
 
+    def test_nearest_to_degenerate_line_returns_that_point(self):
+        line = Line(begin=Point(0, 0), end=Point(0, 0))
+        result = line.nearest(Point(1, 0))
+        assert_that(result, equal_to(Point(0, 0)))
+
 
 class PointTest(TestCase):
     def test_polar_0_0_returns_0_0(self):

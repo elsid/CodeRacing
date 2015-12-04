@@ -99,7 +99,7 @@ class ReleaseStrategy:
             self.__stuck.update(context.position)
             self.__direction.update(context.position)
         if self.__stuck.positive_check():
-            self.__move_mode.switch()
+            self.__move_mode.use_unstuck()
             self.__stuck.reset()
             self.__controller.reset()
         elif self.__move_mode.is_backward() and self.__stuck.negative_check():
@@ -120,16 +120,17 @@ class MoveMode:
         self.__path = []
         self.__tile = None
         self.__target_position = None
-        self.__forward = ForwardPathBuilder(
+        self.__forward = ForwardWaypointsPathBuilder(
             start_tile=start_tile,
             get_direction=get_direction,
             waypoints_count=waypoints_count,
         )
-        self.__backward = BackwardPathBuilder(
+        self.__backward = BackwardWaypointsPathBuilder(
             start_tile=start_tile,
             get_direction=get_direction,
             waypoints_count=self.BACKWARD_WAYPOINTS_COUNT,
         )
+        self.__unstuck = UnstuckPathBuilder()
         self.__current = self.__forward
         self.__get_direction = get_direction
         self.__course = Course()
@@ -212,11 +213,15 @@ class MoveMode:
         self.__current = self.__backward
         self.__path.clear()
 
-    def switch(self):
-        if self.__current == self.__forward:
-            self.use_backward()
-        else:
-            self.use_forward()
+    def use_unstuck(self):
+        self.__current = self.__unstuck
+        self.__path.clear()
+
+    # def switch(self):
+    #     if self.__current == self.__forward:
+    #         self.use_backward()
+    #     else:
+    #         self.use_forward()
 
     def __update_path(self, context: Context):
         if (not self.__path or
@@ -229,7 +234,7 @@ class MoveMode:
             self.__path = self.__path[1:]
 
 
-class BasePathBuilder:
+class WaypointsPathBuilder:
     def __init__(self, start_tile, get_direction):
         self.start_tile = start_tile
         self.get_direction = get_direction
@@ -261,7 +266,7 @@ class BasePathBuilder:
         raise NotImplementedError()
 
 
-class ForwardPathBuilder(BasePathBuilder):
+class ForwardWaypointsPathBuilder(WaypointsPathBuilder):
     def __init__(self, start_tile, get_direction, waypoints_count):
         super().__init__(start_tile, get_direction)
         self.__waypoints_count = waypoints_count
@@ -281,7 +286,7 @@ class ForwardPathBuilder(BasePathBuilder):
         return result
 
 
-class BackwardPathBuilder(BasePathBuilder):
+class BackwardWaypointsPathBuilder(WaypointsPathBuilder):
     def __init__(self, start_tile, get_direction, waypoints_count):
         super().__init__(start_tile, get_direction)
         self.__waypoints_count = waypoints_count
@@ -312,6 +317,12 @@ class BackwardPathBuilder(BasePathBuilder):
         return result
 
 
+class UnstuckPathBuilder:
+    def make(self, context: Context):
+        return [context.position + context.direction *
+                0.9 * context.game.track_tile_size]
+
+
 class Course:
     def __init__(self):
         self.__tile_barriers = None
@@ -328,23 +339,24 @@ class Course:
         course = target_position - context.position
         current_tile = context.tile
         target_tile = get_current_tile(target_position, tile_size)
-        range_x = (range(current_tile.x, target_tile.x)
-                   if current_tile.x <= target_tile.x
-                   else range(target_tile.x, current_tile.x))
-        range_y = (range(current_tile.y, target_tile.y)
-                   if current_tile.y <= target_tile.y
-                   else range(target_tile.y, current_tile.y))
+        range_x = list(range(current_tile.x, target_tile.x + 1)
+                       if current_tile.x <= target_tile.x
+                       else range(target_tile.x, current_tile.x + 1))
+        range_y = list(range(current_tile.y, target_tile.y + 1)
+                       if current_tile.y <= target_tile.y
+                       else range(target_tile.y, current_tile.y + 1))
 
         def generate_tiles():
             for x in range_x:
                 for y in range_y:
                     yield Point(x, y)
 
+        tiles = list(generate_tiles())
         row_size = len(context.world.tiles_x_y[0])
 
         def generate_tiles_barriers():
             def impl():
-                for tile in generate_tiles():
+                for tile in tiles:
                     yield self.__tile_barriers[get_point_index(tile, row_size)]
             return chain.from_iterable(impl())
 
