@@ -3,7 +3,8 @@ from model.RectangularUnit import RectangularUnit
 from model.TileType import TileType
 from numpy import sign
 from scipy.optimize import bisect
-from strategy_common import Point, Line, get_current_tile
+from strategy_common import Point, Line
+from strategy_path import get_point_index
 
 
 class Circle:
@@ -22,6 +23,12 @@ class Circle:
     def passability(self, position, radius, _=None):
         distance = (self.position - position).norm()
         return float(distance > self.radius + radius)
+
+    def has_intersection(self, line: Line):
+        nearest = line.nearest(self.position)
+        if nearest.distance(self.position) > self.radius:
+            return False
+        return line.has_point(nearest)
 
     def intersection_with_line(self, line: Line):
         nearest = line.nearest(self.position)
@@ -51,11 +58,8 @@ class Circle:
         return list(generate())
 
 
-def make_passability_function(barriers, radius, speed, tiles, tile_size):
+def make_passability_function(barriers, radius, speed):
     def impl(x, y):
-        tile = get_current_tile(Point(x, y), tile_size)
-        if tile not in tiles:
-            return 0.0
         return min((b.passability(Point(x, y), radius, speed)
                     for b in barriers), default=1.0)
     return impl
@@ -125,6 +129,61 @@ class Rectangle:
 
     def height(self):
         return self.right_bottom.y - self.left_top.y
+
+    def clip_line(self, line: Line):
+        k1 = self.point_code(line.begin)
+        k2 = self.point_code(line.end)
+        x1 = line.begin.x
+        y1 = line.begin.y
+        x2 = line.end.x
+        y2 = line.end.y
+        left = self.left_top.x
+        top = self.left_top.y
+        right = self.right_bottom.x
+        bottom = self.right_bottom.y
+        while (k1 | k2) != 0:
+            if (k1 & k2) != 0:
+                return line
+            opt = k1 or k2
+            if opt & Rectangle.TOP:
+                x = x1 + (x2 - x1) * (1.0 * (bottom - y1)) / (y2 - y1)
+                y = bottom
+            elif opt & Rectangle.BOTTOM:
+                x = x1 + (x2 - x1) * (1.0 * (top - y1)) / (y2 - y1)
+                y = top
+            elif opt & Rectangle.RIGHT:
+                y = y1 + (y2 - y1) * (1.0 * (right - x1)) / (x2 - x1)
+                x = right
+            else:
+                y = y1 + (y2 - y1) * (1.0 * (left - x1)) / (x2 - x1)
+                x = right
+            if opt == k1:
+                x1, y1 = int(x), int(y)
+                k1 = self.point_code(Point(x1, y1))
+            else:
+                x2, y2 = int(x), int(y)
+                k2 = self.point_code(Point(x2, y2))
+        return Line(Point(x1, y1), Point(x2, y2))
+
+    def has_intersection(self, line: Line):
+        return line != self.clip_line(line)
+
+
+def make_tiles_barriers(tiles, margin, size):
+    row_size = len(tiles[0])
+
+    def generate():
+        for x, column in enumerate(tiles):
+            for y, tile in enumerate(column):
+                position = Point(x, y)
+                yield get_point_index(position, row_size), make_tile_barriers(
+                    tile_type=tile,
+                    position=position,
+                    margin=margin,
+                    size=size,
+                )
+
+    return dict(generate())
 
 
 def make_tile_barriers(tile_type: TileType, position: Point, margin, size):

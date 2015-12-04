@@ -1,8 +1,11 @@
+from collections import deque
+from math import cos, pi
+from itertools import chain
 from model.Car import Car
 from model.Game import Game
 from model.Move import Move
 from model.World import World
-from strategy_common import Point, Polyline, get_current_tile
+from strategy_common import Point, Polyline, get_current_tile, Line
 from strategy_control import (
     Controller,
     get_target_speed,
@@ -14,7 +17,9 @@ from strategy_path import (
     make_tiles_path,
     adjust_path,
     shift_on_direct,
+    get_point_index,
 )
+from strategy_barriers import make_tiles_barriers
 
 
 class Context:
@@ -83,26 +88,21 @@ class ReleaseStrategy:
         return self.__move_mode.target_position
 
     def move(self, context: Context):
-        try:
-            if self.__first_move:
-                self.__lazy_init(context)
-                self.__first_move = False
-            if context.world.tick > context.game.initial_freeze_duration_ticks:
-                self.__stuck.update(context.position)
-                self.__direction.update(context.position)
-            if self.__stuck.positive_check():
-                self.__move_mode.switch()
-                self.__stuck.reset()
-                self.__controller.reset()
-            elif self.__move_mode.is_backward() and self.__stuck.negative_check():
-                self.__move_mode.use_forward()
-                self.__stuck.reset()
-                self.__controller.reset()
-            self.__move_mode.move(context)
-        except Exception:
+        if self.__first_move:
             self.__lazy_init(context)
-        except BaseException:
-            self.__lazy_init(context)
+            self.__first_move = False
+        if context.world.tick > context.game.initial_freeze_duration_ticks:
+            self.__stuck.update(context.position)
+            self.__direction.update(context.position)
+        if self.__stuck.positive_check():
+            self.__move_mode.switch()
+            self.__stuck.reset()
+            self.__controller.reset()
+        elif self.__move_mode.is_backward() and self.__stuck.negative_check():
+            self.__move_mode.use_forward()
+            self.__stuck.reset()
+            self.__controller.reset()
+        self.__move_mode.move(context)
 
 
 class MoveMode:
@@ -128,6 +128,7 @@ class MoveMode:
         )
         self.__current = self.__forward
         self.__get_direction = get_direction
+        self.__course = Course()
 
     @property
     def path(self):
@@ -142,14 +143,13 @@ class MoveMode:
 
     def move(self, context: Context):
         self.__update_path(context)
-        target_position = (Polyline([context.position] + self.__path)
-                           .at(0.75 * context.game.track_tile_size))
+        course = self.__course.get(context, self.__path)
+        target_position = context.position + course
         speed_path = self.__path[:self.PATH_SIZE_FOR_TARGET_SPEED]
         target_speed = get_target_speed(context.position, target_position,
                                         speed_path)
         if target_speed.norm() == 0:
             return
-        course = target_position - context.position
         control = self.__controller(
             course=course,
             angle=context.me.angle,
@@ -296,3 +296,68 @@ class BackwardPathBuilder(BasePathBuilder):
             result += add
             left -= len(add)
         return result
+
+
+class Course:
+    def __init__(self):
+        self.__tile_barriers = None
+
+    def get(self, context: Context, path):
+        if self.__tile_barriers is None:
+            self.__tile_barriers = make_tiles_barriers(
+                tiles=context.world.tiles_x_y,
+                margin=context.game.track_tile_margin,
+                size=context.game.track_tile_size,
+            )
+        tile_size = context.game.track_tile_size
+        target_position = (Polyline([context.position] + path)
+                           .at(0.75 * tile_size))
+        course = target_position - context.position
+        current_tile = context.tile
+        target_tile = get_current_tile(target_position, tile_size)
+        range_x = (range(current_tile.x, target_tile.x)
+                   if current_tile.x <= target_tile.x
+                   else range(target_tile.x, current_tile.x))
+        range_y = (range(current_tile.y, target_tile.y)
+                   if current_tile.y <= target_tile.y
+                   else range(target_tile.y, current_tile.y))
+
+        def generate_tiles():
+            for x in range_x:
+                for y in range_y:
+                    yield Point(x, y)
+
+        row_size = len(context.world.tiles_x_y[0])
+
+        def generate_barriers():
+            for tile in generate_tiles():
+                yield self.__tile_barriers[get_point_index(tile, row_size)]
+
+        barriers = list(chain.from_iterable(generate_barriers()))
+
+        def has_intersection(current_angle):
+            end = context.position + course.rotate(current_angle)
+            line = Line(context.position, end)
+            return next((1 for x in barriers if x.has_intersection(line)), 0)
+
+        angle = find_false(-cos(1), cos(1), has_intersection, 0.1)
+        if angle is not None:
+            return course.rotate(angle)
+        angle = find_false(-cos(1) - pi, cos(1) - pi, has_intersection, 0.1)
+        if angle is not None:
+            return course.rotate(angle)
+        return course
+
+
+def find_false(begin, end, function, min_interval):
+    queue = deque([(begin, end)])
+    while queue:
+        begin, end = queue.popleft()
+        if end - begin < min_interval:
+            return None
+        middle = (begin + end) / 2
+        if not function(middle):
+            return middle
+        queue.append((begin, middle))
+        queue.append((middle, end))
+    return None

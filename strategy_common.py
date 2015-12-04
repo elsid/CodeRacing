@@ -146,6 +146,18 @@ class Line:
     def length(self):
         return (self.end - self.begin).norm()
 
+    def has_point(self, point: Point, max_error=1e-8):
+        to_end = self.end - point
+        if to_end.norm() == 0:
+            return True
+        to_begin = self.begin - point
+        if to_begin.norm() == 0:
+            return True
+        return abs(1 + to_begin.cos(to_end)) <= max_error
+
+    def __eq__(self, other):
+        return self.begin == other.begin and self.end == other.end
+
 
 class Polyline:
     def __init__(self, points):

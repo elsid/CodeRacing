@@ -15,4 +15,13 @@ class MyStrategy:
             self.__impl = ReleaseStrategy()
 
     def move(self, me: Car, world: World, game: Game, move: Move):
-        self.__impl.move(Context(me=me, world=world, game=game, move=move))
+        context = Context(me=me, world=world, game=game, move=move)
+        if isinstance(self.__impl, ReleaseStrategy):
+            try:
+                self.__impl.move(context)
+            except Exception:
+                self.__impl = ReleaseStrategy()
+            except BaseException:
+                self.__impl = ReleaseStrategy()
+        else:
+            self.__impl.move(context)
