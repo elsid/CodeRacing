@@ -286,8 +286,8 @@ def make_has_intersection_with_line(position, course, barriers):
 
 def make_has_intersection_with_lane(position, course, barriers, width):
     orthogonal = course.left_orthogonal().normalized() * width / 2
-    left = position + orthogonal * width / 2
-    right = position - orthogonal * width / 2
+    left = position + orthogonal
+    right = position - orthogonal
     left_has_intersection = make_has_intersection_with_line(
         position=left,
         course=course,
