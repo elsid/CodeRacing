@@ -135,7 +135,7 @@ class MoveMode:
             get_direction=get_direction,
             waypoints_count=self.BACKWARD_WAYPOINTS_COUNT,
         )
-        self.__unstuck = UnstuckPathBuilder()
+        self.__unstuck = UnstuckPathBuilder(get_direction=get_direction)
         self.__states = {
             id(self.__forward): self.__backward,
             id(self.__backward): self.__unstuck,
@@ -252,19 +252,16 @@ class MoveMode:
 class WaypointsPathBuilder:
     def __init__(self, start_tile, get_direction):
         self.start_tile = start_tile
-        self.get_direction = get_direction
+        self.__get_direction = get_direction
 
     def make(self, context: Context):
         waypoints = self._waypoints(context.me.next_waypoint_index,
                                     context.world.waypoints)
-        direction = self.get_direction().normalized()
-        if context.speed.norm() > 0:
-            direction = direction + context.speed.normalized()
         path = list(make_tiles_path(
             start_tile=context.tile,
             waypoints=waypoints,
             tiles=context.world.tiles_x_y,
-            direction=direction,
+            direction=context.direction,
         ))
         if self.start_tile != path[0]:
             path = [self.start_tile] + path
@@ -278,6 +275,9 @@ class WaypointsPathBuilder:
         return path
 
     def _waypoints(self, next_waypoint_index, waypoints):
+        raise NotImplementedError()
+
+    def _direction(self, context: Context):
         raise NotImplementedError()
 
 
@@ -296,18 +296,22 @@ class ForwardWaypointsPathBuilder(WaypointsPathBuilder):
             left -= len(add)
         return result
 
+    def _direction(self, context: Context):
+        return context.direction
+
 
 class BackwardWaypointsPathBuilder(WaypointsPathBuilder):
     def __init__(self, start_tile, get_direction, waypoints_count):
         super().__init__(start_tile, get_direction)
         self.__waypoints_count = waypoints_count
         self.__begin = None
+        self.__get_direction = get_direction
 
     def make(self, context: Context):
         result = super().make(context)[1:]
         if context.speed.norm() < 1:
             first = (context.position -
-                     self.get_direction().normalized() *
+                     self.__get_direction().normalized() *
                      context.game.track_tile_size)
             result = [first] + result
         return result
@@ -327,14 +331,26 @@ class BackwardWaypointsPathBuilder(WaypointsPathBuilder):
             left -= len(add)
         return result
 
+    def _direction(self, context: Context):
+        result = self.__get_direction().normalized()
+        if context.speed.norm() > 0:
+            return result + context.speed.normalized()
+        return result
+
 
 class UnstuckPathBuilder:
+    def __init__(self, get_direction):
+        self.__get_direction = get_direction
+
     def make(self, context: Context):
-        return [context.position + context.direction *
+        direction = self.__get_direction().normalized()
+        if context.speed.norm() > 0:
+            direction = direction + context.speed.normalized()
+        return [context.position + direction *
                 0.9 * context.game.track_tile_size]
 
 
-Params = namedtuple('Params', ('course', 'barriers', 'width',
+Params = namedtuple('Params', ('adjust_course', 'barriers', 'width',
                                'make_has_intersection'))
 
 
@@ -380,33 +396,41 @@ class Course:
                                   generate_units_barriers(context)))
         width = max(context.me.width, context.me.height)
         params = [
-            Params(course=course, barriers=all_barriers, width=width,
+            Params(barriers=all_barriers, width=width,
+                   adjust_course=adjust_course_forward,
                    make_has_intersection=make_has_intersection_with_lane),
-            Params(course=course, barriers=all_barriers, width=None,
+            Params(barriers=all_barriers, width=None,
+                   adjust_course=adjust_course_forward,
                    make_has_intersection=make_has_intersection_with_line),
-            Params(course=course, barriers=tiles_barriers, width=width,
+            Params(barriers=tiles_barriers, width=width,
+                   adjust_course=adjust_course_forward,
                    make_has_intersection=make_has_intersection_with_lane),
-            Params(course=course, barriers=tiles_barriers, width=None,
+            Params(barriers=tiles_barriers, width=None,
+                   adjust_course=adjust_course_forward,
                    make_has_intersection=make_has_intersection_with_line),
-            Params(course=-course, barriers=all_barriers, width=width,
+            Params(barriers=all_barriers, width=width,
+                   adjust_course=adjust_course_backward,
                    make_has_intersection=make_has_intersection_with_lane),
-            Params(course=-course, barriers=all_barriers, width=None,
+            Params(barriers=all_barriers, width=None,
+                   adjust_course=adjust_course_backward,
                    make_has_intersection=make_has_intersection_with_line),
-            Params(course=-course, barriers=tiles_barriers, width=width,
+            Params(barriers=tiles_barriers, width=width,
+                   adjust_course=adjust_course_backward,
                    make_has_intersection=make_has_intersection_with_lane),
-            Params(course=-course, barriers=tiles_barriers, width=None,
+            Params(barriers=tiles_barriers, width=None,
+                   adjust_course=adjust_course_backward,
                    make_has_intersection=make_has_intersection_with_line),
         ]
         for x in params:
             has_intersection = (
-                x.make_has_intersection(context.position, x.course, x.barriers)
+                x.make_has_intersection(context.position, course, x.barriers)
                 if x.width is None else
-                x.make_has_intersection(context.position, x.course, x.barriers,
+                x.make_has_intersection(context.position, course, x.barriers,
                                         x.width)
             )
-            new_course = adjust_course(x.course, has_intersection)
+            new_course = x.adjust_course(course, has_intersection)
             if new_course is not None:
-                return -new_course if x.course == -course else new_course
+                return new_course
         return course
 
 
@@ -422,8 +446,15 @@ def generate_cars_barriers(context: Context):
     return make_units_barriers(cars)
 
 
-def adjust_course(course, has_intersection):
-    angle = find_false(-cos(1), cos(1), has_intersection, 2 ** -4)
+def adjust_course_forward(course, has_intersection):
+    angle = find_false(-0.5, 0.5, has_intersection, 2 ** -4)
+    if angle is not None:
+        return course.rotate(angle)
+    return None
+
+
+def adjust_course_backward(course, has_intersection):
+    angle = find_false(-0.5 - pi, 0.5 - pi, has_intersection, 2 ** -4)
     if angle is not None:
         return course.rotate(angle)
     return None
