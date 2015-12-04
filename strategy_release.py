@@ -137,9 +137,9 @@ class MoveMode:
         )
         self.__unstuck = UnstuckPathBuilder()
         self.__states = {
-            id(self.__forward): self.__unstuck,
-            id(self.__unstuck): self.__backward,
-            id(self.__backward): self.__forward,
+            id(self.__forward): self.__backward,
+            id(self.__backward): self.__unstuck,
+            id(self.__unstuck): self.__forward,
         }
         self.__current = self.__forward
         self.__get_direction = get_direction
@@ -406,7 +406,7 @@ class Course:
             )
             new_course = adjust_course(x.course, has_intersection)
             if new_course is not None:
-                return new_course
+                return -new_course if x.course == -course else new_course
         return course
 
 

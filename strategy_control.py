@@ -52,8 +52,8 @@ class Controller:
 
     def reset(self):
         self.__speed = PidController(0.5, 0, 0.01)
-        self.__acceleration = PidController(0.3, 0, 0.01)
-        self.__engine_power = PidController(0.2, 0, 0.01)
+        self.__acceleration = PidController(0.4, 0, 0.01)
+        self.__engine_power = PidController(0.3, 0, 0.01)
         self.__angle = PidController(1.0, 0, 0.1)
         self.__angular_speed_angle = PidController(2.0, 0, 0.0)
         self.__wheel_turn = PidController(2.0, 0, 0.1)
