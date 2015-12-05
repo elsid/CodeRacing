@@ -1,7 +1,7 @@
 from unittest import TestCase
-from hamcrest import assert_that, equal_to
+from hamcrest import assert_that, equal_to, greater_than, less_than
 from strategy_common import Point
-from strategy_control import DirectionDetector
+from strategy_control import DirectionDetector, Controller
 
 
 class DirectionDetectorTest(TestCase):
@@ -39,3 +39,305 @@ class DirectionDetectorTest(TestCase):
         )
         get_direction.update(Point(1, 1))
         assert_that(get_direction(), equal_to(Point(0, 1)))
+
+
+class ControllerTest(TestCase):
+    def test_start_direct_forward(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(1, 0),
+            angle=0,
+            direct_speed=Point(0, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(1, 0),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, greater_than(0))
+        assert_that(result.wheel_turn_derivative, equal_to(0))
+
+    def test_start_direct_backward(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(-1, 0),
+            angle=0,
+            direct_speed=Point(0, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(-1, 0),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, less_than(0))
+        assert_that(result.wheel_turn_derivative, equal_to(0))
+
+    def test_start_direct_forward_with_initial_speed(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(1, 0),
+            angle=0,
+            direct_speed=Point(1, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(1, 0),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, less_than(0))
+        assert_that(result.wheel_turn_derivative, equal_to(0))
+
+    def test_start_direct_backward_with_initial_speed(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(-1, 0),
+            angle=0,
+            direct_speed=Point(-1, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(-1, 0),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, greater_than(0))
+        assert_that(result.wheel_turn_derivative, equal_to(0))
+
+    def test_start_direct_forward_with_initial_opposite_speed(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(1, 0),
+            angle=0,
+            direct_speed=Point(-1, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(1, 0),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, greater_than(0))
+        assert_that(result.wheel_turn_derivative, equal_to(0))
+
+    def test_start_direct_backward_with_initial_opposite_speed(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(-1, 0),
+            angle=0,
+            direct_speed=Point(1, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(-1, 0),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, less_than(0))
+        assert_that(result.wheel_turn_derivative, equal_to(0))
+
+    def test_start_direct_forward_turn_left(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(1, -0.1),
+            angle=0,
+            direct_speed=Point(0, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(1, 0.1),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, greater_than(0))
+        assert_that(result.wheel_turn_derivative, less_than(0))
+
+    def test_start_direct_forward_turn_right(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(1, 0.1),
+            angle=0,
+            direct_speed=Point(0, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(1, 0.1),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, greater_than(0))
+        assert_that(result.wheel_turn_derivative, greater_than(0))
+
+    def test_start_direct_backward_turn_left(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(-1, -0.1),
+            angle=0,
+            direct_speed=Point(0, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(-1, -0.1),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, less_than(0))
+        assert_that(result.wheel_turn_derivative, greater_than(0))
+
+    def test_start_direct_backward_turn_right(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(-1, 0.1),
+            angle=0,
+            direct_speed=Point(0, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(-1, 0.1),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, less_than(0))
+        assert_that(result.wheel_turn_derivative, less_than(0))
+
+    def test_start_direct_forward_with_initial_speed_turn_left(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(1, -0.1),
+            angle=0,
+            direct_speed=Point(1, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(1, 0.1),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, less_than(0))
+        assert_that(result.wheel_turn_derivative, less_than(0))
+
+    def test_start_direct_forward_with_initial_speed_turn_right(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(1, 0.1),
+            angle=0,
+            direct_speed=Point(1, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(1, 0.1),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, less_than(0))
+        assert_that(result.wheel_turn_derivative, greater_than(0))
+
+    def test_start_direct_backward_with_initial_speed_turn_left(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(-1, -0.1),
+            angle=0,
+            direct_speed=Point(-1, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(-1, -0.1),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, greater_than(0))
+        assert_that(result.wheel_turn_derivative, greater_than(0))
+
+    def test_start_direct_backward_with_initial_speed_turn_right(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(-1, 0.1),
+            angle=0,
+            direct_speed=Point(-1, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(-1, 0.1),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, greater_than(0))
+        assert_that(result.wheel_turn_derivative, less_than(0))
+
+    def test_start_direct_forward_with_initial_opposite_speed_turn_left(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(1, -0.1),
+            angle=0,
+            direct_speed=Point(-1, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(1, 0.1),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, greater_than(0))
+        assert_that(result.wheel_turn_derivative, greater_than(0))
+
+    def test_start_direct_forward_with_initial_opposite_speed_turn_right(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(1, 0.1),
+            angle=0,
+            direct_speed=Point(-1, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(1, 0.1),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, greater_than(0))
+        assert_that(result.wheel_turn_derivative, less_than(0))
+
+    def test_start_direct_backward_with_initial_opposite_speed_turn_left(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(-1, -0.1),
+            angle=0,
+            direct_speed=Point(1, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(-1, -0.1),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, less_than(0))
+        assert_that(result.wheel_turn_derivative, less_than(0))
+
+    def test_start_direct_backward_with_initial_opposite_speed_turn_right(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(-1, 0.1),
+            angle=0,
+            direct_speed=Point(1, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(-1, 0.1),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, less_than(0))
+        assert_that(result.wheel_turn_derivative, greater_than(0))
+
+    def test_start_left(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(0, -1),
+            angle=0,
+            direct_speed=Point(0, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(0, -1),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, greater_than(0))
+        assert_that(result.wheel_turn_derivative, less_than(0))
+
+    def test_start_right(self):
+        controller = Controller(distance_to_wheels=1)
+        result = controller(
+            course=Point(0, 1),
+            angle=0,
+            direct_speed=Point(0, 0),
+            angular_speed_angle=0,
+            engine_power=0,
+            wheel_turn=0,
+            target_speed=Point(0, 1),
+            tick=0,
+        )
+        assert_that(result.engine_power_derivative, greater_than(0))
+        assert_that(result.wheel_turn_derivative, greater_than(0))
