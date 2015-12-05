@@ -487,12 +487,13 @@ def shortest_path_with_direction(graph, src, dst, initial_direction):
             new_direction = direction_from
             current_distance = distances.get(neighbor_index, float('inf'))
             cos_value = direction.cos(new_direction)
-            if direction.cos(new_direction) < -1e-3:
-                continue
-            elif direction.cos(new_direction) < 1e-3:
-                new_distance = distance + (4 * (1 - cos_value) + 1) * weight
+            if cos_value < -1e-3:
+                factor = 8
+            elif cos_value < 1e-3:
+                factor = 4
             else:
-                new_distance = distance + (1 * (1 - cos_value) + 1) * weight
+                factor = 1
+            new_distance = distance + (factor * (1 - cos_value) + 1) * weight
             if new_distance < current_distance:
                 distances[neighbor_index] = new_distance
                 previous_nodes[neighbor_index] = node_index
