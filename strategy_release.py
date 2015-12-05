@@ -53,7 +53,7 @@ class Context:
 
     @property
     def tile_index(self):
-        return get_point_index(self.tile, len(self.world.tiles_x_y[0]))
+        return get_point_index(self.tile, self.world.height)
 
 
 def make_release_controller(context: Context):
@@ -120,56 +120,37 @@ class ReleaseStrategy:
 
 class MoveMode:
     PATH_SIZE_FOR_TARGET_SPEED = 4
-    PATH_SIZE_FOR_USE_NITRO = 4
-    FORWARD_WAYPOINTS_COUNT = 5
-    BACKWARD_WAYPOINTS_COUNT = 3
 
     def __init__(self, controller, start_tile, get_direction, waypoints_count):
         self.__controller = controller
-        self.__path = []
-        self.__tile = None
-        self.__target_position = None
-        self.__forward = ForwardWaypointsPathBuilder(
+        self.__path = Path(
             start_tile=start_tile,
             get_direction=get_direction,
             waypoints_count=waypoints_count,
         )
-        self.__backward = BackwardWaypointsPathBuilder(
-            start_tile=start_tile,
-            get_direction=get_direction,
-            waypoints_count=self.BACKWARD_WAYPOINTS_COUNT,
-        )
-        self.__unstuck_backward = UnstuckPathBuilder(-1.5)
-        self.__unstuck_forward = UnstuckPathBuilder(1.5)
-        self.__states = {
-            id(self.__forward): self.__unstuck_backward,
-            id(self.__unstuck_backward): self.__unstuck_forward,
-            id(self.__unstuck_forward): self.__unstuck_backward,
-        }
-        self.__current = self.__forward
+        self.__target_position = None
         self.__get_direction = get_direction
         self.__course = Course()
+        self.__previous_path = []
 
     @property
     def path(self):
-        return self.__path
+        return self.__previous_path
 
     @property
     def target_position(self):
         return self.__target_position
 
-    def is_backward(self):
-        return self.__current == self.__backward
-
     def is_forward(self):
-        return self.__current == self.__forward
+        return self.__path.is_forward()
 
     def move(self, context: Context):
-        self.__update_path(context)
-        course = self.__course.get(context, self.__path)
-        target_position = context.position + course
-        speed_path = self.__speed_path(context)
+        path = self.__path.get(context)
+        course = self.__course.get(context, path)
+        speed_path = self.__speed_path(context, path)
         target_speed = get_target_speed(course, speed_path)
+        self.__target_position = context.position + course
+        self.__previous_path = path
         if target_speed.norm() == 0:
             return
         control = self.__controller(
@@ -215,10 +196,49 @@ class MoveMode:
                    else context.game.tire_radius)
         )(0)
         context.move.use_nitro = self.__use_nitro(context, speed_path)
-        self.__target_position = target_position
-        self.__tile = context.tile
-        self.__backward.start_tile = context.tile
-        self.__forward.start_tile = context.tile
+
+    def use_forward(self):
+        self.__path.use_forward()
+
+    def switch(self):
+        self.__path.switch()
+
+    def __speed_path(self, context: Context, path):
+        return ([context.position - self.__get_direction(), context.position] +
+                path[:self.PATH_SIZE_FOR_TARGET_SPEED])
+
+    def __use_nitro(self, context: Context, sub_path):
+        return (
+            context.world.tick > context.game.initial_freeze_duration_ticks and
+            len(sub_path) >= self.PATH_SIZE_FOR_TARGET_SPEED and
+            cos_product(sub_path) > 0.85)
+
+
+class Path:
+    def __init__(self, start_tile, get_direction, waypoints_count):
+        self.__path = []
+        self.__forward = ForwardWaypointsPathBuilder(
+            start_tile=start_tile,
+            get_direction=get_direction,
+            waypoints_count=waypoints_count,
+        )
+        self.__backward = BackwardWaypointsPathBuilder(
+            start_tile=start_tile,
+            get_direction=get_direction,
+            waypoints_count=waypoints_count,
+        )
+        self.__unstuck_backward = UnstuckPathBuilder(-1.5)
+        self.__unstuck_forward = UnstuckPathBuilder(1.5)
+        self.__states = {
+            id(self.__forward): self.__unstuck_backward,
+            id(self.__unstuck_backward): self.__unstuck_forward,
+            id(self.__unstuck_forward): self.__unstuck_backward,
+        }
+        self.__current = self.__forward
+
+    def get(self, context: Context):
+        self.__update(context)
+        return self.__path
 
     def use_forward(self):
         self.__current = self.__forward
@@ -228,7 +248,10 @@ class MoveMode:
         self.__current = self.__states[id(self.__current)]
         self.__path.clear()
 
-    def __update_path(self, context: Context):
+    def is_forward(self):
+        return self.__current == self.__forward
+
+    def __update(self, context: Context):
         if (not self.__path or
                 context.position.distance(self.__path[0]) >
                 2 * context.game.track_tile_size):
@@ -237,17 +260,8 @@ class MoveMode:
                context.position.distance(self.__path[0]) <
                0.75 * context.game.track_tile_size):
             self.__path = self.__path[1:]
-
-    def __speed_path(self, context: Context):
-        return ([context.position - self.__get_direction(),
-                 context.position] +
-                self.__path[:self.PATH_SIZE_FOR_TARGET_SPEED])
-
-    def __use_nitro(self, context: Context, sub_path):
-        return (
-            context.world.tick > context.game.initial_freeze_duration_ticks and
-            len(sub_path) >= self.PATH_SIZE_FOR_USE_NITRO and
-            cos_product(sub_path) > 0.85)
+        self.__backward.start_tile = context.tile
+        self.__forward.start_tile = context.tile
 
 
 class WaypointsPathBuilder:
@@ -377,7 +391,7 @@ class Course:
                     yield Point(x, y)
 
         tiles = list(generate_tiles())
-        row_size = len(context.world.tiles_x_y[0])
+        row_size = context.world.height
 
         def generate_tiles_barriers():
             def impl():
