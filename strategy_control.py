@@ -83,6 +83,10 @@ class Controller:
         else:
             target_angle = course.absolute_rotation()
         angle_error = normalize_angle(target_angle - angle)
+        if angle_error > pi / 2:
+            angle_error -= pi
+        elif angle_error < -pi / 2:
+            angle_error += pi
         angle_derivative = self.__angle(angle_error)
         angular_speed_angle_derivative = self.__angular_speed_angle(
             angle_derivative - angular_speed_angle)
