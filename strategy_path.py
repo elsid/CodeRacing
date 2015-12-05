@@ -1,9 +1,7 @@
 from enum import Enum
 from collections import namedtuple
-from itertools import islice, chain, groupby
-from numpy import array
+from itertools import islice, groupby
 from sys import maxsize
-from scipy.sparse.csgraph import dijkstra
 from collections import defaultdict, deque
 from heapq import heappop, heappush
 from model.TileType import TileType
@@ -251,115 +249,6 @@ def shift_to_borders(path):
         direction = following - current
         yield current + direction * 0.5
     yield path[-1]
-
-
-# def make_tiles_path(start_tile, waypoints,  tiles,
-#                     direction):
-#     matrix = AdjacencyMatrix(tiles, start_tile, direction)
-#     tile_index = matrix.index(start_tile.x, start_tile.y)
-#     return make_path(tile_index, matrix, waypoints)
-
-
-def make_path(start_index, matrix, waypoints):
-    graph = array(matrix.values)
-    _, predecessors = dijkstra(graph, return_predecessors=True)
-
-    def generate():
-        yield path(start_index, matrix.index(*waypoints[0]))
-        for i, p in islice(enumerate(waypoints), len(waypoints) - 1):
-            src = matrix.index(*p)
-            dst = matrix.index(*waypoints[i + 1])
-            yield path(src, dst)
-
-    def path(src, dst):
-        return reversed(list(back_path(src, dst)))
-
-    def back_path(src, dst):
-        while src != dst and dst >= 0:
-            yield dst
-            dst = predecessors.item(src, dst)
-
-    yield matrix.point(start_index)
-    for v in chain.from_iterable(generate()):
-        yield matrix.point(v)
-
-
-class AdjacencyMatrix:
-    def __init__(self, tiles, start_tile, direction):
-        column_size = len(tiles)
-        self.__row_size = len(tiles[0])
-
-        def generate():
-            for x, column in enumerate(tiles):
-                for y, tile in enumerate(column):
-                    yield list(adjacency_matrix_row(Point(x, y), tile))
-
-        def adjacency_matrix_row(node, tile):
-            def matrix_row(dst):
-                for x in range(self.__row_size * column_size):
-                    if x in dst:
-                        distance = (0.5 if node == start_tile
-                                    else node.distance(start_tile))
-                        yield 3 - ((self.point(x) - node).cos(direction) /
-                                   distance)
-                    else:
-                        yield 0
-
-            if tile == TileType.VERTICAL:
-                return matrix_row({top(node), bottom(node)})
-            elif tile == TileType.HORIZONTAL:
-                return matrix_row({left(node), right(node)})
-            elif tile == TileType.LEFT_TOP_CORNER:
-                return matrix_row({right(node), bottom(node)})
-            elif tile == TileType.RIGHT_TOP_CORNER:
-                return matrix_row({left(node), bottom(node)})
-            elif tile == TileType.LEFT_BOTTOM_CORNER:
-                return matrix_row({right(node), top(node)})
-            elif tile == TileType.RIGHT_BOTTOM_CORNER:
-                return matrix_row({left(node), top(node)})
-            elif tile == TileType.LEFT_HEADED_T:
-                return matrix_row({left(node), top(node), bottom(node)})
-            elif tile == TileType.RIGHT_HEADED_T:
-                return matrix_row({right(node), top(node), bottom(node)})
-            elif tile == TileType.TOP_HEADED_T:
-                return matrix_row({top(node), left(node), right(node)})
-            elif tile == TileType.BOTTOM_HEADED_T:
-                return matrix_row({bottom(node), left(node), right(node)})
-            elif tile == TileType.CROSSROADS:
-                return matrix_row({left(node), right(node),
-                                   top(node), bottom(node)})
-            else:
-                return matrix_row({})
-
-        def left(node):
-            return self.index(node.x - 1, node.y)
-
-        def right(node):
-            return self.index(node.x + 1, node.y)
-
-        def top(node):
-            return self.index(node.x, node.y - 1)
-
-        def bottom(node):
-            return self.index(node.x, node.y + 1)
-
-        self.__values = list(generate())
-
-    def index(self, x, y):
-        return x * self.__row_size + y
-
-    def x_position(self, index):
-        return int(index / self.__row_size)
-
-    def y_position(self, index):
-        return index % self.__row_size
-
-    def point(self, index):
-        return Point(self.x_position(index), self.y_position(index))
-
-    @property
-    def values(self):
-        return self.__values
 
 
 def make_tiles_path(start_tile, waypoints, tiles, direction):

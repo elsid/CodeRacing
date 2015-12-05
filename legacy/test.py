@@ -1,10 +1,7 @@
 from unittest import TestCase, main
-from hamcrest import assert_that, equal_to, close_to
-from model.TileType import TileType
+from hamcrest import assert_that, equal_to
 from math import pi, sqrt
 from MyStrategy import (
-    AdjacencyMatrix,
-    make_path,
     Point,
     tile_coord,
     get_current_tile,
