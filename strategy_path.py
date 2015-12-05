@@ -1,3 +1,4 @@
+from model.BonusType import BonusType
 from enum import Enum
 from collections import namedtuple
 from itertools import islice, groupby
@@ -6,6 +7,69 @@ from collections import defaultdict, deque
 from heapq import heappop, heappush
 from model.TileType import TileType
 from strategy_common import Point, get_current_tile
+
+
+def adjust_for_bonuses(path, bonuses, tile_size, world_height, durability,
+                       limit):
+    tiles_bonuses = make_tiles_bonuses(bonuses, tile_size, world_height)
+    tiles_points = make_tiles_points(islice(path, limit), tile_size,
+                                     world_height)
+    adjusted = {}
+    for tile, bonuses in tiles_bonuses.items():
+        point = tiles_points.get(tile)
+        if point is None:
+            continue
+        adjusted[point.index] = get_best_bonuses_point(point.position, bonuses,
+                                                       tile_size, durability)
+    for index, point in enumerate(path):
+        new_point = adjusted.get(index)
+        yield point if new_point is None else new_point
+
+
+def make_tiles_bonuses(bonuses, tile_size, world_height):
+    result = defaultdict(list)
+    for v in bonuses:
+        index = get_point_index(get_current_tile(v, tile_size), world_height)
+        result[index].append(v)
+    return result
+
+
+OrderedPoint = namedtuple('OrderedPoint', ('index', 'position'))
+
+
+def make_tiles_points(points, tile_size, world_height):
+    return dict((get_point_index(get_current_tile(v, tile_size), world_height),
+                 OrderedPoint(index=i, position=v))
+                for i, v in enumerate(points))
+
+
+BONUS_PENALTY_FACTOR = 1
+BONUS_TYPE_PRIORITY_FACTOR = 1
+
+
+def get_best_bonuses_point(position, bonuses, tile_size, durability):
+    def priority(bonus):
+        type_priority = get_bonus_type_priority(bonus.type, durability)
+        penalty = get_bonus_penalty(bonus, position, tile_size)
+        return (type_priority * BONUS_TYPE_PRIORITY_FACTOR -
+                penalty * BONUS_PENALTY_FACTOR)
+
+    best = max(bonuses, key=priority)
+    return Point(best.x, best.y) if priority(best) > 0 else position
+
+
+def get_bonus_penalty(bonus, position, tile_size):
+    return position.distance(Point(bonus.x, bonus.y)) / tile_size
+
+
+def get_bonus_type_priority(value, durability):
+    return {
+        BonusType.REPAIR_KIT: 1 - durability,
+        BonusType.AMMO_CRATE: 0.25,
+        BonusType.NITRO_BOOST: 0.5,
+        BonusType.OIL_CANISTER: 0.25,
+        BonusType.PURE_SCORE: 1,
+    }[value]
 
 
 def adjust_path(path, shift, tile_size):

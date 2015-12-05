@@ -19,6 +19,7 @@ from strategy_path import (
     adjust_path,
     shift_on_direct,
     get_point_index,
+    adjust_for_bonuses,
 )
 from strategy_barriers import (
     make_tiles_barriers,
@@ -215,6 +216,8 @@ class MoveMode:
 
 
 class Path:
+    PATH_SIZE_FOR_BONUSES = 5
+
     def __init__(self, start_tile, get_direction, waypoints_count):
         self.__path = []
         self.__forward = ForwardWaypointsPathBuilder(
@@ -238,7 +241,14 @@ class Path:
 
     def get(self, context: Context):
         self.__update(context)
-        return self.__path
+        return list(adjust_for_bonuses(
+            path=self.__path,
+            bonuses=context.world.bonuses,
+            tile_size=context.game.track_tile_size,
+            world_height=context.world.height,
+            durability=context.me.durability,
+            limit=self.PATH_SIZE_FOR_BONUSES,
+        ))
 
     def use_forward(self):
         self.__current = self.__forward
