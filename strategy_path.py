@@ -10,17 +10,19 @@ from model.TileType import TileType
 from strategy_common import Point, get_current_tile
 
 
-def adjust_path(path, shift):
+def adjust_path(path, shift, tile_size):
     if len(path) < 2:
         return (x for x in path)
 
     def generate():
         typed_path = list(make_typed_path())
-        yield adjust_path_point(None, typed_path[0], typed_path[1], shift)
+        yield adjust_path_point(None, typed_path[0], typed_path[1], shift,
+                                tile_size)
         for i, p in islice(enumerate(typed_path), 1, len(typed_path) - 1):
             yield adjust_path_point(typed_path[i - 1], p, typed_path[i + 1],
-                                    shift)
-        yield adjust_path_point(typed_path[-2], typed_path[-1], None, shift)
+                                    shift, tile_size)
+        yield adjust_path_point(typed_path[-2], typed_path[-1], None, shift,
+                                tile_size)
 
     def make_typed_path():
         yield TypedPoint(path[0],
@@ -38,30 +40,51 @@ def adjust_path(path, shift):
 TypedPoint = namedtuple('TypedPoint', ('position', 'type'))
 
 
-def adjust_path_point(previous, current: TypedPoint, following, shift):
+def adjust_path_point(previous, current: TypedPoint, following, shift,
+                      tile_size):
     return current.position + path_point_shift(previous, current, following,
-                                               shift)
+                                               shift, tile_size)
 
 
 def path_point_shift(previous: TypedPoint, current: TypedPoint,
-                     following: TypedPoint, shift):
+                     following: TypedPoint, shift, tile_size):
     if current.type in {PointType.LEFT_TOP, PointType.TOP_LEFT}:
-        if following and current.type.input == following.type.output:
+        if (previous and following and
+                previous.type.input != current.type.input and
+                previous.type.output != current.type.output and
+                following.type == previous.type):
+            return Point(- tile_size / 4, - tile_size / 4)
+        elif following and current.type.input == following.type.output:
             return Point(+ shift, + shift) / 2
         else:
             return Point(- shift, - shift)
     elif current.type in {PointType.LEFT_BOTTOM, PointType.BOTTOM_LEFT}:
-        if following and current.type.input == following.type.output:
+        if (previous and following and
+                previous.type.input != current.type.input and
+                previous.type.output != current.type.output and
+                following.type == previous.type):
+            return Point(- tile_size / 4, + tile_size / 4)
+        elif following and current.type.input == following.type.output:
             return Point(+ shift, - shift) / 2
         else:
             return Point(- shift, + shift)
     elif current.type in {PointType.RIGHT_TOP, PointType.TOP_RIGHT}:
-        if following and current.type.input == following.type.output:
+        if (previous and following and
+                previous.type.input != current.type.input and
+                previous.type.output != current.type.output and
+                following.type == previous.type):
+            return Point(+ tile_size / 4, - tile_size / 4)
+        elif following and current.type.input == following.type.output:
             return Point(- shift, + shift) / 2
         else:
             return Point(+ shift, - shift)
     elif current.type in {PointType.RIGHT_BOTTOM, PointType.BOTTOM_RIGHT}:
-        if following and current.type.input == following.type.output:
+        if (previous and following and
+                previous.type.input != current.type.input and
+                previous.type.output != current.type.output and
+                following.type == previous.type):
+            return Point(+ tile_size / 4, + tile_size / 4)
+        elif following and current.type.input == following.type.output:
             return Point(- shift, - shift) / 2
         else:
             return Point(+ shift, + shift)
@@ -349,7 +372,9 @@ def make_tiles_path(start_tile, waypoints, tiles, direction):
     if start != waypoints[0] and start in graph:
         waypoints = [start] + waypoints
     path = multi_path(graph, waypoints, direction)
-    return remove_split(list(graph[x].position + Point(0.5, 0.5) for x in path))
+    path = list(graph[x].position + Point(0.5, 0.5) for x in path)
+    path = remove_split(path)
+    return path
 
 
 def multi_path(graph, waypoints, direction):
@@ -512,7 +537,7 @@ def shortest_path_with_direction(graph, src, dst, initial_direction):
             if direction.cos(new_direction) < -1e-3:
                 continue
             elif direction.cos(new_direction) < 1e-3:
-                new_distance = distance + (2 * (1 - cos_value) + 1) * weight
+                new_distance = distance + (4 * (1 - cos_value) + 1) * weight
             else:
                 new_distance = distance + (1 * (1 - cos_value) + 1) * weight
             if new_distance < current_distance:

@@ -51,6 +51,10 @@ class Context:
     def tile(self):
         return get_current_tile(self.position, self.game.track_tile_size)
 
+    @property
+    def tile_index(self):
+        return get_point_index(self.tile, len(self.world.tiles_x_y[0]))
+
 
 def make_release_controller(context: Context):
     return Controller(
@@ -116,7 +120,7 @@ class ReleaseStrategy:
 
 class MoveMode:
     PATH_SIZE_FOR_TARGET_SPEED = 4
-    PATH_SIZE_FOR_USE_NITRO = 5
+    PATH_SIZE_FOR_USE_NITRO = 4
     FORWARD_WAYPOINTS_COUNT = 5
     BACKWARD_WAYPOINTS_COUNT = 3
 
@@ -164,9 +168,7 @@ class MoveMode:
         self.__update_path(context)
         course = self.__course.get(context, self.__path)
         target_position = context.position + course
-        speed_path = ([context.position - self.__get_direction(),
-                      context.position] +
-                      self.__path[:self.PATH_SIZE_FOR_TARGET_SPEED])
+        speed_path = self.__speed_path(context)
         target_speed = get_target_speed(course, speed_path)
         if target_speed.norm() == 0:
             return
@@ -212,12 +214,7 @@ class MoveMode:
                    if context.me.type == CarType.BUGGY
                    else context.game.tire_radius)
         )(0)
-        nitro_path = ([context.position] +
-                      self.__path[:self.PATH_SIZE_FOR_USE_NITRO])
-        context.move.use_nitro = (
-            context.world.tick > context.game.initial_freeze_duration_ticks and
-            len(nitro_path) >= self.PATH_SIZE_FOR_USE_NITRO + 1 and
-            0.95 < (cos_product(nitro_path)))
+        context.move.use_nitro = self.__use_nitro(context, speed_path)
         self.__target_position = target_position
         self.__tile = context.tile
         self.__backward.start_tile = context.tile
@@ -241,6 +238,17 @@ class MoveMode:
                0.75 * context.game.track_tile_size):
             self.__path = self.__path[1:]
 
+    def __speed_path(self, context: Context):
+        return ([context.position - self.__get_direction(),
+                 context.position] +
+                self.__path[:self.PATH_SIZE_FOR_TARGET_SPEED])
+
+    def __use_nitro(self, context: Context, sub_path):
+        return (
+            context.world.tick > context.game.initial_freeze_duration_ticks and
+            len(sub_path) >= self.PATH_SIZE_FOR_USE_NITRO and
+            cos_product(sub_path) > 0.85)
+
 
 class WaypointsPathBuilder:
     def __init__(self, start_tile, get_direction):
@@ -263,7 +271,7 @@ class WaypointsPathBuilder:
         shift = (context.game.track_tile_size / 2 -
                  context.game.track_tile_margin -
                  max(context.me.width, context.me.height) / 2)
-        path = list(adjust_path(path, shift))
+        path = list(adjust_path(path, shift, context.game.track_tile_size))
         path = list(shift_on_direct(path))
         return path
 
@@ -381,6 +389,7 @@ class Course:
         all_barriers = list(chain(tiles_barriers,
                                   generate_units_barriers(context)))
         width = max(context.me.width, context.me.height)
+        angle = course.rotation(context.direction)
 
         def with_lane(current_barriers):
             return make_has_intersection_with_lane(
@@ -391,10 +400,10 @@ class Course:
             )
 
         def adjust_forward(has_intersection):
-            return adjust_course_forward(course, has_intersection)
+            return adjust_course_forward(has_intersection, angle)
 
         def adjust_backward(has_intersection):
-            return adjust_course_forward(course, has_intersection)
+            return adjust_course_forward(has_intersection, angle)
 
         variants = [
             lambda: adjust_forward(with_lane(all_barriers)),
@@ -403,9 +412,9 @@ class Course:
             lambda: adjust_backward(with_lane(tiles_barriers)),
         ]
         for f in variants:
-            new_course = f()
-            if new_course is not None:
-                return new_course
+            rotation = f()
+            if rotation is not None:
+                return course.rotate(rotation)
         return course
 
 
@@ -422,26 +431,32 @@ def generate_cars_barriers(context: Context):
     return make_units_barriers(cars)
 
 
-def adjust_course_forward(course, has_intersection):
-    return adjust_course(course, has_intersection, -1, 1)
+def adjust_course_forward(has_intersection, angle):
+    return adjust_course_rotation(has_intersection, -1, 1, angle)
 
 
-def adjust_course_backward(course, has_intersection):
-    return adjust_course(course, has_intersection, -1 - pi, 1 - pi)
+def adjust_course_backward(has_intersection, angle):
+    return adjust_course_rotation(has_intersection, -1 - pi, 1 - pi, angle)
 
 
-def adjust_course(course, has_intersection, begin, end):
-    angle = find_false(begin, end, has_intersection, 2 ** -3)
-    if angle is not None:
-        return course.rotate(angle)
-    return None
+def adjust_course_rotation(has_intersection, begin, end, angle):
+    middle = (begin + end) / 2
+    if not has_intersection(middle):
+        return middle
+    left, right = find_false(begin, end, has_intersection, 2 ** -3)
+    if left is not None:
+        if right is not None:
+            return left if abs(angle - left) < abs(angle - right) else right
+        else:
+            return left
+    else:
+        return right
 
 
 def find_false(begin, end, is_true, min_interval):
     center = (begin + end) / 2
-    if not is_true(center):
-        return center
-    nearest = None
+    left = None
+    right = None
     queue = deque([(begin, end)])
     while queue:
         begin, end = queue.popleft()
@@ -452,10 +467,12 @@ def find_false(begin, end, is_true, min_interval):
             queue.append((begin, middle))
             queue.append((middle, end))
         else:
-            if nearest is None or abs(center - middle) < abs(center - nearest):
-                nearest = middle
             if middle < center:
-                queue.append((middle, end))
+                if left is None or center - middle < center - left:
+                    left = middle
+                queue.appendleft((middle, end))
             else:
-                queue.append((begin, middle))
-    return nearest
+                if right is None or middle - center < right - center:
+                    right = middle
+                queue.appendleft((begin, middle))
+    return left, right
