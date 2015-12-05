@@ -1,7 +1,7 @@
 from collections import namedtuple, deque
 from functools import reduce
 from itertools import islice
-from math import pi, exp
+from math import pi, exp, sqrt
 from operator import mul
 from strategy_common import Point, normalize_angle, Polyline
 
@@ -70,8 +70,10 @@ class Controller:
         acceleration = tangential_acceleration + centripetal_acceleration
         acceleration_derivative = self.__acceleration(target_acceleration -
                                                       acceleration)
-        target_engine_power = (acceleration_derivative.norm() *
-                               acceleration_derivative.cos(direction))
+        cos_val = acceleration_derivative.cos(direction)
+        if -sqrt(2) / 2 < cos_val < sqrt(2) / 2:
+            cos_val = sqrt(2) / 2 if cos_val >= 0 else -sqrt(2) / 2
+        target_engine_power = acceleration_derivative.norm() * cos_val
         engine_power_derivative = self.__engine_power(
             target_engine_power - engine_power)
         if (angle < course.absolute_rotation() <
@@ -87,6 +89,10 @@ class Controller:
             angle_error -= pi
         elif angle_error < -pi / 2:
             angle_error += pi
+        if pi / 4 < angle_error < 3 * pi / 4:
+            angle_error = pi / 4 if angle_error <= pi / 2 else 3 * pi / 4
+        elif -3 * pi / 4 < angle_error < -pi / 4:
+            angle_error = -3 * pi / 4 if angle_error > -pi / 2 else -pi / 4
         angle_derivative = self.__angle(angle_error)
         angular_speed_angle_derivative = self.__angular_speed_angle(
             angle_derivative - angular_speed_angle)
