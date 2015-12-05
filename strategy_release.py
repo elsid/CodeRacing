@@ -455,6 +455,9 @@ class Course:
         return course
 
 
+UNIT_SPEED_FACTOR = 0.9
+
+
 def generate_units_barriers(context: Context):
     units = chain.from_iterable([
         make_units_barriers(context.world.oil_slicks),
@@ -463,7 +466,7 @@ def generate_units_barriers(context: Context):
     ])
 
     def need_use_unit(unit):
-        return (context.speed.norm() > unit.speed.norm() or
+        return (context.speed.norm() > UNIT_SPEED_FACTOR * unit.speed.norm() or
                 context.speed.norm() > 0 and unit.speed.norm() > 0 and
                 context.speed.cos(unit.speed) < 0)
 
