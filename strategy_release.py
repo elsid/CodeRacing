@@ -102,8 +102,8 @@ class ReleaseStrategy:
         if self.__first_move:
             self.__lazy_init(context)
             self.__first_move = False
+        context.move.engine_power = 1
         if context.world.tick < context.game.initial_freeze_duration_ticks:
-            context.me.engine_power = 1
             return
         self.__stuck.update(context.position)
         self.__direction.update(context.position)
