@@ -27,6 +27,8 @@ from strategy_path import (
     shift_on_direct,
     shift_on_direct_x,
     shift_on_direct_y,
+    get_index,
+    get_point,
 )
 
 
@@ -601,3 +603,39 @@ class ShiftOnDirectTest(TestCase):
             Point(0, 0), Point(1, 1), Point(2, 1), Point(3, 1),
             Point(4, 2), Point(4, 3), Point(4, 4), Point(4, 5),
         ]))
+
+
+class GetIndexTest(TestCase):
+    def test_for_0_0_with_row_size_1_returns_0(self):
+        result = get_index(x=0, y=0, row_size=1)
+        assert_that(result, equal_to(0))
+
+    def test_for_0_1_with_row_size_2_returns_1(self):
+        result = get_index(x=0, y=1, row_size=2)
+        assert_that(result, equal_to(1))
+
+    def test_for_1_0_with_row_size_2_returns_2(self):
+        result = get_index(x=1, y=0, row_size=2)
+        assert_that(result, equal_to(2))
+
+    def test_for_2_3_with_row_size_4_returns_11(self):
+        result = get_index(x=2, y=3, row_size=4)
+        assert_that(result, equal_to(11))
+
+
+class GetPointTest(TestCase):
+    def test_for_0_with_row_size_1_returns_0_0(self):
+        result = get_point(index=0, row_size=1)
+        assert_that(result, equal_to(Point(0, 0)))
+
+    def test_for_1_with_row_size_2_returns_0_1(self):
+        result = get_point(index=1, row_size=2)
+        assert_that(result, equal_to(Point(0, 1)))
+
+    def test_for_2_with_row_size_2_returns_1_0(self):
+        result = get_point(index=2, row_size=2)
+        assert_that(result, equal_to(Point(1, 0)))
+
+    def test_for_11_with_row_size_4_returns_2_3(self):
+        result = get_point(index=11, row_size=4)
+        assert_that(result, equal_to(Point(2, 3)))
