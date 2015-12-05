@@ -463,26 +463,26 @@ class ShortestPathWitDirectionTest(TestCase):
 
     def test_for_graph_with_1(self):
         result = shortest_path_with_direction(graph={
-            0: Node(position=Point(0, 1), arcs=[Arc(dst=1, weight=0),
-                                                Arc(dst=2, weight=0)]),
-            1: Node(position=Point(0, 0), arcs=[Arc(dst=3, weight=0)]),
-            2: Node(position=Point(0, 2), arcs=[Arc(dst=4, weight=0)]),
-            3: Node(position=Point(1, 0), arcs=[Arc(dst=5, weight=0)]),
-            4: Node(position=Point(1, 2), arcs=[Arc(dst=6, weight=0)]),
-            5: Node(position=Point(1, 1), arcs=[Arc(dst=6, weight=0)]),
+            0: Node(position=Point(0, 1), arcs=[Arc(dst=1, weight=1),
+                                                Arc(dst=2, weight=1)]),
+            1: Node(position=Point(0, 0), arcs=[Arc(dst=3, weight=1)]),
+            2: Node(position=Point(0, 2), arcs=[Arc(dst=4, weight=1)]),
+            3: Node(position=Point(1, 0), arcs=[Arc(dst=5, weight=1)]),
+            4: Node(position=Point(1, 2), arcs=[Arc(dst=6, weight=1)]),
+            5: Node(position=Point(1, 1), arcs=[Arc(dst=6, weight=1)]),
             6: Node(position=Point(2, 2), arcs=[]),
         }, src=0, dst=6, initial_direction=Point(1, -1))
         assert_that(list(result), equal_to([1, 3, 5, 6]))
 
     def test_for_graph_with_2(self):
         result = shortest_path_with_direction(graph={
-            0: Node(position=Point(0, 1), arcs=[Arc(dst=1, weight=0.1),
-                                                Arc(dst=2, weight=0.1)]),
-            1: Node(position=Point(0, 0), arcs=[Arc(dst=3, weight=0.1)]),
-            2: Node(position=Point(0, 2), arcs=[Arc(dst=4, weight=0.1)]),
-            3: Node(position=Point(1, 0), arcs=[Arc(dst=5, weight=0.1)]),
-            4: Node(position=Point(1, 2), arcs=[Arc(dst=6, weight=0.1)]),
-            5: Node(position=Point(1, 1), arcs=[Arc(dst=6, weight=0.1)]),
+            0: Node(position=Point(0, 1), arcs=[Arc(dst=1, weight=1),
+                                                Arc(dst=2, weight=1)]),
+            1: Node(position=Point(0, 0), arcs=[Arc(dst=3, weight=1)]),
+            2: Node(position=Point(0, 2), arcs=[Arc(dst=4, weight=1)]),
+            3: Node(position=Point(1, 0), arcs=[Arc(dst=5, weight=1)]),
+            4: Node(position=Point(1, 2), arcs=[Arc(dst=6, weight=1)]),
+            5: Node(position=Point(1, 1), arcs=[Arc(dst=6, weight=1)]),
             6: Node(position=Point(2, 2), arcs=[]),
         }, src=0, dst=6, initial_direction=Point(1, 1))
         assert_that(list(result), equal_to([2, 4, 6]))
