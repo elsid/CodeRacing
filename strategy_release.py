@@ -176,11 +176,11 @@ class MoveMode:
             if context.speed.cos(context.direction) >= 0:
                 context.move.brake = (
                     -context.game.car_engine_power_change_per_tick >
-                    control.engine_power_derivative / 2)
+                    control.engine_power_derivative)
             else:
                 context.move.brake = (
                     context.game.car_engine_power_change_per_tick >
-                    control.engine_power_derivative / 2)
+                    control.engine_power_derivative)
         context.move.spill_oil = (
             context.me.oil_canister_count > 1 or
             make_has_intersection_with_line(
