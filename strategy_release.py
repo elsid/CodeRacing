@@ -398,6 +398,8 @@ class Course:
         course = target_position - context.position
         current_tile = context.tile
         target_tile = get_current_tile(target_position, tile_size)
+        target_tile.x = max(0, min(context.world.width - 1, target_tile.x))
+        target_tile.y = max(0, min(context.world.height - 1, target_tile.y))
         range_x = list(range(current_tile.x, target_tile.x + 1)
                        if current_tile.x <= target_tile.x
                        else range(target_tile.x, current_tile.x + 1))
