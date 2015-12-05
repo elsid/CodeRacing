@@ -238,6 +238,7 @@ class Path:
             id(self.__unstuck_forward): self.__unstuck_backward,
         }
         self.__current = self.__forward
+        self.__get_direction = get_direction
 
     def get(self, context: Context):
         self.__update(context)
@@ -266,9 +267,18 @@ class Path:
                 context.position.distance(self.__path[0]) >
                 2 * context.game.track_tile_size):
             self.__path = self.__current.make(context)
-        while (self.__path and
-               context.position.distance(self.__path[0]) <
-               0.75 * context.game.track_tile_size):
+
+        def need_take_next(path):
+            if not path:
+                return False
+            course = path[0] - context.position
+            distance = course.norm()
+            if distance < min(context.me.width, context.me.height):
+                return True
+            return (distance < 0.75 * context.game.track_tile_size and
+                    self.__get_direction().cos(course) < 0.25)
+
+        while need_take_next(self.__path):
             self.__path = self.__path[1:]
         self.__backward.start_tile = context.tile
         self.__forward.start_tile = context.tile
