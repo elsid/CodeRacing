@@ -460,11 +460,18 @@ class Course:
 
 
 def generate_units_barriers(context: Context):
-    return chain.from_iterable([
+    units = chain.from_iterable([
         make_units_barriers(context.world.oil_slicks),
         make_units_barriers(context.world.projectiles),
         generate_cars_barriers(context),
     ])
+
+    def need_use_unit(unit):
+        return (context.speed.norm() > unit.speed.norm() or
+                context.speed.norm() > 0 and unit.speed.norm() > 0 and
+                context.speed.cos(unit.speed) < 0)
+
+    return filter(need_use_unit, units)
 
 
 def generate_cars_barriers(context: Context):

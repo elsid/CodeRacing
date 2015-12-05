@@ -232,47 +232,45 @@ def make_tile_barriers(tile_type: TileType, position: Point, margin, size):
 
 
 class Unit:
-    def __init__(self, position, radius, speed):
-        self.__circle = Circle(position, radius)
-        self.__position = position
-        self.__radius = radius
-        self.__speed = speed
-
-    def passability(self, position, radius, speed):
-        immovable = self.__circle.passability(position, radius, speed)
-        if immovable == 1.0:
-            return 1.0
-        else:
-            distance = (self.__position - position).norm()
-            return (distance / (self.__radius + radius)) ** 2
+    def __init__(self, barrier, speed):
+        self.barrier = barrier
+        self.speed = speed
 
     def has_intersection_with_line(self, line: Line):
-        return self.__circle.has_intersection_with_line(line)
+        return self.barrier.has_intersection_with_line(line)
 
     def __repr__(self):
-        return 'Unit(position={p}, radius={r}, speed={s})'.format(
-            p=repr(self.__position), r=repr(self.__radius),
-            s=repr(self.__speed))
+        return 'Unit(barrier={b}, speed={s})'.format(
+            b=repr(self.barrier), s=repr(self.speed))
 
     def __eq__(self, other):
-        return (self.__position == other.__position and
-                self.__radius == other.__radius and
-                self.__speed == other.__speed)
+        return (self.barrier == other.__barrier and
+                self.speed == other.__speed)
 
 
 def make_units_barriers(units):
-    return [unit_barriers(x) for x in units]
+    return [x for x in (make_unit_barrier(x) for x in units) if x]
 
 
-def unit_barriers(unit):
+def make_unit_barrier(unit):
     if isinstance(unit, RectangularUnit):
-        radius = max((unit.height, unit.width)) / 2
+        return Unit(
+            barrier=Rectangle(
+                left_top=Point(unit.x - unit.width / 2,
+                               unit.y - unit.height / 2),
+                right_bottom=Point(unit.x + unit.width / 2,
+                                   unit.y + unit.height / 2),
+            ),
+            speed=Point(unit.speed_x, unit.speed_y),
+        )
     elif isinstance(unit, CircularUnit):
-        radius = unit.radius
+        return Unit(
+            barrier=Circle(position=Point(unit.x, unit.y), radius=unit.radius),
+            speed=Point(unit.speed_x, unit.speed_y),
+        )
     else:
-        radius = 1.0
-    return Unit(position=Point(unit.x, unit.y), radius=radius,
-                speed=Point(unit.speed_x, unit.speed_y))
+        return None
+
 
 
 def make_has_intersection_with_line(position, course, barriers):
