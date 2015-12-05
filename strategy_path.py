@@ -6,7 +6,7 @@ from sys import maxsize
 from collections import defaultdict, deque
 from heapq import heappop, heappush
 from model.TileType import TileType
-from strategy_common import Point, get_current_tile
+from strategy_common import Point, get_current_tile, Polyline
 
 
 def adjust_for_bonuses(path, bonuses, tile_size, world_height, durability,
@@ -19,7 +19,18 @@ def adjust_for_bonuses(path, bonuses, tile_size, world_height, durability,
         point = tiles_points.get(tile)
         if point is None:
             continue
-        adjusted[point.index] = get_best_bonuses_point(point.position, bonuses,
+        if 0 < point.index:
+            if point.index < len(path) - 1:
+                sub_path = path[point.index - 1:point.index + 2]
+            else:
+                sub_path = path[point.index - 1:point.index + 1]
+        else:
+            if point.index < len(path) - 1:
+                sub_path = path[point.index:point.index + 2]
+            else:
+                sub_path = [point.position]
+        position = Polyline(sub_path).nearest_point(point.position)
+        adjusted[point.index] = get_best_bonuses_point(position, bonuses,
                                                        tile_size, durability)
     for index, point in enumerate(path):
         new_point = adjusted.get(index)
@@ -43,7 +54,7 @@ def make_tiles_points(points, tile_size, world_height):
                 for i, v in enumerate(points))
 
 
-BONUS_PENALTY_FACTOR = 1
+BONUS_PENALTY_FACTOR = 2
 BONUS_TYPE_PRIORITY_FACTOR = 1
 
 

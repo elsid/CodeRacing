@@ -167,12 +167,19 @@ class Line:
 
 class Polyline:
     def __init__(self, points):
+        assert points
         self.points = points
 
-    def distance(self, point):
+    def nearest_point(self, point):
+        if len(self.points) < 2:
+            return self.points[0]
         points = islice(enumerate(self.points), len(self.points) - 1)
-        return min(Line(p, self.points[i - 1]).nearest(point).distance(point)
+        nearest = (Line(p, self.points[i - 1]).nearest(point)
                    for i, p in points)
+        return min(nearest, key=lambda p: p.distance(point))
+
+    def distance(self, point):
+        return self.nearest_point(point).distance(point)
 
     def at(self, distance):
         for i, p in islice(enumerate(self.points), len(self.points) - 1):

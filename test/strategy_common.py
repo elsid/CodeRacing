@@ -9,6 +9,7 @@ from strategy_common import (
     tile_coord,
     tile_center_coord,
     normalize_angle,
+    Polyline,
 )
 
 
@@ -179,7 +180,7 @@ class TileCenterTest(TestCase):
                     equal_to(Point(5, 15)))
 
 
-class TestNormalizeAngle(TestCase):
+class NormalizeAngleTest(TestCase):
     def test_for_greater_than_or_equal_minus_pi_and_less_than_or_equal_pi_returns_equal(self):
         result = normalize_angle(0.3 * pi)
         assert_that(result, equal_to(0.3 * pi))
@@ -203,3 +204,33 @@ class TestNormalizeAngle(TestCase):
     def test_for_minus_3_pi_returns_pi(self):
         result = normalize_angle(-3 * pi)
         assert_that(result, equal_to(pi))
+
+
+class PolylineTest(TestCase):
+    def test_nearest_point_to_polyline_of_one_returns_this(self):
+        result = Polyline([Point(0, 0)]).nearest_point(Point(1, 0))
+        assert_that(result, equal_to(Point(0, 0)))
+
+    def test_distance_point_to_polyline_of_one_returns_to_this(self):
+        result = Polyline([Point(0, 0)]).distance(Point(1, 0))
+        assert_that(result, equal_to(1))
+
+    def test_nearest_point_to_polyline_of_two_returns_nearest_at_line(self):
+        polyline = Polyline([Point(0, -1), Point(0, 1)])
+        result = polyline.nearest_point(Point(1, 0))
+        assert_that(result, equal_to(Point(0, 0)))
+
+    def test_nearest_point_to_polyline_of_two_returns_distance_to_nearest_at_line(self):
+        polyline = Polyline([Point(0, -1), Point(0, 1)])
+        result = polyline.distance(Point(1, 0))
+        assert_that(result, equal_to(1))
+
+    def test_nearest_point_to_polyline_of_thee_returns_nearest_at_nearest_line(self):
+        polyline = Polyline([Point(0, -1), Point(0, 1), Point(0, 2)])
+        result = polyline.nearest_point(Point(1, 0))
+        assert_that(result, equal_to(Point(0, 0)))
+
+    def test_nearest_point_to_polyline_of_two_returns_distance_to_nearest_at_nearest_line(self):
+        polyline = Polyline([Point(0, -1), Point(0, 1), Point(0, 2)])
+        result = polyline.distance(Point(1, 0))
+        assert_that(result, equal_to(1))
