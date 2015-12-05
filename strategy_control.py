@@ -240,5 +240,9 @@ class DirectionDetector:
             self.__begin = self.__end
             self.__end = position
 
+    def reset(self, begin: Point, end: Point):
+        self.__begin = begin
+        self.__end = end
+
     def __call__(self):
         return self.__end - self.__begin

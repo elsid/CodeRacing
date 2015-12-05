@@ -107,11 +107,15 @@ class ReleaseStrategy:
             self.__move_mode.switch()
             self.__stuck.reset()
             self.__controller.reset()
+            self.__direction.reset(begin=context.position,
+                                   end=context.position + context.direction)
         elif (not self.__move_mode.is_forward() and
               self.__stuck.negative_check()):
             self.__move_mode.use_forward()
             self.__stuck.reset()
             self.__controller.reset()
+            self.__direction.reset(begin=context.position,
+                                   end=context.position + context.direction)
         self.__move_mode.move(context)
 
 
