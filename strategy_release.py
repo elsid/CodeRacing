@@ -67,9 +67,14 @@ class ReleaseStrategy:
         self.__make_controller = make_controller
 
     def __lazy_init(self, context: Context):
-        self.__stuck = StuckDetector(
-            history_size=100,
-            stuck_distance=min(context.me.width, context.me.height) / 5,
+        self.__short_stuck = StuckDetector(
+            history_size=50,
+            stuck_distance=min(context.me.width, context.me.height) / 8,
+            unstack_distance=context.game.track_tile_size / 2,
+        )
+        self.__long_stuck = StuckDetector(
+            history_size=250,
+            stuck_distance=min(context.me.width, context.me.height),
             unstack_distance=context.game.track_tile_size / 2,
         )
         self.__direction = DirectionDetector(
@@ -101,16 +106,28 @@ class ReleaseStrategy:
         context.move.engine_power = 1
         if context.world.tick < context.game.initial_freeze_duration_ticks:
             return
-        self.__stuck.update(context.position)
+        self.__short_stuck.update(context.position)
+        self.__long_stuck.update(context.position)
         self.__direction.update(context.position)
-        if self.__stuck.positive_check():
+        if (self.__short_stuck.positive_check() or
+                self.__long_stuck.positive_check()):
             self.__move_mode.switch()
-            self.__stuck.reset()
+            self.__short_stuck.reset()
+            self.__long_stuck.reset()
+            self.__direction.reset(
+                begin=context.position,
+                end=context.position + context.direction,
+            )
             self.__controller.reset()
         elif (not self.__move_mode.is_forward() and
-              self.__stuck.negative_check()):
+              self.__short_stuck.negative_check()):
             self.__move_mode.use_forward()
-            self.__stuck.reset()
+            self.__short_stuck.reset()
+            self.__long_stuck.reset()
+            self.__direction.reset(
+                begin=context.position,
+                end=context.position + context.direction,
+            )
             self.__controller.reset()
         self.__move_mode.move(context)
 
