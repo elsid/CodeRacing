@@ -202,18 +202,25 @@ class MoveMode:
                 barriers=list(generate_cars_barriers(context)),
             )(0))
         if context.me.type == CarType.BUGGY:
-            context.move.throw_projectile = make_has_intersection_with_lane(
-                position=context.position,
-                course=(context.direction * context.game.track_tile_size),
-                barriers=list(generate_cars_barriers(context)),
-                width=context.game.washer_radius
-            )(0)
+            context.move.throw_projectile = (
+                context.me.projectile_count > 2 or
+                make_has_intersection_with_lane(
+                    position=context.position,
+                    course=context.direction * context.game.track_tile_size,
+                    barriers=list(generate_cars_barriers(context)),
+                    width=context.game.washer_radius
+                )(0))
         elif context.me.type == CarType.JEEP:
-            context.move.throw_projectile = make_has_intersection_with_line(
-                position=context.position,
-                course=(context.direction * context.game.track_tile_size / 2),
-                barriers=list(generate_cars_barriers(context)),
-            )(0)
+            context.move.throw_projectile = (
+                context.me.projectile_count > 2 and (
+                    0.2 < abs(context.me.angle) < pi / 2 - 0.2 or
+                    0.2 < abs(context.me.angle) - pi < pi / 2 - 0.2) or
+                make_has_intersection_with_line(
+                    position=context.position,
+                    course=(context.direction *
+                            context.game.track_tile_size / 2),
+                    barriers=list(generate_cars_barriers(context)),
+                )(0))
         context.move.use_nitro = self.__use_nitro(context, speed_path)
 
     def use_forward(self):
