@@ -99,7 +99,8 @@ class AdjustPathPointTest(TestCase):
             previous=None,
             current=TypedPoint(Point(2, 2), PointType.LEFT_RIGHT),
             following=TypedPoint(Point(4, 2), PointType.LEFT_RIGHT),
-            shift=1)
+            shift=1,
+            tile_size=4)
         assert_that(result, equal_to(Point(2, 2)))
 
     def test_for_2_2_left_top_and_any_following_and_shift_1_returns_1_1(self):
@@ -107,7 +108,9 @@ class AdjustPathPointTest(TestCase):
             previous=None,
             current=TypedPoint(Point(2, 2), PointType.LEFT_TOP),
             following=TypedPoint(Point(2, 4), PointType.BOTTOM_TOP),
-            shift=1)
+            shift=1,
+            tile_size=4,
+        )
         assert_that(result, equal_to(Point(1, 1)))
 
     def test_for_2_2_left_right_and_any_left_top_following_and_shift_1_returns_2_3(self):
@@ -115,7 +118,9 @@ class AdjustPathPointTest(TestCase):
             previous=None,
             current=TypedPoint(Point(2, 2), PointType.LEFT_RIGHT),
             following=TypedPoint(Point(4, 2), PointType.LEFT_TOP),
-            shift=1)
+            shift=1,
+            tile_size=4,
+        )
         assert_that(result, equal_to(Point(2, 3)))
 
     def test_for_2_2_left_right_and_any_top_left_previous_and_shift_1_returns_2_3(self):
@@ -123,7 +128,9 @@ class AdjustPathPointTest(TestCase):
             previous=TypedPoint(Point(0, 2), PointType.TOP_RIGHT),
             current=TypedPoint(Point(2, 2), PointType.LEFT_RIGHT),
             following=None,
-            shift=1)
+            shift=1,
+            tile_size=4,
+        )
         assert_that(result, equal_to(Point(2, 2)))
 
 
