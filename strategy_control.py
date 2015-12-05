@@ -93,6 +93,9 @@ class Controller:
             angle_error = pi / 4 if angle_error <= pi / 2 else 3 * pi / 4
         elif -3 * pi / 4 < angle_error < -pi / 4:
             angle_error = -3 * pi / 4 if angle_error > -pi / 2 else -pi / 4
+        if (speed.norm() > 0 and target_speed.norm() > 0 and
+                speed.cos(target_speed) < 0):
+            angle_error = -angle_error
         angle_derivative = self.__angle(angle_error)
         angular_speed_angle_derivative = self.__angular_speed_angle(
             angle_derivative - angular_speed_angle)
