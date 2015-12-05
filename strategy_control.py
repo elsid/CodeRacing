@@ -21,11 +21,8 @@ class Controller:
     __previous_speed = None
     __previous_angular_speed_angle = None
 
-    def __init__(self, distance_to_wheels, max_engine_power_derivative,
-                 angular_speed_factor, is_debug=False):
+    def __init__(self, distance_to_wheels, is_debug=False):
         self.distance_to_wheels = distance_to_wheels
-        self.max_engine_power_derivative = max_engine_power_derivative
-        self.angular_speed_factor = angular_speed_factor
         self.reset()
         self.__is_debug = is_debug
         if is_debug:

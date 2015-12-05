@@ -58,11 +58,7 @@ class Context:
 
 
 def make_release_controller(context: Context):
-    return Controller(
-        distance_to_wheels=context.me.width / 4,
-        max_engine_power_derivative=context.game.car_engine_power_change_per_tick,
-        angular_speed_factor=context.game.car_angular_speed_factor,
-    )
+    return Controller(distance_to_wheels=context.me.width / 4)
 
 
 class ReleaseStrategy:
