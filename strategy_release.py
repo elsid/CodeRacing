@@ -526,7 +526,7 @@ class Course:
         return course
 
 
-UNIT_SPEED_FACTOR = 0.5
+UNIT_SPEED_FACTOR = 1.5
 
 
 def generate_units_barriers(context: Context):
