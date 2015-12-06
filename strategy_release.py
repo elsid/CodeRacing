@@ -83,7 +83,8 @@ class ReleaseStrategy:
             controller=self.__controller,
             get_direction=self.__direction,
             waypoints_count=(len(context.world.waypoints) *
-                             context.game.lap_count)
+                             context.game.lap_count),
+            speed_angle_to_direct_proportion=2,
         )
 
     @property
@@ -121,8 +122,10 @@ class ReleaseStrategy:
 
 class MoveMode:
     PATH_SIZE_FOR_TARGET_SPEED = 4
+    PATH_SIZE_FOR_USE_NITRO = 4
 
-    def __init__(self, controller, start_tile, get_direction, waypoints_count):
+    def __init__(self, controller, start_tile, get_direction, waypoints_count,
+                 speed_angle_to_direct_proportion):
         self.__controller = controller
         self.__path = Path(
             start_tile=start_tile,
@@ -133,6 +136,7 @@ class MoveMode:
         self.__get_direction = get_direction
         self.__course = Course()
         self.__previous_path = []
+        self.speed_angle_to_direct_proportion = speed_angle_to_direct_proportion
 
     @property
     def path(self):
@@ -148,8 +152,14 @@ class MoveMode:
     def move(self, context: Context):
         path = self.__path.get(context)
         course = self.__course.get(context, path)
-        speed_path = self.__speed_path(context, path)
-        target_speed = get_target_speed(course, speed_path)
+        speed_path = ([context.position - self.__get_direction(),
+                       context.position] +
+                      path[:self.PATH_SIZE_FOR_TARGET_SPEED])
+        target_speed = get_target_speed(
+            course=course,
+            path=speed_path,
+            angle_to_direct_proportion=self.speed_angle_to_direct_proportion,
+        )
         self.__target_position = context.position + course
         self.__previous_path = path
         if target_speed.norm() == 0:
@@ -208,23 +218,19 @@ class MoveMode:
                             context.game.track_tile_size / 2),
                     barriers=list(generate_cars_barriers(context)),
                 )(0))
-        context.move.use_nitro = self.__use_nitro(context, speed_path)
+        nitro_path = ([context.position - self.__get_direction(),
+                       context.position] +
+                      path[:self.PATH_SIZE_FOR_USE_NITRO])
+        context.move.use_nitro = (
+            context.world.tick > context.game.initial_freeze_duration_ticks and
+            len(nitro_path) >= self.PATH_SIZE_FOR_USE_NITRO and
+            cos_product(nitro_path) > 0.85)
 
     def use_forward(self):
         self.__path.use_forward()
 
     def switch(self):
         self.__path.switch()
-
-    def __speed_path(self, context: Context, path):
-        return ([context.position - self.__get_direction(), context.position] +
-                path[:self.PATH_SIZE_FOR_TARGET_SPEED])
-
-    def __use_nitro(self, context: Context, sub_path):
-        return (
-            context.world.tick > context.game.initial_freeze_duration_ticks and
-            len(sub_path) >= self.PATH_SIZE_FOR_TARGET_SPEED and
-            cos_product(sub_path) > 0.85)
 
 
 class Path:
