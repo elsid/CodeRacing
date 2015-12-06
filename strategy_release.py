@@ -302,8 +302,8 @@ class Path:
             get_direction=get_direction,
             waypoints_count=waypoints_count,
         )
-        self.__unstuck_backward = UnstuckPathBuilder(-1.5)
-        self.__unstuck_forward = UnstuckPathBuilder(1.5)
+        self.__unstuck_backward = UnstuckPathBuilder(-0.9)
+        self.__unstuck_forward = UnstuckPathBuilder(0.9)
         self.__states = {
             id(self.__forward): self.__unstuck_backward,
             id(self.__unstuck_backward): self.__unstuck_forward,
