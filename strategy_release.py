@@ -281,11 +281,6 @@ class Path:
         return self.__current == self.__forward
 
     def __update(self, context: Context):
-        if (not self.__path or
-                context.position.distance(self.__path[0]) >
-                2 * context.game.track_tile_size):
-            self.__path = self.__current.make(context)
-
         def need_take_next(path):
             if not path:
                 return False
@@ -298,6 +293,10 @@ class Path:
 
         while need_take_next(self.__path):
             self.__path = self.__path[1:]
+        if (not self.__path or
+                context.position.distance(self.__path[0]) >
+                2 * context.game.track_tile_size):
+            self.__path = self.__current.make(context)
         self.__backward.start_tile = context.tile
         self.__forward.start_tile = context.tile
 
