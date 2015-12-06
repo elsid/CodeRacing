@@ -58,9 +58,17 @@ class Context:
     def tile_index(self):
         return get_point_index(self.tile, self.world.height)
 
+    @property
+    def is_buggy(self):
+        return self.me.type == CarType.BUGGY
+
 
 def make_release_controller(context: Context):
     return Controller(distance_to_wheels=context.me.width / 4)
+
+
+BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.2
+JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 3.0
 
 
 class ReleaseStrategy:
@@ -86,6 +94,11 @@ class ReleaseStrategy:
             get_direction=self.__direction,
             waypoints_count=(len(context.world.waypoints) *
                              context.game.lap_count),
+            speed_angle_to_direct_proportion=(
+                BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION
+                if context.is_buggy
+                else JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION
+            )
         )
 
     @property
@@ -127,14 +140,15 @@ class AdaptiveMoveMode:
     MAX_SPEED_LOSS = 10 / SPEED_LOSS_HISTORY_SIZE
     CHANGE_PER_TICKS_COUNT = SPEED_LOSS_HISTORY_SIZE / 5
 
-    def __init__(self, controller, start_tile, get_direction, waypoints_count):
+    def __init__(self, controller, start_tile, get_direction, waypoints_count,
+                 speed_angle_to_direct_proportion):
         self.__current_index = 0
         self.__move_mode = MoveMode(
             start_tile=start_tile,
             controller=controller,
             get_direction=get_direction,
             waypoints_count=waypoints_count,
-            speed_angle_to_direct_proportion=2.2,
+            speed_angle_to_direct_proportion=speed_angle_to_direct_proportion,
         )
         self.__crush = CrushDetector(min_derivative=-0.6)
         self.__speed_loss = SpeedLoss(history_size=self.SPEED_LOSS_HISTORY_SIZE)
@@ -173,16 +187,17 @@ class AdaptiveMoveMode:
         if tick - self.__last_change > self.CHANGE_PER_TICKS_COUNT:
             self.__move_mode.speed_angle_to_direct_proportion *= value
             self.__last_change = tick
+            print(self.__move_mode.speed_angle_to_direct_proportion)
 
 
 MAX_PROJECTILE_COUNT = 3
 MAX_CANISTER_COUNT = 1
+PATH_SIZE_FOR_TARGET_SPEED = 3
+BUGGY_PATH_SIZE_FOR_USE_NITRO = 4
+JEEP_PATH_SIZE_FOR_USE_NITRO = 5
 
 
 class MoveMode:
-    PATH_SIZE_FOR_TARGET_SPEED = 3
-    PATH_SIZE_FOR_USE_NITRO = 4
-
     def __init__(self, controller, start_tile, get_direction, waypoints_count,
                  speed_angle_to_direct_proportion):
         self.__controller = controller
@@ -213,8 +228,7 @@ class MoveMode:
         path = self.__path.get(context)
         course = self.__course.get(context, path)
         speed_path = ([context.position - self.__get_direction(),
-                       context.position] +
-                      path[:self.PATH_SIZE_FOR_TARGET_SPEED])
+                       context.position] + path[:PATH_SIZE_FOR_TARGET_SPEED])
         target_speed = get_target_speed(
             course=course,
             path=speed_path,
@@ -258,7 +272,7 @@ class MoveMode:
                 course=(-context.direction * context.game.track_tile_size),
                 barriers=list(generate_cars_barriers(context)),
             )(0))
-        if context.me.type == CarType.BUGGY:
+        if context.is_buggy:
             context.move.throw_projectile = (
                 context.me.projectile_count > MAX_PROJECTILE_COUNT or
                 make_has_intersection_with_lane(
@@ -267,7 +281,7 @@ class MoveMode:
                     barriers=list(generate_cars_barriers(context)),
                     width=context.game.washer_radius
                 )(0))
-        elif context.me.type == CarType.JEEP:
+        else:
             context.move.throw_projectile = (
                 context.me.projectile_count > MAX_PROJECTILE_COUNT and (
                     0.2 < abs(context.me.angle) < pi / 2 - 0.2 or
@@ -278,12 +292,16 @@ class MoveMode:
                             context.game.track_tile_size / 2),
                     barriers=list(generate_cars_barriers(context)),
                 )(0))
+        nitro_path_size = (
+            BUGGY_PATH_SIZE_FOR_USE_NITRO if context.is_buggy
+            else JEEP_PATH_SIZE_FOR_USE_NITRO
+        )
         nitro_path = ([context.position - self.__get_direction(),
                        context.position] +
-                      path[:self.PATH_SIZE_FOR_USE_NITRO])
+                      path[:nitro_path_size])
         context.move.use_nitro = (
             context.world.tick > context.game.initial_freeze_duration_ticks and
-            len(nitro_path) >= self.PATH_SIZE_FOR_USE_NITRO and
+            len(nitro_path) >= nitro_path_size and
             cos_product(nitro_path) > 0.85)
 
     def use_forward(self):
