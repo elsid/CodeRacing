@@ -255,12 +255,8 @@ def make_units_barriers(units):
 def make_unit_barrier(unit):
     if isinstance(unit, RectangularUnit):
         return Unit(
-            barrier=Rectangle(
-                left_top=Point(unit.x - unit.width / 2,
-                               unit.y - unit.height / 2),
-                right_bottom=Point(unit.x + unit.width / 2,
-                                   unit.y + unit.height / 2),
-            ),
+            barrier=Circle(position=Point(unit.x, unit.y),
+                           radius=min(unit.width, unit.height) / 2),
             speed=Point(unit.speed_x, unit.speed_y),
         )
     elif isinstance(unit, CircularUnit):
