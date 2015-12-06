@@ -10,6 +10,7 @@ from strategy_common import (
     tile_center_coord,
     normalize_angle,
     Polyline,
+    LimitedSum,
 )
 
 
@@ -234,3 +235,52 @@ class PolylineTest(TestCase):
         polyline = Polyline([Point(0, -1), Point(0, 1), Point(0, 2)])
         result = polyline.distance(Point(1, 0))
         assert_that(result, equal_to(1))
+
+
+class LimitedSumTest(TestCase):
+    def test_get_empty_returns_0(self):
+        limited_sum = LimitedSum(1)
+        result = limited_sum.get()
+        assert_that(result, equal_to(0))
+
+    def test_update_by_1_get_returns_1(self):
+        limited_sum = LimitedSum(1)
+        limited_sum.update(1)
+        result = limited_sum.get()
+        assert_that(result, equal_to(1))
+
+    def test_update_twice_by_1_with_history_size_2_get_returns_2(self):
+        limited_sum = LimitedSum(2)
+        limited_sum.update(1)
+        limited_sum.update(1)
+        result = limited_sum.get()
+        assert_that(result, equal_to(2))
+
+    def test_update_twice_by_1_with_history_size_1_get_returns_1(self):
+        limited_sum = LimitedSum(1)
+        limited_sum.update(1)
+        limited_sum.update(1)
+        result = limited_sum.get()
+        assert_that(result, equal_to(1))
+
+    def test_update_by_2_and_3_with_history_size_2_get_returns_5(self):
+        limited_sum = LimitedSum(2)
+        limited_sum.update(2)
+        limited_sum.update(3)
+        result = limited_sum.get()
+        assert_that(result, equal_to(5))
+
+    def test_update_by_2_and_3_with_history_size_1_get_returns_3(self):
+        limited_sum = LimitedSum(1)
+        limited_sum.update(2)
+        limited_sum.update(3)
+        result = limited_sum.get()
+        assert_that(result, equal_to(3))
+
+    def test_update_by_2_and_3_with_history_size_1_and_reset_get_returns_0(self):
+        limited_sum = LimitedSum(1)
+        limited_sum.update(2)
+        limited_sum.update(3)
+        limited_sum.reset()
+        result = limited_sum.get()
+        assert_that(result, equal_to(0))

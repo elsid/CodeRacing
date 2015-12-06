@@ -6,13 +6,14 @@ from model.Game import Game
 from model.Move import Move
 from model.World import World
 from model.CarType import CarType
-from strategy_common import Point, Polyline, get_current_tile
+from strategy_common import Point, Polyline, get_current_tile, LimitedSum
 from strategy_control import (
     Controller,
     get_target_speed,
     cos_product,
     StuckDetector,
     DirectionDetector,
+    CrushDetector,
 )
 from strategy_path import (
     make_tiles_path,
@@ -78,13 +79,12 @@ class ReleaseStrategy:
             min_distance=max(context.me.width, context.me.height),
         )
         self.__controller = self.__make_controller(context)
-        self.__move_mode = MoveMode(
+        self.__move_mode = AdaptiveMoveMode(
             start_tile=context.tile,
             controller=self.__controller,
             get_direction=self.__direction,
             waypoints_count=(len(context.world.waypoints) *
                              context.game.lap_count),
-            speed_angle_to_direct_proportion=2,
         )
 
     @property
@@ -110,7 +110,7 @@ class ReleaseStrategy:
             self.__controller.reset()
             self.__direction.reset(begin=context.position,
                                    end=context.position + context.direction)
-        elif (not self.__move_mode.is_forward() and
+        elif (not self.__move_mode.is_forward and
               self.__stuck.negative_check()):
             self.__move_mode.use_forward()
             self.__stuck.reset()
@@ -120,8 +120,61 @@ class ReleaseStrategy:
         self.__move_mode.move(context)
 
 
+class AdaptiveMoveMode:
+    MIN_SPEED_LOSS = 0.01
+    MAX_SPEED_LOSS = 0.05
+    CHANGE_PER_TICKS_COUNT = 250
+
+    def __init__(self, controller, start_tile, get_direction, waypoints_count):
+        self.__current_index = 0
+        self.__move_mode = MoveMode(
+            start_tile=start_tile,
+            controller=controller,
+            get_direction=get_direction,
+            waypoints_count=waypoints_count,
+            speed_angle_to_direct_proportion=2.3,
+        )
+        self.__crush = CrushDetector(min_derivative=-1)
+        self.__speed_loss = SpeedLoss(history_size=1000)
+        self.__last_change = 0
+
+    @property
+    def path(self):
+        return self.__move_mode.path
+
+    @property
+    def target_position(self):
+        return self.__move_mode.target_position
+
+    @property
+    def is_forward(self):
+        return self.__move_mode.is_forward
+
+    def move(self, context: Context):
+        self.__crush.update(context.speed, context.me.durability)
+        self.__speed_loss.update(self.__crush.check(),
+                                 -self.__crush.speed_derivative())
+        speed_loss = self.__speed_loss.get()
+        if speed_loss > self.MAX_SPEED_LOSS:
+            self.__change(1.01, context.world.tick)
+        elif speed_loss < self.MIN_SPEED_LOSS:
+            self.__change(0.99, context.world.tick)
+        self.__move_mode.move(context)
+
+    def use_forward(self):
+        self.__move_mode.use_forward()
+
+    def switch(self):
+        self.__move_mode.switch()
+
+    def __change(self, value, tick):
+        if tick - self.__last_change > self.CHANGE_PER_TICKS_COUNT:
+            self.__move_mode.speed_angle_to_direct_proportion *= value
+            self.__last_change = tick
+
+
 class MoveMode:
-    PATH_SIZE_FOR_TARGET_SPEED = 4
+    PATH_SIZE_FOR_TARGET_SPEED = 3
     PATH_SIZE_FOR_USE_NITRO = 4
 
     def __init__(self, controller, start_tile, get_direction, waypoints_count,
@@ -146,8 +199,9 @@ class MoveMode:
     def target_position(self):
         return self.__target_position
 
+    @property
     def is_forward(self):
-        return self.__path.is_forward()
+        return self.__path.is_forward
 
     def move(self, context: Context):
         path = self.__path.get(context)
@@ -254,6 +308,7 @@ class Path:
             id(self.__forward): self.__unstuck_backward,
             id(self.__unstuck_backward): self.__unstuck_forward,
             id(self.__unstuck_forward): self.__unstuck_backward,
+            id(self.__unstuck_backward): self.__forward,
         }
         self.__current = self.__forward
         self.__get_direction = get_direction
@@ -277,6 +332,7 @@ class Path:
         self.__current = self.__states[id(self.__current)]
         self.__path.clear()
 
+    @property
     def is_forward(self):
         return self.__current == self.__forward
 
@@ -539,3 +595,17 @@ def find_false(begin, end, is_true, min_interval):
                     right = middle
                 queue.appendleft((begin, middle))
     return left, right
+
+
+class SpeedLoss:
+    def __init__(self, history_size):
+        self.__crush = LimitedSum(history_size)
+        self.__speed = LimitedSum(history_size)
+        self.__history_size = history_size
+
+    def update(self, crush, speed):
+        self.__crush.update(crush)
+        self.__speed.update(speed if crush else 0)
+
+    def get(self):
+        return self.__speed.get() * self.__crush.get() / self.__crush.count

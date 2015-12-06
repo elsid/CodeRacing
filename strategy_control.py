@@ -3,7 +3,7 @@ from functools import reduce
 from itertools import islice
 from math import pi, exp, sqrt
 from operator import mul
-from strategy_common import Point, normalize_angle, Polyline
+from strategy_common import Point, normalize_angle, Polyline, LimitedSum
 
 Control = namedtuple('Control', ('engine_power_derivative',
                                  'wheel_turn_derivative'))
@@ -242,3 +242,31 @@ class DirectionDetector:
 
     def __call__(self):
         return self.__end - self.__begin
+
+
+class CrushDetector:
+    Conf = namedtuple('Conf', ('speed', 'durability'))
+
+    def __init__(self, min_derivative):
+        self.__history = deque(maxlen=2)
+        self.__min_derivative = min_derivative
+
+    def update(self, speed: Point, durability):
+        self.__history.append(self.Conf(speed.norm(), durability))
+
+    def reset(self):
+        self.__history.clear()
+
+    def check(self):
+        return (self.durability_derivative() < 0 and
+                self.speed_derivative() < self.__min_derivative)
+
+    def speed_derivative(self):
+        if len(self.__history) < 2:
+            return 0
+        return self.__history[1].speed - self.__history[0].speed
+
+    def durability_derivative(self):
+        if len(self.__history) < 2:
+            return 0
+        return self.__history[1].durability - self.__history[0].durability

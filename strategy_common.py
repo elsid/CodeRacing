@@ -1,3 +1,4 @@
+from collections import deque
 from itertools import islice
 from math import cos, sin, sqrt, atan2, pi
 from numpy import arctan2
@@ -214,3 +215,30 @@ def normalize_angle(value):
     if value < -pi:
         return value + round(abs(value) / (2.0 * pi)) * 2.0 * pi
     return value
+
+
+class LimitedSum:
+    def __init__(self, history_size):
+        self.__values = deque(maxlen=history_size)
+        self.__amount = 0
+
+    def update(self, value):
+        first = (self.__values[0] if len(self.__values) == self.__values.maxlen
+                 else None)
+        self.__values.append(value)
+        self.__amount += value - (0 if first is None else first)
+
+    def reset(self):
+        self.__values.clear()
+        self.__amount = 0
+
+    def get(self):
+        return self.__amount
+
+    @property
+    def count(self):
+        return len(self.__values)
+
+    @property
+    def max_count(self):
+        return self.__values.maxlen
