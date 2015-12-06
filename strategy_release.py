@@ -550,11 +550,12 @@ def generate_cars_barriers(context: Context):
 
 
 def adjust_course_forward(has_intersection, angle):
-    return adjust_course_rotation(has_intersection, -1, 1, angle)
+    return adjust_course_rotation(has_intersection, -pi / 4, pi / 4, angle)
 
 
 def adjust_course_backward(has_intersection, angle):
-    return adjust_course_rotation(has_intersection, -1 - pi, 1 - pi, angle)
+    return adjust_course_rotation(has_intersection, - pi / 4 - pi, pi / 4 - pi,
+                                  angle)
 
 
 def adjust_course_rotation(has_intersection, begin, end, angle):
@@ -564,7 +565,11 @@ def adjust_course_rotation(has_intersection, begin, end, angle):
     left, right = find_false(begin, end, has_intersection, 2 ** -3)
     if left is not None:
         if right is not None:
-            return left if abs(angle - left) < abs(angle - right) else right
+            if abs(abs(left) - abs(right)) < 1e-8:
+                return (left if abs(angle - left) < abs(angle - right)
+                        else right)
+            else:
+                return left if abs(left) < abs(right) else right
         else:
             return left
     else:
