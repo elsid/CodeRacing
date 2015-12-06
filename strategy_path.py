@@ -9,7 +9,11 @@ from model.TileType import TileType
 from strategy_common import Point, get_current_tile, Polyline
 
 
-def adjust_for_bonuses(path, bonuses, tile_size, world_height, durability,
+PriorityConf = namedtuple('PriorityConf', ('durability', 'projectile_left',
+                                           'oil_canister_left'))
+
+
+def adjust_for_bonuses(path, bonuses, tile_size, world_height, priority_conf,
                        limit):
     tiles_bonuses = make_tiles_bonuses(bonuses, tile_size, world_height)
     tiles_points = make_tiles_points(islice(path, limit), tile_size,
@@ -31,7 +35,7 @@ def adjust_for_bonuses(path, bonuses, tile_size, world_height, durability,
                 sub_path = [point.position]
         position = Polyline(sub_path).nearest_point(point.position)
         adjusted[point.index] = get_best_bonuses_point(position, bonuses,
-                                                       tile_size, durability)
+                                                       tile_size, priority_conf)
     for index, point in enumerate(path):
         new_point = adjusted.get(index)
         yield point if new_point is None else new_point
@@ -54,13 +58,13 @@ def make_tiles_points(points, tile_size, world_height):
                 for i, v in enumerate(points))
 
 
-BONUS_PENALTY_FACTOR = 2
+BONUS_PENALTY_FACTOR = 4
 BONUS_TYPE_PRIORITY_FACTOR = 1
 
 
-def get_best_bonuses_point(position, bonuses, tile_size, durability):
+def get_best_bonuses_point(position, bonuses, tile_size, priority_conf):
     def priority(bonus):
-        type_priority = get_bonus_type_priority(bonus.type, durability)
+        type_priority = get_bonus_type_priority(bonus.type, priority_conf)
         penalty = get_bonus_penalty(bonus, position, tile_size)
         return (type_priority * BONUS_TYPE_PRIORITY_FACTOR -
                 penalty * BONUS_PENALTY_FACTOR)
@@ -73,12 +77,12 @@ def get_bonus_penalty(bonus, position, tile_size):
     return position.distance(Point(bonus.x, bonus.y)) / tile_size
 
 
-def get_bonus_type_priority(value, durability):
+def get_bonus_type_priority(value, conf: PriorityConf):
     return {
-        BonusType.REPAIR_KIT: 1 - durability,
-        BonusType.AMMO_CRATE: 0.25,
+        BonusType.REPAIR_KIT: 1 - conf.durability,
+        BonusType.AMMO_CRATE: 0.25 if conf.projectile_left > 0 else 0,
         BonusType.NITRO_BOOST: 0.5,
-        BonusType.OIL_CANISTER: 0.25,
+        BonusType.OIL_CANISTER: 0.25 if conf.oil_canister_left > 0 else 0,
         BonusType.PURE_SCORE: 1,
     }[value]
 

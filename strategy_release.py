@@ -21,6 +21,7 @@ from strategy_path import (
     shift_on_direct,
     get_point_index,
     adjust_for_bonuses,
+    PriorityConf,
 )
 from strategy_barriers import (
     make_tiles_barriers,
@@ -174,6 +175,10 @@ class AdaptiveMoveMode:
             self.__last_change = tick
 
 
+MAX_PROJECTILE_COUNT = 3
+MAX_CANISTER_COUNT = 1
+
+
 class MoveMode:
     PATH_SIZE_FOR_TARGET_SPEED = 3
     PATH_SIZE_FOR_USE_NITRO = 4
@@ -247,7 +252,7 @@ class MoveMode:
                     context.game.car_engine_power_change_per_tick >
                     control.engine_power_derivative)
         context.move.spill_oil = (
-            context.me.oil_canister_count > 1 or
+            context.me.oil_canister_count > MAX_CANISTER_COUNT or
             make_has_intersection_with_line(
                 position=context.position,
                 course=(-context.direction * context.game.track_tile_size),
@@ -255,7 +260,7 @@ class MoveMode:
             )(0))
         if context.me.type == CarType.BUGGY:
             context.move.throw_projectile = (
-                context.me.projectile_count > 2 or
+                context.me.projectile_count > MAX_PROJECTILE_COUNT or
                 make_has_intersection_with_lane(
                     position=context.position,
                     course=context.direction * context.game.track_tile_size,
@@ -264,7 +269,7 @@ class MoveMode:
                 )(0))
         elif context.me.type == CarType.JEEP:
             context.move.throw_projectile = (
-                context.me.projectile_count > 2 and (
+                context.me.projectile_count > MAX_PROJECTILE_COUNT and (
                     0.2 < abs(context.me.angle) < pi / 2 - 0.2 or
                     0.2 < abs(context.me.angle) - pi < pi / 2 - 0.2) or
                 make_has_intersection_with_line(
@@ -320,7 +325,13 @@ class Path:
             bonuses=context.world.bonuses,
             tile_size=context.game.track_tile_size,
             world_height=context.world.height,
-            durability=context.me.durability,
+            priority_conf=PriorityConf(
+                durability=context.me.durability,
+                projectile_left=(MAX_PROJECTILE_COUNT -
+                                 context.me.projectile_count),
+                oil_canister_left=(MAX_CANISTER_COUNT -
+                                   context.me.oil_canister_count),
+            ),
             limit=self.PATH_SIZE_FOR_BONUSES,
         ))
 
