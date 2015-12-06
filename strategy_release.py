@@ -132,7 +132,7 @@ class AdaptiveMoveMode:
             controller=controller,
             get_direction=get_direction,
             waypoints_count=waypoints_count,
-            speed_angle_to_direct_proportion=2.3,
+            speed_angle_to_direct_proportion=2.4,
         )
         self.__crush = CrushDetector(min_derivative=-1)
         self.__speed_loss = SpeedLoss(history_size=1000)
@@ -308,7 +308,6 @@ class Path:
             id(self.__forward): self.__unstuck_backward,
             id(self.__unstuck_backward): self.__unstuck_forward,
             id(self.__unstuck_forward): self.__unstuck_backward,
-            id(self.__unstuck_backward): self.__forward,
         }
         self.__current = self.__forward
         self.__get_direction = get_direction
@@ -527,7 +526,7 @@ class Course:
         return course
 
 
-UNIT_SPEED_FACTOR = 0.9
+UNIT_SPEED_FACTOR = 0.5
 
 
 def generate_units_barriers(context: Context):
