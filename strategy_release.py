@@ -530,18 +530,18 @@ UNIT_SPEED_FACTOR = 0.5
 
 
 def generate_units_barriers(context: Context):
-    units = chain.from_iterable([
-        make_units_barriers(context.world.oil_slicks),
+    dynamic_units = chain(
         make_units_barriers(context.world.projectiles),
         generate_cars_barriers(context),
-    ])
+    )
 
     def need_use_unit(unit):
         return (context.speed.norm() > UNIT_SPEED_FACTOR * unit.speed.norm() or
                 context.speed.norm() > 0 and unit.speed.norm() > 0 and
                 context.speed.cos(unit.speed) < 0)
 
-    return filter(need_use_unit, units)
+    return chain(filter(need_use_unit, dynamic_units),
+                 make_units_barriers(context.world.oil_slicks))
 
 
 def generate_cars_barriers(context: Context):
