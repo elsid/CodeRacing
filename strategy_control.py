@@ -207,22 +207,26 @@ def sigmoid(x, kx=1, ky=1):
 
 class StuckDetector:
     def __init__(self, history_size, stuck_distance, unstack_distance):
-        self.__positions = deque(maxlen=history_size)
+        self.__distance = LimitedSum(history_size)
         self.__stuck_distance = stuck_distance
         self.__unstack_distance = unstack_distance
+        self.__previous_position = None
 
     def update(self, position):
-        self.__positions.append(position)
+        if self.__previous_position is not None:
+            self.__distance.update(position.distance(self.__previous_position))
+        self.__previous_position = position
 
     def positive_check(self):
-        return (self.__positions.maxlen == len(self.__positions) and
-                Polyline(self.__positions).length() < self.__stuck_distance)
+        return (self.__distance.count == self.__distance.max_count and
+                self.__distance.get() < self.__stuck_distance)
 
     def negative_check(self):
-        return Polyline(self.__positions).length() > self.__unstack_distance
+        return self.__distance.get() > self.__unstack_distance
 
     def reset(self):
-        self.__positions.clear()
+        self.__distance.reset()
+        self.__previous_position = None
 
 
 class DirectionDetector:
