@@ -3,7 +3,7 @@ from functools import reduce
 from itertools import islice
 from math import pi, exp, sqrt
 from operator import mul
-from strategy_common import Point, normalize_angle, Polyline, LimitedSum
+from strategy_common import Point, normalize_angle, LimitedSum
 
 Control = namedtuple('Control', ('engine_power_derivative',
                                  'wheel_turn_derivative'))
@@ -48,12 +48,12 @@ class Controller:
             plot('wheel_turn')
 
     def reset(self):
-        self.__speed = PidController(0.5, 0, 0.01)
-        self.__acceleration = PidController(0.3, 0, 0.01)
-        self.__engine_power = PidController(0.2, 0, 0.01)
-        self.__angle = PidController(1.0, 0, 0.1)
-        self.__angular_speed_angle = PidController(2.0, 0, 0.0)
-        self.__wheel_turn = PidController(2.0, 0, 0.1)
+        self.__speed = PidController(2, 0, 0)
+        self.__acceleration = PidController(2, 0, 0)
+        self.__engine_power = PidController(2, 0, 0)
+        self.__angle = PidController(2, 0, 0)
+        self.__angular_speed_angle = PidController(2, 0, 0.0)
+        self.__wheel_turn = PidController(2, 0, 0)
         self.__previous_speed = Point(0, 0)
         self.__previous_angular_speed_angle = 0
 
@@ -74,6 +74,7 @@ class Controller:
         if -sqrt(2) / 2 < cos_val < sqrt(2) / 2:
             cos_val = sqrt(2) / 2 if cos_val >= 0 else -sqrt(2) / 2
         target_engine_power = acceleration_derivative.norm() * cos_val
+        target_engine_power = max(-1, min(1, target_engine_power))
         engine_power_derivative = self.__engine_power(
             target_engine_power - engine_power)
         if (angle < course.absolute_rotation() <
@@ -97,10 +98,11 @@ class Controller:
                 speed.cos(target_speed) < 0):
             angle_error = -angle_error
         angle_derivative = self.__angle(angle_error)
-        angular_speed_angle_derivative = self.__angular_speed_angle(
-            angle_derivative - angular_speed_angle)
+        target_wheel_turn = self.__angular_speed_angle(angle_derivative -
+                                                       angular_speed_angle)
+        target_wheel_turn = max(-1, min(1, target_wheel_turn))
         wheel_turn_derivative = self.__wheel_turn(
-            angular_speed_angle_derivative - wheel_turn)
+            target_wheel_turn - wheel_turn)
         self.__previous_speed = speed
         self.__previous_angular_speed_angle = angular_speed_angle
         if self.__is_debug:
@@ -120,7 +122,7 @@ class Controller:
             append_value('engine_power', engine_power, target_engine_power)
             append_value('angle', angle, target_angle)
             append_value('wheel_turn', wheel_turn,
-                         angular_speed_angle_derivative)
+                         target_wheel_turn)
 
             if tick % 50 == 0:
 

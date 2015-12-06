@@ -121,9 +121,10 @@ class ReleaseStrategy:
 
 
 class AdaptiveMoveMode:
-    MIN_SPEED_LOSS = 0.01
-    MAX_SPEED_LOSS = 0.05
-    CHANGE_PER_TICKS_COUNT = 250
+    SPEED_LOSS_HISTORY_SIZE = 1000
+    MIN_SPEED_LOSS = 1 / SPEED_LOSS_HISTORY_SIZE
+    MAX_SPEED_LOSS = 10 / SPEED_LOSS_HISTORY_SIZE
+    CHANGE_PER_TICKS_COUNT = SPEED_LOSS_HISTORY_SIZE / 5
 
     def __init__(self, controller, start_tile, get_direction, waypoints_count):
         self.__current_index = 0
@@ -132,10 +133,10 @@ class AdaptiveMoveMode:
             controller=controller,
             get_direction=get_direction,
             waypoints_count=waypoints_count,
-            speed_angle_to_direct_proportion=2.4,
+            speed_angle_to_direct_proportion=2.2,
         )
-        self.__crush = CrushDetector(min_derivative=-1)
-        self.__speed_loss = SpeedLoss(history_size=1000)
+        self.__crush = CrushDetector(min_derivative=-0.6)
+        self.__speed_loss = SpeedLoss(history_size=self.SPEED_LOSS_HISTORY_SIZE)
         self.__last_change = 0
 
     @property
@@ -156,9 +157,9 @@ class AdaptiveMoveMode:
                                  -self.__crush.speed_derivative())
         speed_loss = self.__speed_loss.get()
         if speed_loss > self.MAX_SPEED_LOSS:
-            self.__change(1.011, context.world.tick)
+            self.__change(1 / 0.999, context.world.tick)
         elif speed_loss < self.MIN_SPEED_LOSS:
-            self.__change(0.99, context.world.tick)
+            self.__change(0.999, context.world.tick)
         self.__move_mode.move(context)
 
     def use_forward(self):
@@ -302,8 +303,8 @@ class Path:
             get_direction=get_direction,
             waypoints_count=waypoints_count,
         )
-        self.__unstuck_backward = UnstuckPathBuilder(-0.9)
-        self.__unstuck_forward = UnstuckPathBuilder(0.9)
+        self.__unstuck_backward = UnstuckPathBuilder(-1.5)
+        self.__unstuck_forward = UnstuckPathBuilder(1.5)
         self.__states = {
             id(self.__forward): self.__unstuck_backward,
             id(self.__unstuck_backward): self.__unstuck_forward,
