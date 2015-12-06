@@ -156,7 +156,7 @@ class AdaptiveMoveMode:
                                  -self.__crush.speed_derivative())
         speed_loss = self.__speed_loss.get()
         if speed_loss > self.MAX_SPEED_LOSS:
-            self.__change(1.01, context.world.tick)
+            self.__change(1.011, context.world.tick)
         elif speed_loss < self.MIN_SPEED_LOSS:
             self.__change(0.99, context.world.tick)
         self.__move_mode.move(context)
