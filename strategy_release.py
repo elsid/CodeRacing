@@ -187,7 +187,6 @@ class AdaptiveMoveMode:
         if tick - self.__last_change > self.CHANGE_PER_TICKS_COUNT:
             self.__move_mode.speed_angle_to_direct_proportion *= value
             self.__last_change = tick
-            print(self.__move_mode.speed_angle_to_direct_proportion)
 
 
 MAX_PROJECTILE_COUNT = 3
