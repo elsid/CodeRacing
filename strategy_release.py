@@ -70,8 +70,8 @@ class ReleaseStrategy:
     def __lazy_init(self, context: Context):
         self.__stuck = StuckDetector(
             history_size=150,
-            stuck_distance=min(context.me.width, context.me.height) / 8,
-            unstack_distance=max(context.me.width, context.me.height),
+            stuck_distance=min(context.me.width, context.me.height),
+            unstack_distance=context.game.track_tile_size / 3,
         )
         self.__direction = DirectionDetector(
             begin=context.position,
