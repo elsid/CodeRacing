@@ -171,9 +171,6 @@ class PidController:
         return output
 
 
-MAX_SPEED = 50
-
-
 def generate_cos(path):
     power = len(path)
     for i, current in islice(enumerate(path), 1, len(path) - 1):
@@ -187,13 +184,14 @@ def cos_product(path):
     return reduce(mul, generate_cos(path), 1)
 
 
-def get_target_speed(course: Point, path, angle_to_direct_proportion):
+def get_target_speed(course: Point, path, angle_to_direct_proportion,
+                     max_speed):
     direct_factor = 1 / (angle_to_direct_proportion + 1)
     angle_factor = direct_factor * angle_to_direct_proportion
     if len(path) > 2:
         angle_factor *= max(1e-8 - 1, min(1 - 1e-8, cos_product(path)))
     if course.norm() > 0:
-        return course * MAX_SPEED / course.norm() * (direct_factor +
+        return course * max_speed / course.norm() * (direct_factor +
                                                      angle_factor)
     else:
         return Point(0, 0)

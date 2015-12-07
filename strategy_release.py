@@ -73,7 +73,7 @@ BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.2
 JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 3.0
 
 
-def has_unknown(tiles):
+def tiles_has_unknown(tiles):
     for column in tiles:
         for tile in column:
             if tile == TileType.UNKNOWN:
@@ -203,7 +203,8 @@ MAX_CANISTER_COUNT = 1
 PATH_SIZE_FOR_TARGET_SPEED = 3
 BUGGY_PATH_SIZE_FOR_USE_NITRO = 4
 JEEP_PATH_SIZE_FOR_USE_NITRO = 5
-
+MAX_SPEED = 50
+MAX_SPEED_THROUGH_UNKNOWN = 20
 
 class MoveMode:
     def __init__(self, controller, start_tile, get_direction, waypoints_count,
@@ -240,7 +241,20 @@ class MoveMode:
         target_speed = get_target_speed(
             course=course,
             path=speed_path,
-            angle_to_direct_proportion=self.speed_angle_to_direct_proportion,
+            angle_to_direct_proportion=(
+                1
+                if path_has_tiles(path, context.world.tiles_x_y,
+                                  context.game.track_tile_size,
+                                  TileType.UNKNOWN)
+                else self.speed_angle_to_direct_proportion
+            ),
+            max_speed=(
+                MAX_SPEED_THROUGH_UNKNOWN
+                if path_has_tiles(path, context.world.tiles_x_y,
+                                  context.game.track_tile_size,
+                                  TileType.UNKNOWN)
+                else MAX_SPEED
+            )
         )
         self.__target_position = context.position + course
         self.__previous_path = path
@@ -278,7 +292,7 @@ class MoveMode:
             make_has_intersection_with_line(
                 position=context.position,
                 course=(-context.direction * context.game.track_tile_size),
-                barriers=list(generate_cars_barriers(context)),
+                barriers=list(generate_opponents_cars_barriers(context)),
             )(0))
         if context.is_buggy:
             context.move.throw_projectile = (
@@ -286,7 +300,7 @@ class MoveMode:
                 make_has_intersection_with_lane(
                     position=context.position,
                     course=context.direction * context.game.track_tile_size,
-                    barriers=list(generate_cars_barriers(context)),
+                    barriers=list(generate_opponents_cars_barriers(context)),
                     width=context.game.washer_radius
                 )(0))
         else:
@@ -298,7 +312,7 @@ class MoveMode:
                     position=context.position,
                     course=(context.direction *
                             context.game.track_tile_size / 2),
-                    barriers=list(generate_cars_barriers(context)),
+                    barriers=list(generate_opponents_cars_barriers(context)),
                 )(0))
         nitro_path_size = (
             BUGGY_PATH_SIZE_FOR_USE_NITRO if context.is_buggy
@@ -387,8 +401,9 @@ class Path:
         while need_take_next(self.__path):
             self.__path = self.__path[1:]
         if (not self.__path or
-                has_empty(self.__path, context.world.tiles_x_y,
-                          context.game.track_tile_size) or
+                path_has_tiles(self.__path, context.world.tiles_x_y,
+                               context.game.track_tile_size,
+                               TileType.EMPTY) or
                 context.position.distance(self.__path[0]) >
                 2 * context.game.track_tile_size):
             self.__path = self.__current.make(context)
@@ -396,10 +411,10 @@ class Path:
         self.__forward.start_tile = context.tile
 
 
-def has_empty(path, tiles, tile_size):
+def path_has_tiles(path, tiles, tile_size, tile_type):
     for p in path:
         tile = get_current_tile(p, tile_size)
-        if tiles[tile.x][tile.y] == TileType.EMPTY:
+        if tiles[tile.x][tile.y] == tile_type:
             return True
     return False
 
@@ -599,6 +614,11 @@ def generate_units_barriers(context: Context):
 
 def generate_cars_barriers(context: Context):
     cars = (x for x in context.world.cars if x.id != context.me.id)
+    return make_units_barriers(cars)
+
+
+def generate_opponents_cars_barriers(context: Context):
+    cars = (x for x in context.world.cars if not context.me.teammate)
     return make_units_barriers(cars)
 
 
