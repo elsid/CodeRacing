@@ -147,6 +147,25 @@ class RectangleTest(TestCase):
         result = border.passability(Point(-3, 0), radius=1)
         assert_that(result, equal_to(1))
 
+    def test_clip_line_inside_returns_equal(self):
+        rectangle = Rectangle(left_top=Point(0, 0), right_bottom=Point(1, 1))
+        line = Line(begin=Point(0.25, 0.25), end=Point(0.75, 0.75))
+        result = rectangle.clip_line(line)
+        assert_that(result, equal_to(line))
+
+    def test_clip_line_from_inside_to_outside_returns_from_inside_to_border(self):
+        rectangle = Rectangle(left_top=Point(0, 0), right_bottom=Point(1, 1))
+        line = Line(begin=Point(0.5, 0.5), end=Point(1.5, 0.5))
+        result = rectangle.clip_line(line)
+        assert_that(result, equal_to(Line(begin=Point(0.5, 0.5),
+                                          end=Point(1, 0.5))))
+
+    def test_clip_line_from_outside_returns_equal(self):
+        rectangle = Rectangle(left_top=Point(0, 0), right_bottom=Point(1, 1))
+        line = Line(begin=Point(0.5, 1.5), end=Point(1.5, 0.5))
+        result = rectangle.clip_line(line)
+        assert_that(result, equal_to(line))
+
 
 class MakeTileBarriersTest(TestCase):
     def test_for_empty_returns_tile_rectangle(self):

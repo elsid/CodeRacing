@@ -161,10 +161,10 @@ class Rectangle:
                 y = y1 + (y2 - y1) * (1.0 * (left - x1)) / (x2 - x1)
                 x = right
             if opt == k1:
-                x1, y1 = int(x), int(y)
+                x1, y1 = x, y
                 k1 = self.point_code(Point(x1, y1))
             else:
-                x2, y2 = int(x), int(y)
+                x2, y2 = x, y
                 k2 = self.point_code(Point(x2, y2))
         return Line(Point(x1, y1), Point(x2, y2))
 
