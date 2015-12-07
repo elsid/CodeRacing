@@ -101,8 +101,8 @@ class ReleaseStrategy:
             start_tile=context.tile,
             controller=self.__controller,
             get_direction=self.__direction,
-            waypoints_count=1 if has_unknown(context.world.tiles_x_y) else (
-                len(context.world.waypoints) * context.game.lap_count),
+            waypoints_count=(len(context.world.waypoints) *
+                             context.game.lap_count),
             speed_angle_to_direct_proportion=(
                 BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION
                 if context.is_buggy
