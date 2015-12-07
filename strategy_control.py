@@ -77,14 +77,7 @@ class Controller:
         target_engine_power = max(-1, min(1, target_engine_power))
         engine_power_derivative = self.__engine_power(
             target_engine_power - engine_power)
-        if (angle < course.absolute_rotation() <
-                target_speed.absolute_rotation() or
-                angle > course.absolute_rotation() >
-                target_speed.absolute_rotation()):
-            target_angle = (target_speed.absolute_rotation() +
-                            course.absolute_rotation()) / 2
-        else:
-            target_angle = course.absolute_rotation()
+        target_angle = course.absolute_rotation()
         direction_angle_error = normalize_angle(target_angle - angle)
         direction_angle_error = relative_angle_error(direction_angle_error)
         speed_angle_error = normalize_angle(speed.absolute_rotation() - angle)

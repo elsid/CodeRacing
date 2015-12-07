@@ -130,9 +130,7 @@ def path_point_shift(previous: TypedPoint, current: TypedPoint,
                 previous.type.input != current.type.input and
                 previous.type.output != current.type.output and
                 following.type == previous.type):
-            return Point(- tile_size / 4, - tile_size / 4)
-        elif following and current.type.input == following.type.output:
-            return Point(+ shift, + shift) / 2
+            return Point(- tile_size, - tile_size) / 4
         else:
             return Point(- shift, - shift)
     elif current.type in {PointType.LEFT_BOTTOM, PointType.BOTTOM_LEFT}:
@@ -140,9 +138,7 @@ def path_point_shift(previous: TypedPoint, current: TypedPoint,
                 previous.type.input != current.type.input and
                 previous.type.output != current.type.output and
                 following.type == previous.type):
-            return Point(- tile_size / 4, + tile_size / 4)
-        elif following and current.type.input == following.type.output:
-            return Point(+ shift, - shift) / 2
+            return Point(- tile_size, + tile_size) / 4
         else:
             return Point(- shift, + shift)
     elif current.type in {PointType.RIGHT_TOP, PointType.TOP_RIGHT}:
@@ -150,9 +146,7 @@ def path_point_shift(previous: TypedPoint, current: TypedPoint,
                 previous.type.input != current.type.input and
                 previous.type.output != current.type.output and
                 following.type == previous.type):
-            return Point(+ tile_size / 4, - tile_size / 4)
-        elif following and current.type.input == following.type.output:
-            return Point(- shift, + shift) / 2
+            return Point(+ tile_size, - tile_size) / 4
         else:
             return Point(+ shift, - shift)
     elif current.type in {PointType.RIGHT_BOTTOM, PointType.BOTTOM_RIGHT}:
@@ -160,9 +154,7 @@ def path_point_shift(previous: TypedPoint, current: TypedPoint,
                 previous.type.input != current.type.input and
                 previous.type.output != current.type.output and
                 following.type == previous.type):
-            return Point(+ tile_size / 4, + tile_size / 4)
-        elif following and current.type.input == following.type.output:
-            return Point(- shift, - shift) / 2
+            return Point(+ tile_size, + tile_size) / 4
         else:
             return Point(+ shift, + shift)
     elif current.type in {PointType.LEFT_RIGHT, PointType.RIGHT_LEFT}:
