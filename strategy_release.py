@@ -64,13 +64,19 @@ class Context:
     def is_buggy(self):
         return self.me.type == CarType.BUGGY
 
-
-def make_release_controller(context: Context):
-    return Controller(distance_to_wheels=context.me.width / 4)
+    @property
+    def world_rectangle(self):
+        return Rectangle(left_top=Point(0, 0),
+                         right_bottom=Point(self.world.width,
+                                            self.world.height))
 
 
 BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.2
 JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.5
+
+
+def make_release_controller(context: Context):
+    return Controller(distance_to_wheels=context.me.width / 4)
 
 
 def tiles_has_unknown(tiles):
@@ -516,8 +522,14 @@ class UnstuckPathBuilder:
         self.__factor = factor
 
     def make(self, context: Context):
-        return [context.position + context.direction * self.__factor *
-                context.game.track_tile_size]
+        line = Line(begin=context.position,
+                    end=(context.position + context.direction * self.__factor *
+                         context.game.track_tile_size))
+        clipped = context.world_rectangle.clip_line(line)
+        if clipped != line:
+            return [clipped.begin + (line.end - line.begin) * 0.99]
+        else:
+            return [line.end]
 
 
 class Course:
