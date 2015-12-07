@@ -69,8 +69,8 @@ def make_release_controller(context: Context):
     return Controller(distance_to_wheels=context.me.width / 4)
 
 
-BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.2
-JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 3.0
+BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.1
+JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.5
 
 
 def tiles_has_unknown(tiles):

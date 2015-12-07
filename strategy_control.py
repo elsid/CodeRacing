@@ -85,18 +85,17 @@ class Controller:
                             course.absolute_rotation()) / 2
         else:
             target_angle = course.absolute_rotation()
-        angle_error = normalize_angle(target_angle - angle)
-        if angle_error > pi / 2:
-            angle_error -= pi
-        elif angle_error < -pi / 2:
-            angle_error += pi
-        if pi / 4 < angle_error < 3 * pi / 4:
-            angle_error = pi / 4 if angle_error <= pi / 2 else 3 * pi / 4
-        elif -3 * pi / 4 < angle_error < -pi / 4:
-            angle_error = -3 * pi / 4 if angle_error > -pi / 2 else -pi / 4
+        direction_angle_error = normalize_angle(target_angle - angle)
+        direction_angle_error = relative_angle_error(direction_angle_error)
+        speed_angle_error = normalize_angle(speed.absolute_rotation() - angle)
+        speed_angle_error = relative_angle_error(speed_angle_error)
         if (speed.norm() > 0 and target_speed.norm() > 0 and
                 speed.cos(target_speed) < 0):
-            angle_error = -angle_error
+            direction_angle_error = -direction_angle_error
+            speed_angle_error = -speed_angle_error
+        angle_error = (direction_angle_error
+                       if abs(direction_angle_error) > abs(speed_angle_error)
+                       else speed_angle_error)
         angle_derivative = self.__angle(angle_error)
         target_wheel_turn = self.__angular_speed_angle(angle_derivative -
                                                        angular_speed_angle)
@@ -147,6 +146,18 @@ class Controller:
                 draw('angle')
                 draw('wheel_turn')
         return Control(engine_power_derivative, wheel_turn_derivative)
+
+
+def relative_angle_error(value):
+    if value > pi / 2:
+        value -= pi
+    elif value < -pi / 2:
+        value += pi
+    if pi / 4 < value < 3 * pi / 4:
+        value = pi / 4 if value <= pi / 2 else 3 * pi / 4
+    elif -3 * pi / 4 < value < -pi / 4:
+        value = -3 * pi / 4 if value > -pi / 2 else -pi / 4
+    return value
 
 
 class PidController:
