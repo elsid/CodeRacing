@@ -69,7 +69,7 @@ def make_release_controller(context: Context):
     return Controller(distance_to_wheels=context.me.width / 4)
 
 
-BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.1
+BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.2
 JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.5
 
 
@@ -87,7 +87,7 @@ class ReleaseStrategy:
 
     def __lazy_init(self, context: Context):
         self.__stuck = StuckDetector(
-            history_size=150,
+            history_size=125,
             stuck_distance=min(context.me.width, context.me.height),
             unstack_distance=context.game.track_tile_size / 3,
         )
@@ -349,8 +349,8 @@ class Path:
             get_direction=get_direction,
             waypoints_count=waypoints_count,
         )
-        self.__unstuck_backward = UnstuckPathBuilder(-1.5)
-        self.__unstuck_forward = UnstuckPathBuilder(1.5)
+        self.__unstuck_backward = UnstuckPathBuilder(-2)
+        self.__unstuck_forward = UnstuckPathBuilder(2)
         self.__states = {
             id(self.__forward): self.__unstuck_backward,
             id(self.__unstuck_backward): self.__unstuck_forward,
