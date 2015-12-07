@@ -1,4 +1,5 @@
 from collections import deque
+from copy import copy
 from math import pi
 from itertools import chain
 from model.Car import Car
@@ -6,6 +7,7 @@ from model.Game import Game
 from model.Move import Move
 from model.World import World
 from model.CarType import CarType
+from model.TileType import TileType
 from strategy_common import Point, Polyline, get_current_tile, LimitedSum
 from strategy_control import (
     Controller,
@@ -71,6 +73,13 @@ BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.2
 JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 3.0
 
 
+def has_unknown(tiles):
+    for column in tiles:
+        for tile in column:
+            if tile == TileType.UNKNOWN:
+                return True
+
+
 class ReleaseStrategy:
     def __init__(self, make_controller=make_release_controller):
         self.__first_move = True
@@ -92,8 +101,8 @@ class ReleaseStrategy:
             start_tile=context.tile,
             controller=self.__controller,
             get_direction=self.__direction,
-            waypoints_count=(len(context.world.waypoints) *
-                             context.game.lap_count),
+            waypoints_count=1 if has_unknown(context.world.tiles_x_y) else (
+                len(context.world.waypoints) * context.game.lap_count),
             speed_angle_to_direct_proportion=(
                 BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION
                 if context.is_buggy
@@ -378,11 +387,21 @@ class Path:
         while need_take_next(self.__path):
             self.__path = self.__path[1:]
         if (not self.__path or
+                has_empty(self.__path, context.world.tiles_x_y,
+                          context.game.track_tile_size) or
                 context.position.distance(self.__path[0]) >
                 2 * context.game.track_tile_size):
             self.__path = self.__current.make(context)
         self.__backward.start_tile = context.tile
         self.__forward.start_tile = context.tile
+
+
+def has_empty(path, tiles, tile_size):
+    for p in path:
+        tile = get_current_tile(p, tile_size)
+        if tiles[tile.x][tile.y] == TileType.EMPTY:
+            return True
+    return False
 
 
 class WaypointsPathBuilder:
@@ -399,7 +418,9 @@ class WaypointsPathBuilder:
             tiles=context.world.tiles_x_y,
             direction=context.direction,
         ))
-        if self.start_tile != path[0]:
+        if not path:
+            path = [self.start_tile]
+        elif self.start_tile != path[0]:
             path = [self.start_tile] + path
         path = [(x + Point(0.5, 0.5)) * context.game.track_tile_size
                 for x in path]
@@ -486,9 +507,12 @@ class UnstuckPathBuilder:
 class Course:
     def __init__(self):
         self.__tile_barriers = None
+        self.__tiles = None
 
     def get(self, context: Context, path):
-        if self.__tile_barriers is None:
+        if (self.__tiles is None or self.__tile_barriers is None or
+                self.__tiles != context.world.tiles_x_y):
+            self.__tiles = copy(context.world.tiles_x_y)
             self.__tile_barriers = make_tiles_barriers(
                 tiles=context.world.tiles_x_y,
                 margin=context.game.track_tile_margin,

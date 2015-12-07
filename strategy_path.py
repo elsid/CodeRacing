@@ -363,6 +363,7 @@ Arc = namedtuple('Arc', ('dst', 'weight'))
 
 
 def make_graph(tiles):
+    column_size = len(tiles)
     row_size = len(tiles[0])
 
     def left(pos):
@@ -400,6 +401,17 @@ def make_graph(tiles):
             return bottom(pos), left(pos), right(pos)
         elif tile_type == TileType.CROSSROADS:
             return left(pos), right(pos), top(pos), bottom(pos)
+        elif tile_type == TileType.UNKNOWN:
+            def generate():
+                l = Point(pos.x - 1, pos.y)
+                r = Point(pos.x + 1, pos.y)
+                t = Point(pos.x, pos.y - 1)
+                b = Point(pos.x, pos.y + 1)
+                for p in l, r, t, b:
+                    if (0 <= p.x < column_size and 0 <= p.y < row_size and
+                            tiles[p.x][p.y] != TileType.EMPTY):
+                        yield get_point_index(p, row_size)
+            return tuple(generate())
         else:
             return tuple()
 
