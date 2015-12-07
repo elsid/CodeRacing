@@ -2,6 +2,7 @@ from collections import deque
 from itertools import islice
 from math import cos, sin, sqrt, atan2, pi
 from numpy import arctan2
+from json import dumps
 
 
 def get_current_tile(point, tile_size):
@@ -242,3 +243,7 @@ class LimitedSum:
     @property
     def max_count(self):
         return self.__values.maxlen
+
+
+def log(**kwargs):
+    print(dumps(kwargs))
