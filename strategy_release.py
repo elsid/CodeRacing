@@ -206,6 +206,7 @@ JEEP_PATH_SIZE_FOR_USE_NITRO = 5
 MAX_SPEED = 50
 MAX_SPEED_THROUGH_UNKNOWN = 30
 
+
 class MoveMode:
     def __init__(self, controller, start_tile, get_direction, waypoints_count,
                  speed_angle_to_direct_proportion):
