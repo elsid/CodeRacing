@@ -535,7 +535,11 @@ class Course:
                 size=context.game.track_tile_size,
             )
         tile_size = context.game.track_tile_size
-        target_position = Polyline([context.position] + path).at(tile_size)
+        target_position = max(
+            Polyline([context.position] + path).at(tile_size),
+            path[0],
+            key=lambda x: x.distance(context.position)
+        )
         course = target_position - context.position
         current_tile = context.tile
         target_tile = get_current_tile(target_position, tile_size)
