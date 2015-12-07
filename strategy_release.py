@@ -8,7 +8,7 @@ from model.Move import Move
 from model.World import World
 from model.CarType import CarType
 from model.TileType import TileType
-from strategy_common import Point, Polyline, get_current_tile, LimitedSum
+from strategy_common import Point, Polyline, get_current_tile, LimitedSum, Line
 from strategy_control import (
     Controller,
     get_target_speed,
@@ -30,7 +30,25 @@ from strategy_barriers import (
     make_units_barriers,
     make_has_intersection_with_line,
     make_has_intersection_with_lane,
+    Rectangle,
 )
+
+
+BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.2
+JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.5
+SPEED_LOSS_HISTORY_SIZE = 1000
+MIN_SPEED_LOSS = 1 / SPEED_LOSS_HISTORY_SIZE
+MAX_SPEED_LOSS = 1 / SPEED_LOSS_HISTORY_SIZE
+CHANGE_PER_TICKS_COUNT = SPEED_LOSS_HISTORY_SIZE / 5
+MAX_PROJECTILE_COUNT = 3
+MAX_CANISTER_COUNT = 1
+PATH_SIZE_FOR_TARGET_SPEED = 3
+BUGGY_PATH_SIZE_FOR_USE_NITRO = 5
+JEEP_PATH_SIZE_FOR_USE_NITRO = 6
+MAX_SPEED = 50
+MAX_SPEED_THROUGH_UNKNOWN = 30
+PATH_SIZE_FOR_BONUSES = 5
+CAR_SPEED_FACTOR = 1.1
 
 
 class Context:
@@ -69,10 +87,6 @@ class Context:
         return Rectangle(left_top=Point(0, 0),
                          right_bottom=Point(self.world.width,
                                             self.world.height))
-
-
-BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.2
-JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.5
 
 
 def make_release_controller(context: Context):
@@ -150,11 +164,6 @@ class ReleaseStrategy:
 
 
 class AdaptiveMoveMode:
-    SPEED_LOSS_HISTORY_SIZE = 1000
-    MIN_SPEED_LOSS = 1 / SPEED_LOSS_HISTORY_SIZE
-    MAX_SPEED_LOSS = 10 / SPEED_LOSS_HISTORY_SIZE
-    CHANGE_PER_TICKS_COUNT = SPEED_LOSS_HISTORY_SIZE / 5
-
     def __init__(self, controller, start_tile, get_direction, waypoints_count,
                  speed_angle_to_direct_proportion):
         self.__current_index = 0
@@ -166,7 +175,7 @@ class AdaptiveMoveMode:
             speed_angle_to_direct_proportion=speed_angle_to_direct_proportion,
         )
         self.__crush = CrushDetector(min_derivative=-0.6)
-        self.__speed_loss = SpeedLoss(history_size=self.SPEED_LOSS_HISTORY_SIZE)
+        self.__speed_loss = SpeedLoss(history_size=SPEED_LOSS_HISTORY_SIZE)
         self.__last_change = 0
 
     @property
@@ -186,9 +195,9 @@ class AdaptiveMoveMode:
         self.__speed_loss.update(self.__crush.check(),
                                  -self.__crush.speed_derivative())
         speed_loss = self.__speed_loss.get()
-        if speed_loss > self.MAX_SPEED_LOSS:
+        if speed_loss > MAX_SPEED_LOSS:
             self.__change(1 / 0.999, context.world.tick)
-        elif speed_loss < self.MIN_SPEED_LOSS:
+        elif speed_loss < MIN_SPEED_LOSS:
             self.__change(0.999, context.world.tick)
         self.__move_mode.move(context)
 
@@ -199,18 +208,9 @@ class AdaptiveMoveMode:
         self.__move_mode.switch()
 
     def __change(self, value, tick):
-        if tick - self.__last_change > self.CHANGE_PER_TICKS_COUNT:
+        if tick - self.__last_change > CHANGE_PER_TICKS_COUNT:
             self.__move_mode.speed_angle_to_direct_proportion *= value
             self.__last_change = tick
-
-
-MAX_PROJECTILE_COUNT = 3
-MAX_CANISTER_COUNT = 1
-PATH_SIZE_FOR_TARGET_SPEED = 3
-BUGGY_PATH_SIZE_FOR_USE_NITRO = 4
-JEEP_PATH_SIZE_FOR_USE_NITRO = 5
-MAX_SPEED = 50
-MAX_SPEED_THROUGH_UNKNOWN = 30
 
 
 class MoveMode:
@@ -325,9 +325,11 @@ class MoveMode:
             BUGGY_PATH_SIZE_FOR_USE_NITRO if context.is_buggy
             else JEEP_PATH_SIZE_FOR_USE_NITRO
         )
-        nitro_path = ([context.position - self.__get_direction(),
-                       context.position] +
-                      path[:nitro_path_size])
+        if context.world.tick == context.game.initial_freeze_duration_ticks + 1:
+            nitro_path = path[:nitro_path_size]
+        else:
+            nitro_path = ([context.position - self.__get_direction(),
+                           context.position] + path[:nitro_path_size])
         context.move.use_nitro = (
             context.world.tick > context.game.initial_freeze_duration_ticks and
             len(nitro_path) >= nitro_path_size and
@@ -341,8 +343,6 @@ class MoveMode:
 
 
 class Path:
-    PATH_SIZE_FOR_BONUSES = 5
-
     def __init__(self, start_tile, get_direction, waypoints_count):
         self.__path = []
         self.__forward = ForwardWaypointsPathBuilder(
@@ -379,7 +379,7 @@ class Path:
                 oil_canister_left=(MAX_CANISTER_COUNT -
                                    context.me.oil_canister_count),
             ),
-            limit=self.PATH_SIZE_FOR_BONUSES,
+            limit=PATH_SIZE_FOR_BONUSES,
         ))
 
     def use_forward(self):
@@ -625,9 +625,6 @@ def generate_projectiles_barriers(context: Context):
 
 def generate_oil_slicks_barriers(context: Context):
     return make_units_barriers(context.world.oil_slicks)
-
-
-CAR_SPEED_FACTOR = 1.1
 
 
 def generate_cars_barriers(context: Context):
