@@ -641,7 +641,7 @@ def generate_cars_barriers(context: Context):
 
 
 def generate_opponents_cars_barriers(context: Context):
-    cars = (x for x in context.world.cars if not context.me.teammate)
+    cars = (x for x in context.world.cars if not x.teammate)
     return make_units_barriers(cars)
 
 
