@@ -42,7 +42,8 @@ MAX_SPEED_LOSS = 1 / SPEED_LOSS_HISTORY_SIZE
 CHANGE_PER_TICKS_COUNT = SPEED_LOSS_HISTORY_SIZE / 5
 MAX_PROJECTILE_COUNT = 3
 MAX_CANISTER_COUNT = 1
-PATH_SIZE_FOR_TARGET_SPEED = 3
+COURSE_PATH_SIZE = 3
+TARGET_SPEED_PATH_SIZE = 3
 BUGGY_PATH_SIZE_FOR_USE_NITRO = 5
 JEEP_PATH_SIZE_FOR_USE_NITRO = 6
 MAX_SPEED = 50
@@ -242,9 +243,9 @@ class MoveMode:
 
     def move(self, context: Context):
         path = self.__path.get(context)
-        course = self.__course.get(context, path)
+        course = self.__course.get(context, path[:COURSE_PATH_SIZE])
         speed_path = ([context.position - self.__get_direction(),
-                       context.position] + path[:PATH_SIZE_FOR_TARGET_SPEED])
+                       context.position] + path[:TARGET_SPEED_PATH_SIZE])
         target_speed = get_target_speed(
             course=course,
             path=speed_path,
