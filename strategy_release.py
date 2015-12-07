@@ -204,7 +204,7 @@ PATH_SIZE_FOR_TARGET_SPEED = 3
 BUGGY_PATH_SIZE_FOR_USE_NITRO = 4
 JEEP_PATH_SIZE_FOR_USE_NITRO = 5
 MAX_SPEED = 50
-MAX_SPEED_THROUGH_UNKNOWN = 20
+MAX_SPEED_THROUGH_UNKNOWN = 30
 
 class MoveMode:
     def __init__(self, controller, start_tile, get_direction, waypoints_count,
@@ -594,7 +594,7 @@ class Course:
         return course
 
 
-UNIT_SPEED_FACTOR = 1.5
+UNIT_SPEED_FACTOR = 1.1
 
 
 def generate_units_barriers(context: Context):
@@ -604,7 +604,7 @@ def generate_units_barriers(context: Context):
     )
 
     def need_use_unit(unit):
-        return (context.speed.norm() > UNIT_SPEED_FACTOR * unit.speed.norm() or
+        return (context.speed.norm() > UNIT_SPEED_FACTOR * unit.speed.norm() and
                 context.speed.norm() > 0 and unit.speed.norm() > 0 and
                 context.speed.cos(unit.speed) < 0)
 
