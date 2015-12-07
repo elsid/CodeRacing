@@ -594,27 +594,35 @@ class Course:
         return course
 
 
-UNIT_SPEED_FACTOR = 1.1
-
-
 def generate_units_barriers(context: Context):
-    dynamic_units = chain(
-        make_units_barriers(context.world.projectiles),
+    return chain(
+        generate_projectiles_barriers(context),
+        generate_oil_slicks_barriers(context),
         generate_cars_barriers(context),
     )
 
-    def need_use_unit(unit):
-        return (context.speed.norm() > UNIT_SPEED_FACTOR * unit.speed.norm() and
-                context.speed.norm() > 0 and unit.speed.norm() > 0 and
-                context.speed.cos(unit.speed) < 0)
 
-    return chain(filter(need_use_unit, dynamic_units),
-                 make_units_barriers(context.world.oil_slicks))
+def generate_projectiles_barriers(context: Context):
+    return make_units_barriers(context.world.projectiles)
+
+
+def generate_oil_slicks_barriers(context: Context):
+    return make_units_barriers(context.world.oil_slicks)
+
+
+CAR_SPEED_FACTOR = 1.1
 
 
 def generate_cars_barriers(context: Context):
-    cars = (x for x in context.world.cars if x.id != context.me.id)
-    return make_units_barriers(cars)
+    def use(car: Car):
+        car_speed = Point(car.speed_x, car.speed_y)
+        return (car.id != context.me.id and
+                (context.speed.norm() > CAR_SPEED_FACTOR * car_speed.norm() or
+                 context.speed.norm() > 0 and
+                 car_speed.norm() > 0 and
+                 context.speed.cos(car_speed) < 0))
+
+    return make_units_barriers(filter(use, context.world.cars))
 
 
 def generate_opponents_cars_barriers(context: Context):
