@@ -664,7 +664,7 @@ def adjust_course_forward(has_intersection, angle):
 
 
 def adjust_course_backward(has_intersection, angle):
-    return adjust_course_rotation(has_intersection, - pi / 4 - pi, pi / 4 - pi,
+    return adjust_course_rotation(has_intersection, -pi / 4 - pi, pi / 4 - pi,
                                   angle)
 
 
@@ -679,7 +679,7 @@ def adjust_course_rotation(has_intersection, begin, end, angle):
                 return (left if abs(angle - left) < abs(angle - right)
                         else right)
             else:
-                return left if abs(left) < abs(right) else right
+                return min(left, right, key=abs)
         else:
             return left
     else:

@@ -84,9 +84,7 @@ class Controller:
                 speed.cos(target_speed) < 0):
             direction_angle_error = -direction_angle_error
             speed_angle_error = -speed_angle_error
-        angle_error = (direction_angle_error
-                       if abs(direction_angle_error) > abs(speed_angle_error)
-                       else speed_angle_error)
+        angle_error = max(direction_angle_error, speed_angle_error, key=abs)
         angle_derivative = self.__angle(angle_error)
         target_wheel_turn = self.__angular_speed_angle(angle_derivative -
                                                        angular_speed_angle)
