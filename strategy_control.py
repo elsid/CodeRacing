@@ -1,7 +1,7 @@
 from collections import namedtuple, deque
 from functools import reduce
 from itertools import islice
-from math import pi, exp
+from math import pi, exp, sqrt
 from operator import mul
 from strategy_common import Point, normalize_angle, LimitedSum
 
@@ -71,6 +71,8 @@ class Controller:
         acceleration_derivative = self.__acceleration(target_acceleration -
                                                       acceleration)
         cos_val = acceleration_derivative.cos(direction)
+        if -sqrt(2) / 2 < cos_val < sqrt(2) / 2:
+            cos_val = sqrt(2) / 2 if cos_val >= 0 else -sqrt(2) / 2
         target_engine_power = acceleration_derivative.norm() * cos_val
         target_engine_power = max(-1, min(1, target_engine_power))
         engine_power_derivative = self.__engine_power(
