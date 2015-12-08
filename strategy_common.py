@@ -3,6 +3,7 @@ from itertools import islice
 from math import cos, sin, sqrt, atan2, pi
 from numpy import arctan2
 from json import dumps
+from scipy.interpolate import InterpolatedUnivariateSpline
 
 
 def get_current_tile(point, tile_size):
@@ -243,6 +244,25 @@ class LimitedSum:
     @property
     def max_count(self):
         return self.__values.maxlen
+
+
+class Curve:
+    def __init__(self, points):
+        begin = points[0]
+        axis = points[-1] - begin
+        angle = axis.absolute_rotation()
+        relative = ((p - begin).rotate(-angle) for p in points)
+        polar = [p.polar() for p in relative]
+        x = [p.radius for p in polar]
+        y = [p.angle for p in polar]
+        self.__spline = InterpolatedUnivariateSpline(x, y, k=min(5, len(x) - 1))
+        self.__angle = angle
+        self.__begin = begin
+
+    def at(self, distance):
+        angle = self.__spline(distance)
+        point = Point(distance, angle)
+        return self.__begin + point.cartesian().rotate(self.__angle)
 
 
 def log(**kwargs):

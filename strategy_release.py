@@ -1,14 +1,23 @@
 from collections import deque
 from copy import copy
 from math import pi
-from itertools import chain
+from itertools import chain, islice
+from functools import reduce
+from operator import mul
 from model.Car import Car
 from model.Game import Game
 from model.Move import Move
 from model.World import World
 from model.CarType import CarType
 from model.TileType import TileType
-from strategy_common import Point, Polyline, get_current_tile, LimitedSum, Line
+from strategy_common import (
+    Point,
+    Polyline,
+    get_current_tile,
+    LimitedSum,
+    Line,
+    Curve,
+)
 from strategy_control import (
     Controller,
     get_target_speed,
@@ -544,6 +553,13 @@ class UnstuckPathBuilder:
             return [line.end]
 
 
+def generate_cos(path):
+    for i, current in islice(enumerate(path), 1, len(path) - 1):
+        a = current - path[i - 1]
+        b = path[i + 1] - current
+        yield (1 if abs(a.norm()) < 1e-3 or abs(b.norm()) < 1e-3 else a.cos(b))
+
+
 class Course:
     def __init__(self):
         self.__tile_barriers = None
@@ -559,11 +575,15 @@ class Course:
                 size=context.game.track_tile_size,
             )
         tile_size = context.game.track_tile_size
-        target_position = max(
-            Polyline([context.position] + path).at(tile_size),
-            path[0],
-            key=lambda x: x.distance(context.position)
-        )
+        sub_path = [context.position] + path
+        if reduce(mul, generate_cos(path), 1) < 0.9:
+            target_position = Curve(sub_path).at(tile_size)
+        else:
+            target_position = max(
+                Polyline(sub_path).at(tile_size),
+                path[0],
+                key=lambda x: x.distance(context.position)
+            )
         course = target_position - context.position
         current_tile = context.tile
         target_tile = get_current_tile(target_position, tile_size)
