@@ -343,8 +343,9 @@ def multi_path(graph, waypoints, direction):
     path = [waypoints[0]]
     for i, w in islice(enumerate(waypoints), 0, len(waypoints) - 1):
         if w in graph and waypoints[i + 1] in graph:
-            path += list(shortest_path_with_direction(
-                graph, w, waypoints[i + 1], direction))
+            sub_path = list(shortest_path_with_direction(
+                graph, path[-1], waypoints[i + 1], direction))
+            path += sub_path[:-1] if i + 1 < len(waypoints) - 1 else sub_path
         if len(path) > 2:
             direction = graph[path[-1]].position - graph[path[-2]].position
     return path
@@ -511,8 +512,8 @@ def shortest_path_with_direction(graph, src, dst, initial_direction):
             elif cos_value < 1e-3:
                 factor = 4
             else:
-                factor = 1
-            new_distance = distance + (factor * (1 - cos_value) + 1) * weight
+                factor = 2
+            new_distance = distance + factor * (1 - cos_value) / weight + weight
             if new_distance < current_distance:
                 distances[neighbor_index] = new_distance
                 previous_nodes[neighbor_index] = node_index

@@ -246,17 +246,19 @@ class MoveMode:
         course = self.__course.get(context, path[:COURSE_PATH_SIZE])
         speed_path = ([context.position - self.__get_direction(),
                        context.position] + path[:TARGET_SPEED_PATH_SIZE])
+        max_speed = (
+            MAX_SPEED_THROUGH_UNKNOWN
+            if path_has_tiles(path, context.world.tiles_x_y,
+                              context.game.track_tile_size,
+                              TileType.UNKNOWN)
+            else MAX_SPEED
+        )
         target_speed = get_target_speed(
             course=course,
             path=speed_path,
-            angle_to_direct_proportion=self.speed_angle_to_direct_proportion,
-            max_speed=(
-                MAX_SPEED_THROUGH_UNKNOWN
-                if path_has_tiles(path, context.world.tiles_x_y,
-                                  context.game.track_tile_size,
-                                  TileType.UNKNOWN)
-                else MAX_SPEED
-            )
+            angle_to_direct_proportion=(self.speed_angle_to_direct_proportion *
+                                        max_speed / MAX_SPEED),
+            max_speed=max_speed,
         )
         self.__target_position = context.position + course
         self.__previous_path = path
@@ -431,7 +433,8 @@ def path_has_tiles(path, tiles, tile_size, tile_type):
 def path_filter_tiles(path, tiles, tile_size, tile_type):
     for p in path:
         tile = get_current_tile(p, tile_size)
-        if tiles[tile.x][tile.y] == tile_type:
+        if (0 <= tile.x < len(tiles) and 0 <= tile.y < len(tiles[tile.x]) and
+                tiles[tile.x][tile.y] == tile_type):
             yield True
 
 

@@ -380,7 +380,7 @@ class MakeGraphTest(TestCase):
         }))
 
 
-class ShortestPathWitDirectionTest(TestCase):
+class ShortestPathWithDirectionTest(TestCase):
     def test_for_graph_with_one_node_without_arcs_returns_empty(self):
         result = shortest_path_with_direction(
             graph={0: Node(position=Point(0, 0), arcs=[])},
