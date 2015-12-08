@@ -34,8 +34,8 @@ from strategy_barriers import (
 )
 
 
-BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.2
-JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.5
+BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.3
+JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.6
 SPEED_LOSS_HISTORY_SIZE = 1000
 MIN_SPEED_LOSS = 1 / SPEED_LOSS_HISTORY_SIZE
 MAX_SPEED_LOSS = 1 / SPEED_LOSS_HISTORY_SIZE
@@ -658,8 +658,7 @@ def adjust_course_forward(has_intersection, angle):
 
 
 def adjust_course_backward(has_intersection, angle):
-    return adjust_course_rotation(has_intersection, -pi / 4 - pi, pi / 4 - pi,
-                                  angle)
+    return adjust_course_rotation(has_intersection, -1 - pi, 1 - pi, angle)
 
 
 def adjust_course_rotation(has_intersection, begin, end, angle):
