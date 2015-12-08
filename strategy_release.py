@@ -365,6 +365,7 @@ class Path:
         }
         self.__current = self.__forward
         self.__get_direction = get_direction
+        self.__unknown_count = 0
 
     def get(self, context: Context):
         self.__update(context)
@@ -412,19 +413,32 @@ class Path:
                 path_has_tiles(self.__path, context.world.tiles_x_y,
                                context.game.track_tile_size,
                                TileType.EMPTY) or
+                path_count_tiles(self.__path, context.world.tiles_x_y,
+                                 context.game.track_tile_size,
+                                 TileType.UNKNOWN) != self.__unknown_count or
                 context.position.distance(self.__path[0]) >
                 2 * context.game.track_tile_size):
             self.__path = self.__current.make(context)
+            self.__unknown_count = path_count_tiles(
+                self.__path, context.world.tiles_x_y,
+                context.game.track_tile_size, TileType.UNKNOWN)
         self.__backward.start_tile = context.tile
         self.__forward.start_tile = context.tile
 
 
+def path_count_tiles(path, tiles, tile_size, tile_type):
+    return sum(path_filter_tiles(path, tiles, tile_size, tile_type))
+
+
 def path_has_tiles(path, tiles, tile_size, tile_type):
+    return next(path_filter_tiles(path, tiles, tile_size, tile_type), False)
+
+
+def path_filter_tiles(path, tiles, tile_size, tile_type):
     for p in path:
         tile = get_current_tile(p, tile_size)
         if tiles[tile.x][tile.y] == tile_type:
-            return True
-    return False
+            yield True
 
 
 class WaypointsPathBuilder:
