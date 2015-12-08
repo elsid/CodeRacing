@@ -249,13 +249,7 @@ class MoveMode:
         target_speed = get_target_speed(
             course=course,
             path=speed_path,
-            angle_to_direct_proportion=(
-                1
-                if path_has_tiles(path, context.world.tiles_x_y,
-                                  context.game.track_tile_size,
-                                  TileType.UNKNOWN)
-                else self.speed_angle_to_direct_proportion
-            ),
+            angle_to_direct_proportion=self.speed_angle_to_direct_proportion,
             max_speed=(
                 MAX_SPEED_THROUGH_UNKNOWN
                 if path_has_tiles(path, context.world.tiles_x_y,
