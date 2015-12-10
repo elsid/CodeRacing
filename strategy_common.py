@@ -167,6 +167,21 @@ class Line:
     def __eq__(self, other):
         return self.begin == other.begin and self.end == other.end
 
+    def intersection(self, other):
+        x_diff = Point(self.begin.x - self.end.x, other.begin.x - other.end.x)
+        y_diff = Point(self.begin.y - self.end.y, other.begin.y - other.end.y)
+
+        def det(a, b):
+            return a.x * b.y - a.y * b.x
+
+        div = det(x_diff, y_diff)
+        if div == 0:
+            return None
+        d = Point(det(self.begin, self.end), det(other.begin, other.end))
+        x = det(d, x_diff) / div
+        y = det(d, y_diff) / div
+        return Point(x, y)
+
 
 class Polyline:
     def __init__(self, points):

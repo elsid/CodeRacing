@@ -1,6 +1,6 @@
-from collections import deque
+from collections import deque, namedtuple
 from copy import copy
-from math import pi
+from math import pi, radians
 from itertools import chain, islice
 from functools import reduce
 from operator import mul
@@ -336,13 +336,54 @@ def throw_projectile(context: Context):
     return throw_washer(context) if context.is_buggy else throw_tire(context)
 
 
+Washer = namedtuple('Washer', ('position', 'speed'))
+
+
 def throw_washer(context: Context):
-    return (make_has_intersection_with_lane(
-            position=context.position,
-            course=context.direction * context.game.track_tile_size,
-            barriers=list(generate_opponents_cars_barriers(context)),
-            width=context.game.washer_radius
-            )(0))
+    washer_speed = context.game.washer_initial_speed
+    washers = [
+        Washer(position=context.position,
+               speed=context.direction * washer_speed),
+        Washer(position=context.position,
+               speed=context.direction.rotate(radians(2)) * washer_speed),
+        Washer(position=context.position,
+               speed=context.direction.rotate(radians(-2)) * washer_speed),
+    ]
+
+    def generate():
+        for car in context.opponents_cars:
+            car_position = Point(car.x, car.y)
+            car_speed = Point(car.speed_x, car.speed_y)
+            car_barriers = list(make_units_barriers([car]))
+            if car_speed.norm() < 1:
+                for washer in washers:
+                    yield (make_has_intersection_with_lane(
+                           position=washer.position,
+                           course=washer.speed * 100,
+                           barriers=car_barriers,
+                           width=context.game.washer_radius
+                           )(0))
+            else:
+                car_line = Line(car_position, car_position + car_speed)
+                for washer in washers:
+                    washer_line = Line(washer.position,
+                                       washer.position + washer.speed)
+                    intersection = washer_line.intersection(car_line)
+                    if intersection is None:
+                        continue
+                    car_dir = intersection - car_position
+                    if car_dir.norm() > 0 and car_dir.cos(car_speed) < 0:
+                        continue
+                    washer_dir = intersection - washer.position
+                    if washer_dir.norm() > 0 and washer_dir.cos(washer.speed) < 0:
+                        continue
+                    car_time = car_dir.norm() / car_speed.norm()
+                    washer_time = washer_dir.norm() / washer.speed.norm()
+                    if abs(car_time - washer_time) <= 10:
+                        yield True
+            yield False
+
+    return next((x for x in generate() if x), False)
 
 
 def throw_tire(context: Context):
