@@ -43,8 +43,8 @@ from strategy_barriers import (
 )
 
 
-BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.2
-JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.5
+BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.3
+JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.6
 SPEED_LOSS_HISTORY_SIZE = 500
 MIN_SPEED_LOSS = 1 / SPEED_LOSS_HISTORY_SIZE
 MAX_SPEED_LOSS = 1 / SPEED_LOSS_HISTORY_SIZE
@@ -295,11 +295,11 @@ class MoveMode:
             if context.speed.cos(context.direction) >= 0:
                 context.move.brake = (
                     -context.game.car_engine_power_change_per_tick >
-                    0.5 * control.engine_power_derivative)
+                    control.engine_power_derivative)
             else:
                 context.move.brake = (
                     context.game.car_engine_power_change_per_tick >
-                    0.5 * control.engine_power_derivative)
+                    control.engine_power_derivative)
         context.move.spill_oil = (
             context.me.oil_canister_count > MAX_CANISTER_COUNT or
             make_has_intersection_with_line(
