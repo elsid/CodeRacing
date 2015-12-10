@@ -166,6 +166,17 @@ class RectangleTest(TestCase):
         result = rectangle.clip_line(line)
         assert_that(result, equal_to(line))
 
+    def test_1(self):
+        line = Line(begin=Point(x=4924.240960182544, y=6227.578604236977),
+                    end=Point(x=303.83920535439756, y=5285.014406185436))
+        rectangle = Rectangle(left_top=Point(x=800.0, y=4800.0),
+                              right_bottom=Point(x=1600.0, y=5600.0))
+        result = rectangle.clip_line(line)
+        assert_that(result, equal_to(Line(
+            begin=Point(x=1600.0, y=5549.431836698775),
+            end=Point(x=800.0, y=5386.231448842183),
+        )))
+
 
 class MakeTileBarriersTest(TestCase):
     def test_for_empty_returns_tile_rectangle(self):

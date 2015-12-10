@@ -151,15 +151,15 @@ class Rectangle:
             if opt & Rectangle.TOP:
                 x = x1 + (x2 - x1) * (1.0 * (bottom - y1)) / (y2 - y1)
                 y = bottom
-            elif opt & Rectangle.BOTTOM:
+            if opt & Rectangle.BOTTOM:
                 x = x1 + (x2 - x1) * (1.0 * (top - y1)) / (y2 - y1)
                 y = top
-            elif opt & Rectangle.RIGHT:
+            if opt & Rectangle.RIGHT:
                 y = y1 + (y2 - y1) * (1.0 * (right - x1)) / (x2 - x1)
                 x = right
-            else:
+            if opt & Rectangle.LEFT:
                 y = y1 + (y2 - y1) * (1.0 * (left - x1)) / (x2 - x1)
-                x = right
+                x = left
             if opt == k1:
                 x1, y1 = x, y
                 k1 = self.point_code(Point(x1, y1))
