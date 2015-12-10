@@ -321,12 +321,12 @@ class MoveMode:
         else:
             nitro_path = ([context.position - self.__get_direction(),
                            context.position] + path[:nitro_path_size])
-        nitro_cos = cos_product(nitro_path)
-        context.move.use_nitro = (
-            context.world.tick > context.game.initial_freeze_duration_ticks and
-            len(nitro_path) >= nitro_path_size and
-            (nitro_cos > 0.9 or nitro_cos > 0.6 and
-             target_speed.norm() - context.speed.norm() > 30))
+        if (context.world.tick > context.game.initial_freeze_duration_ticks and
+                len(nitro_path) >= nitro_path_size):
+            nitro_cos = cos_product(nitro_path)
+            context.move.use_nitro = (
+                nitro_cos > 0.9 or nitro_cos > 0.6 and
+                target_speed.norm() - context.speed.norm() > 30)
 
     def use_forward(self):
         self.__path.use_forward()

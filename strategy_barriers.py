@@ -151,13 +151,13 @@ class Rectangle:
             if opt & Rectangle.TOP:
                 x = x1 + (x2 - x1) * (1.0 * (bottom - y1)) / (y2 - y1)
                 y = bottom
-            if opt & Rectangle.BOTTOM:
+            elif opt & Rectangle.BOTTOM:
                 x = x1 + (x2 - x1) * (1.0 * (top - y1)) / (y2 - y1)
                 y = top
             if opt & Rectangle.RIGHT:
                 y = y1 + (y2 - y1) * (1.0 * (right - x1)) / (x2 - x1)
                 x = right
-            if opt & Rectangle.LEFT:
+            elif opt & Rectangle.LEFT:
                 y = y1 + (y2 - y1) * (1.0 * (left - x1)) / (x2 - x1)
                 x = left
             if opt == k1:
