@@ -179,7 +179,7 @@ def generate_cos(path):
         a = current - path[i - 1]
         b = path[i + 1] - current
         yield (1 if abs(a.norm()) < 1e-3 or abs(b.norm()) < 1e-3
-               else a.cos(b) ** (power - i))
+               else abs(a.cos(b)) ** (power - i))
 
 
 def cos_product(path):
