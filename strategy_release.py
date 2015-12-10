@@ -663,10 +663,11 @@ def generate_cars_barriers(context: Context):
     def use(car: Car):
         car_speed = Point(car.speed_x, car.speed_y)
         return (car.id != context.me.id and
-                (context.speed.norm() > CAR_SPEED_FACTOR * car_speed.norm() or
-                 context.speed.norm() > 0 and
-                 car_speed.norm() > 0 and
-                 context.speed.cos(car_speed) < 0))
+                (context.speed.norm() > CAR_SPEED_FACTOR * car_speed.norm() and
+                 (context.speed.norm() > 0 and
+                  car_speed.norm() > 0 and
+                  abs(context.speed.cos(car_speed)) > 0.5 or
+                  car_speed.norm() == 0)))
 
     return make_units_barriers(filter(use, context.world.cars))
 
