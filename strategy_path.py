@@ -131,41 +131,37 @@ def path_point_shift(previous: TypedPoint, current: TypedPoint,
                 previous.type.output != current.type.output and
                 following.type == previous.type):
             return Point(- tile_size, - tile_size) / 4
-        else:
-            return Point(- shift, - shift)
-    elif current.type in {PointType.LEFT_BOTTOM, PointType.BOTTOM_LEFT}:
+        return Point(- shift, - shift)
+    if current.type in {PointType.LEFT_BOTTOM, PointType.BOTTOM_LEFT}:
         if (previous and following and
                 previous.type.input != current.type.input and
                 previous.type.output != current.type.output and
                 following.type == previous.type):
             return Point(- tile_size, + tile_size) / 4
-        else:
-            return Point(- shift, + shift)
-    elif current.type in {PointType.RIGHT_TOP, PointType.TOP_RIGHT}:
+        return Point(- shift, + shift)
+    if current.type in {PointType.RIGHT_TOP, PointType.TOP_RIGHT}:
         if (previous and following and
                 previous.type.input != current.type.input and
                 previous.type.output != current.type.output and
                 following.type == previous.type):
             return Point(+ tile_size, - tile_size) / 4
-        else:
-            return Point(+ shift, - shift)
-    elif current.type in {PointType.RIGHT_BOTTOM, PointType.BOTTOM_RIGHT}:
+        return Point(+ shift, - shift)
+    if current.type in {PointType.RIGHT_BOTTOM, PointType.BOTTOM_RIGHT}:
         if (previous and following and
                 previous.type.input != current.type.input and
                 previous.type.output != current.type.output and
                 following.type == previous.type):
             return Point(+ tile_size, + tile_size) / 4
-        else:
-            return Point(+ shift, + shift)
-    elif current.type in {PointType.LEFT_RIGHT, PointType.RIGHT_LEFT}:
+        return Point(+ shift, + shift)
+    if current.type in {PointType.LEFT_RIGHT, PointType.RIGHT_LEFT}:
         if following and following.type.output == SideType.TOP:
             return Point(0, + shift)
-        elif following and following.type.output == SideType.BOTTOM:
+        if following and following.type.output == SideType.BOTTOM:
             return Point(0, - shift)
-    elif current.type in {PointType.TOP_BOTTOM, PointType.BOTTOM_TOP}:
+    if current.type in {PointType.TOP_BOTTOM, PointType.BOTTOM_TOP}:
         if following and following.type.output == SideType.LEFT:
             return Point(+ shift, 0)
-        elif following and following.type.output == SideType.RIGHT:
+        if following and following.type.output == SideType.RIGHT:
             return Point(- shift, 0)
     return Point(0, 0)
 
