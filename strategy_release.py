@@ -49,7 +49,6 @@ SPEED_LOSS_HISTORY_SIZE = 500
 MIN_SPEED_LOSS = 1 / SPEED_LOSS_HISTORY_SIZE
 MAX_SPEED_LOSS = 1 / SPEED_LOSS_HISTORY_SIZE
 CHANGE_PER_TICKS_COUNT = SPEED_LOSS_HISTORY_SIZE / 5
-MAX_PROJECTILE_COUNT = 3
 MAX_CANISTER_COUNT = 1
 COURSE_PATH_SIZE = 3
 TARGET_SPEED_PATH_SIZE = 3
@@ -338,27 +337,21 @@ def throw_projectile(context: Context):
 
 
 def throw_washer(context: Context):
-    return (
-        context.me.projectile_count > MAX_PROJECTILE_COUNT or
-        make_has_intersection_with_lane(
+    return (make_has_intersection_with_lane(
             position=context.position,
             course=context.direction * context.game.track_tile_size,
             barriers=list(generate_opponents_cars_barriers(context)),
             width=context.game.washer_radius
-        )(0))
+            )(0))
 
 
 def throw_tire(context: Context):
-    return (
-        context.me.projectile_count > MAX_PROJECTILE_COUNT and (
-            0.2 < abs(context.me.angle) < pi / 2 - 0.2 or
-            0.2 < abs(context.me.angle) - pi < pi / 2 - 0.2) or
-        make_has_intersection_with_line(
+    return (make_has_intersection_with_line(
             position=context.position,
             course=(context.direction *
                     context.game.track_tile_size / 2),
             barriers=list(generate_opponents_cars_barriers(context)),
-        )(0))
+            )(0))
 
 
 class Path:
@@ -394,8 +387,7 @@ class Path:
             world_height=context.world.height,
             priority_conf=PriorityConf(
                 durability=context.me.durability,
-                projectile_left=(MAX_PROJECTILE_COUNT -
-                                 context.me.projectile_count),
+                projectile_left=1,
                 oil_canister_left=(MAX_CANISTER_COUNT -
                                    context.me.oil_canister_count),
             ),
