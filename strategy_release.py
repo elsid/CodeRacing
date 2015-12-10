@@ -310,7 +310,8 @@ class MoveMode:
                 course=(-context.direction * context.game.track_tile_size),
                 barriers=list(generate_opponents_cars_barriers(context)),
             )(0))
-        context.move.throw_projectile = throw_projectile(context)
+        context.move.throw_projectile = throw_projectile(
+            context, self.__course.tile_barriers)
         nitro_path_size = (
             BUGGY_PATH_SIZE_FOR_USE_NITRO if context.is_buggy
             else JEEP_PATH_SIZE_FOR_USE_NITRO
@@ -332,8 +333,9 @@ class MoveMode:
         self.__path.switch()
 
 
-def throw_projectile(context: Context):
-    return throw_washer(context) if context.is_buggy else throw_tire(context)
+def throw_projectile(context: Context, tiles_barriers):
+    return (throw_washer(context) if context.is_buggy
+            else throw_tire(context, tiles_barriers))
 
 
 Washer = namedtuple('Washer', ('position', 'speed'))
@@ -357,12 +359,12 @@ def throw_washer(context: Context):
             car_barriers = list(make_units_barriers([car]))
             if car_speed.norm() < 1:
                 for washer in washers:
-                    yield (make_has_intersection_with_lane(
-                           position=washer.position,
-                           course=washer.speed * 100,
-                           barriers=car_barriers,
-                           width=context.game.washer_radius
-                           )(0))
+                    yield make_has_intersection_with_lane(
+                        position=washer.position,
+                        course=washer.speed * 100,
+                        barriers=car_barriers,
+                        width=context.game.washer_radius,
+                    )(0)
             else:
                 car_line = Line(car_position, car_position + car_speed)
                 for washer in washers:
@@ -381,18 +383,114 @@ def throw_washer(context: Context):
                     washer_time = washer_dir.norm() / washer.speed.norm()
                     if abs(car_time - washer_time) <= 10:
                         yield True
-            yield False
 
     return next((x for x in generate() if x), False)
 
 
-def throw_tire(context: Context):
-    return (make_has_intersection_with_line(
+def tiles_at_line(line: Line):
+    tiles = bresenham(line)
+    for i, current in islice(enumerate(tiles), len(tiles) - 1):
+        yield current
+        following = tiles[i + 1]
+        if current.x != following.x and current.y != following.y:
+            yield current + Point(following.x - current.x, 0)
+            yield current + Point(0, following.y - current.y)
+
+
+def bresenham(line: Line):
+    x1 = line.begin.x
+    y1 = line.begin.y
+    x2 = line.end.x
+    y2 = line.end.y
+    dx = x2 - x1
+    dy = y2 - y1
+    is_steep = abs(dy) > abs(dx)
+    if is_steep:
+        x1, y1 = y1, x1
+        x2, y2 = y2, x2
+    swapped = False
+    if x1 > x2:
+        x1, x2 = x2, x1
+        y1, y2 = y2, y1
+        swapped = True
+    dx = x2 - x1
+    dy = y2 - y1
+    error = int(dx / 2.0)
+    y_step = 1 if y1 < y2 else -1
+    y = y1
+    points = []
+    for x in range(x1, x2 + 1):
+        coord = Point(y, x) if is_steep else Point(x, y)
+        points.append(coord)
+        error -= abs(dy)
+        if error < 0:
+            y += y_step
+            error += dx
+    if swapped:
+        points.reverse()
+    return points
+
+
+def throw_tire(context: Context, tiles_barriers):
+    tire_speed = context.direction * context.game.tire_initial_speed
+    width = context.world.width
+    height = context.world.height
+
+    def generate_barriers(line: Line):
+        def impl():
+            for tile in tiles_at_line(line):
+                if 0 <= tile.x < width and 0 <= tile.y < height:
+                    yield tiles_barriers[get_point_index(tile, height)]
+        return chain.from_iterable(impl())
+
+    tile_size = context.game.track_tile_size
+
+    def has_intersection_with_tiles(distance):
+        course = tire_speed.normalized() * distance
+        line = Line(begin=get_current_tile(context.position, tile_size),
+                    end=get_current_tile(context.position + course, tile_size))
+        return make_has_intersection_with_lane(
             position=context.position,
-            course=(context.direction *
-                    context.game.track_tile_size / 2),
-            barriers=list(generate_opponents_cars_barriers(context)),
-            )(0))
+            course=course,
+            barriers=list(chain(generate_barriers(line))),
+            width=context.game.tire_radius,
+        )(0)
+
+    def generate():
+        for car in context.opponents_cars:
+            car_position = Point(car.x, car.y)
+            car_speed = Point(car.speed_x, car.speed_y)
+            car_barriers = list(make_units_barriers([car]))
+            distance = (context.position - car_position).norm()
+            if car_speed.norm() < 1:
+                yield (not has_intersection_with_tiles(distance) and
+                       make_has_intersection_with_lane(
+                           position=context.position,
+                           course=tire_speed * 100,
+                           barriers=car_barriers,
+                           width=context.game.tire_radius,
+                       )(0))
+            else:
+                car_line = Line(car_position, car_position + car_speed)
+                tire_line = Line(context.position,
+                                 context.position + tire_speed)
+                intersection = tire_line.intersection(car_line)
+                if intersection is None:
+                    continue
+                car_dir = intersection - car_position
+                if car_dir.norm() > 0 and car_dir.cos(car_speed) < 0:
+                    continue
+                tire_dir = intersection - context.position
+                if tire_dir.norm() > 0 and tire_dir.cos(tire_speed) < 0:
+                    continue
+                if has_intersection_with_tiles(tire_dir.norm()):
+                    continue
+                car_time = car_dir.norm() / car_speed.norm()
+                tire_time = tire_dir.norm() / tire_speed.norm()
+                if abs(car_time - tire_time) <= 10:
+                    yield True
+
+    return next((x for x in generate() if x), False)
 
 
 class Path:
@@ -610,6 +708,10 @@ class Course:
     def __init__(self):
         self.__tile_barriers = None
         self.__tiles = None
+
+    @property
+    def tile_barriers(self):
+        return self.__tile_barriers
 
     def get(self, context: Context, path):
         if (self.__tiles is None or self.__tile_barriers is None or
