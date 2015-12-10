@@ -98,6 +98,10 @@ class Context:
                          right_bottom=Point(self.world.width,
                                             self.world.height))
 
+    @property
+    def opponents_cars(self):
+        return (x for x in self.world.cars if not x.teammate)
+
 
 def make_release_controller(context: Context):
     return Controller(distance_to_wheels=context.me.width / 4)
@@ -307,26 +311,7 @@ class MoveMode:
                 course=(-context.direction * context.game.track_tile_size),
                 barriers=list(generate_opponents_cars_barriers(context)),
             )(0))
-        if context.is_buggy:
-            context.move.throw_projectile = (
-                context.me.projectile_count > MAX_PROJECTILE_COUNT or
-                make_has_intersection_with_lane(
-                    position=context.position,
-                    course=context.direction * context.game.track_tile_size,
-                    barriers=list(generate_opponents_cars_barriers(context)),
-                    width=context.game.washer_radius
-                )(0))
-        else:
-            context.move.throw_projectile = (
-                context.me.projectile_count > MAX_PROJECTILE_COUNT and (
-                    0.2 < abs(context.me.angle) < pi / 2 - 0.2 or
-                    0.2 < abs(context.me.angle) - pi < pi / 2 - 0.2) or
-                make_has_intersection_with_line(
-                    position=context.position,
-                    course=(context.direction *
-                            context.game.track_tile_size / 2),
-                    barriers=list(generate_opponents_cars_barriers(context)),
-                )(0))
+        context.move.throw_projectile = throw_projectile(context)
         nitro_path_size = (
             BUGGY_PATH_SIZE_FOR_USE_NITRO if context.is_buggy
             else JEEP_PATH_SIZE_FOR_USE_NITRO
@@ -346,6 +331,34 @@ class MoveMode:
 
     def switch(self):
         self.__path.switch()
+
+
+def throw_projectile(context: Context):
+    return throw_washer(context) if context.is_buggy else throw_tire(context)
+
+
+def throw_washer(context: Context):
+    return (
+        context.me.projectile_count > MAX_PROJECTILE_COUNT or
+        make_has_intersection_with_lane(
+            position=context.position,
+            course=context.direction * context.game.track_tile_size,
+            barriers=list(generate_opponents_cars_barriers(context)),
+            width=context.game.washer_radius
+        )(0))
+
+
+def throw_tire(context: Context):
+    return (
+        context.me.projectile_count > MAX_PROJECTILE_COUNT and (
+            0.2 < abs(context.me.angle) < pi / 2 - 0.2 or
+            0.2 < abs(context.me.angle) - pi < pi / 2 - 0.2) or
+        make_has_intersection_with_line(
+            position=context.position,
+            course=(context.direction *
+                    context.game.track_tile_size / 2),
+            barriers=list(generate_opponents_cars_barriers(context)),
+        )(0))
 
 
 class Path:
@@ -673,8 +686,7 @@ def generate_cars_barriers(context: Context):
 
 
 def generate_opponents_cars_barriers(context: Context):
-    cars = (x for x in context.world.cars if not x.teammate)
-    return make_units_barriers(cars)
+    return make_units_barriers(context.opponents_cars)
 
 
 def adjust_course_forward(has_intersection, angle):
