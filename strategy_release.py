@@ -791,7 +791,7 @@ class Course:
         def with_lane(current_barriers):
             return make_has_intersection_with_lane(
                 position=context.position,
-                course=course * sqrt(2),
+                course=course * (0.75 + context.speed.norm() / MAX_SPEED),
                 barriers=current_barriers,
                 width=width,
             )
