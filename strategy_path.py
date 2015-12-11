@@ -5,6 +5,7 @@ from itertools import islice, groupby, chain
 from sys import maxsize
 from collections import defaultdict, deque
 from heapq import heappop, heappush
+from math import pi
 from model.TileType import TileType
 from strategy_common import Point, get_current_tile, Polyline
 
@@ -505,12 +506,7 @@ def shortest_path_with_direction(graph, src, dst, initial_direction):
             new_direction = direction_from
             current_distance = distances.get(neighbor_index, float('inf'))
             cos_value = direction.cos(new_direction)
-            if cos_value < -1e-3:
-                factor = 8
-            elif cos_value < 1e-3:
-                factor = 4
-            else:
-                factor = 2
+            factor = 2 ** (3 - 2 * cos_value)
             new_distance = distance + factor * (1 - cos_value) / weight + weight
             if new_distance < current_distance:
                 distances[neighbor_index] = new_distance
