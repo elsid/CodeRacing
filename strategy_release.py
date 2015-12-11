@@ -1,6 +1,6 @@
 from collections import deque, namedtuple
 from copy import copy
-from math import pi, radians
+from math import sqrt, radians
 from itertools import chain, islice
 from functools import reduce
 from operator import mul
@@ -122,7 +122,7 @@ class ReleaseStrategy:
 
     def __lazy_init(self, context: Context):
         self.__stuck = StuckDetector(
-            history_size=125,
+            history_size=150,
             stuck_distance=min(context.me.width, context.me.height),
             unstack_distance=context.game.track_tile_size / 3,
         )
@@ -791,7 +791,7 @@ class Course:
         def with_lane(current_barriers):
             return make_has_intersection_with_lane(
                 position=context.position,
-                course=course,
+                course=course * sqrt(2),
                 barriers=current_barriers,
                 width=width,
             )
@@ -844,7 +844,7 @@ def generate_opponents_cars_barriers(context: Context):
 
 
 def adjust_course_forward(has_intersection, angle):
-    return adjust_course_rotation(has_intersection, -pi / 4, pi / 4, angle)
+    return adjust_course_rotation(has_intersection, -1, 1, angle)
 
 
 def adjust_course_rotation(has_intersection, begin, end, angle):
