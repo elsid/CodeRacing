@@ -506,7 +506,6 @@ class Path:
         self.__path = []
         self.__forward = ForwardWaypointsPathBuilder(
             start_tile=start_tile,
-            get_direction=get_direction,
             waypoints_count=waypoints_count,
         )
         self.__backward = BackwardWaypointsPathBuilder(
@@ -616,9 +615,8 @@ def path_filter_tiles(path, tiles, tile_size, tile_type):
 
 
 class WaypointsPathBuilder:
-    def __init__(self, start_tile, get_direction):
+    def __init__(self, start_tile):
         self.start_tile = start_tile
-        self.__get_direction = get_direction
 
     def make(self, context: Context):
         waypoints = self._waypoints(context.me.next_waypoint_index,
@@ -650,8 +648,8 @@ class WaypointsPathBuilder:
 
 
 class ForwardWaypointsPathBuilder(WaypointsPathBuilder):
-    def __init__(self, start_tile, get_direction, waypoints_count):
-        super().__init__(start_tile, get_direction)
+    def __init__(self, start_tile, waypoints_count):
+        super().__init__(start_tile)
         self.__waypoints_count = waypoints_count
 
     def _waypoints(self, next_waypoint_index, waypoints):
@@ -670,7 +668,7 @@ class ForwardWaypointsPathBuilder(WaypointsPathBuilder):
 
 class BackwardWaypointsPathBuilder(WaypointsPathBuilder):
     def __init__(self, start_tile, get_direction, waypoints_count):
-        super().__init__(start_tile, get_direction)
+        super().__init__(start_tile)
         self.__waypoints_count = waypoints_count
         self.__begin = None
         self.__get_direction = get_direction
