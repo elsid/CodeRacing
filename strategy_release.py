@@ -551,6 +551,11 @@ class Path:
         def need_take_next(path):
             if not path:
                 return False
+            tile = context.tile
+            first_tile = get_current_tile(path[0], context.game.track_tile_size)
+            if tile != first_tile and (tile.x == first_tile.x or
+                                       tile.y == first_tile.y):
+                return False
             course = path[0] - context.position
             distance = course.norm()
             if distance < min(context.me.width, context.me.height):
@@ -560,15 +565,24 @@ class Path:
 
         while need_take_next(self.__path):
             self.__path = self.__path[1:]
-        if (not self.__path or
-                path_has_tiles(self.__path, context.world.tiles_x_y,
+
+        def need_remake(path):
+            if not path:
+                return True
+            tile = context.tile
+            first_tile = get_current_tile(path[0], context.game.track_tile_size)
+            return (
+                (tile.x != first_tile.x and tile.y != first_tile.y) or
+                path_has_tiles(path, context.world.tiles_x_y,
                                context.game.track_tile_size,
                                TileType.EMPTY) or
-                path_count_tiles(self.__path, context.world.tiles_x_y,
+                path_count_tiles(path, context.world.tiles_x_y,
                                  context.game.track_tile_size,
                                  TileType.UNKNOWN) != self.__unknown_count or
-                context.position.distance(self.__path[0]) >
-                2 * context.game.track_tile_size):
+                context.position.distance(path[0]) >
+                2 * context.game.track_tile_size)
+
+        if need_remake(self.__path):
             self.__path = self.__current.make(context)
             self.__unknown_count = path_count_tiles(
                 self.__path, context.world.tiles_x_y,
