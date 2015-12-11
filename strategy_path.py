@@ -58,7 +58,7 @@ def make_tiles_points(points, tile_size, world_height):
                 for i, v in enumerate(points))
 
 
-BONUS_PENALTY_FACTOR = 2
+BONUS_PENALTY_FACTOR = 4
 BONUS_TYPE_PRIORITY_FACTOR = 1
 
 
@@ -80,9 +80,9 @@ def get_bonus_penalty(bonus, position, tile_size):
 def get_bonus_type_priority(value, conf: PriorityConf):
     return {
         BonusType.REPAIR_KIT: 1 - conf.durability,
-        BonusType.AMMO_CRATE: 0.2 if conf.projectile_left > 0 else 0,
+        BonusType.AMMO_CRATE: 0.25 if conf.projectile_left > 0 else 0,
         BonusType.NITRO_BOOST: 0.5,
-        BonusType.OIL_CANISTER: 0.1 if conf.oil_canister_left > 0 else 0,
+        BonusType.OIL_CANISTER: 0.25 if conf.oil_canister_left > 0 else 0,
         BonusType.PURE_SCORE: 1,
     }[value]
 
