@@ -582,7 +582,7 @@ class ShiftOnDirectXTest(TestCase):
         last, points = shift_on_direct_x([Point(0, 0), Point(0, 1),
                                           Point(1, 2)])
         assert_that(last, equal_to(2))
-        assert_that(list(points), equal_to([Point(0, 0), Point(1, 1)]))
+        assert_that(list(points), equal_to([Point(1, 0), Point(1, 1)]))
 
 
 class ShiftOnDirectYTest(TestCase):
@@ -590,7 +590,7 @@ class ShiftOnDirectYTest(TestCase):
         last, points = shift_on_direct_y([Point(0, 0), Point(1, 0),
                                           Point(2, 1)])
         assert_that(last, equal_to(2))
-        assert_that(list(points), equal_to([Point(0, 0), Point(1, 1)]))
+        assert_that(list(points), equal_to([Point(0, 1), Point(1, 1)]))
 
 
 class ShiftOnDirectTest(TestCase):
@@ -600,8 +600,8 @@ class ShiftOnDirectTest(TestCase):
             Point(3, 2), Point(3, 3), Point(3, 4), Point(4, 5),
         ])
         assert_that(list(result), equal_to([
-            Point(0, 0), Point(1, 0), Point(2, 1), Point(3, 1),
-            Point(3, 2), Point(4, 3), Point(4, 4), Point(4, 5),
+            Point(0, 0), Point(1, 1), Point(2, 1), Point(3, 1),
+            Point(4, 2), Point(4, 3), Point(4, 4), Point(4, 5),
         ]))
 
 
