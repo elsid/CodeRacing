@@ -800,7 +800,7 @@ class Course:
             return adjust_course_forward(has_intersection, angle)
 
         def adjust_backward(has_intersection):
-            return adjust_course_forward(has_intersection, angle)
+            return adjust_course_backward(has_intersection, angle)
 
         variants = [
             lambda: adjust_forward(with_lane(all_barriers)),
