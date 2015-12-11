@@ -581,7 +581,7 @@ class Path:
             tile = context.tile
             first_tile = get_current_tile(path[0], context.game.track_tile_size)
             return (
-                (tile.x != first_tile.x and tile.y != first_tile.y) or
+                tile.x != first_tile.x and tile.y != first_tile.y or
                 path_has_tiles(path, context.world.tiles_x_y,
                                context.game.track_tile_size,
                                TileType.EMPTY) or
