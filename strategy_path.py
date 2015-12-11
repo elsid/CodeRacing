@@ -1,7 +1,7 @@
 from model.BonusType import BonusType
 from enum import Enum
 from collections import namedtuple
-from itertools import islice, groupby
+from itertools import islice, groupby, chain
 from sys import maxsize
 from collections import defaultdict, deque
 from heapq import heappop, heappush
@@ -295,7 +295,8 @@ def shift_on_direct_x(path):
                 if p.x != path[i - 1].x), len(path) - 1)
     x = path[last].x
     if x != path[0].x:
-        return last, (Point(x, p.y) for p in islice(path, last))
+        return last, chain([path[0]],
+                           (Point(x, p.y) for p in islice(path, 1, last)))
     return last, (p for p in path)
 
 
@@ -304,7 +305,8 @@ def shift_on_direct_y(path):
                  if p.y != path[i - 1].y), len(path) - 1)
     y = path[last].y
     if y != path[0].y:
-        return last, (Point(p.x, y) for p in islice(path, last))
+        return last, chain([path[0]],
+                           (Point(p.x, y) for p in islice(path, 1, last)))
     return last, (p for p in path)
 
 
