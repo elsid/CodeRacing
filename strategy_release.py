@@ -124,7 +124,7 @@ class ReleaseStrategy:
         self.__stuck = StuckDetector(
             history_size=150,
             stuck_distance=min(context.me.width, context.me.height),
-            unstack_distance=context.game.track_tile_size / 3,
+            unstack_distance=max(context.me.width, context.me.height) * 1.5,
         )
         self.__direction = DirectionDetector(
             begin=context.position,
