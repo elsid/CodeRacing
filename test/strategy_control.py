@@ -175,7 +175,7 @@ class ControllerTest(TestCase):
             tick=0,
         )
         assert_that(result.engine_power_derivative, less_than(0))
-        assert_that(result.wheel_turn_derivative, greater_than(0))
+        assert_that(result.wheel_turn_derivative, less_than(0))
 
     def test_start_direct_backward_turn_right(self):
         controller = Controller(distance_to_wheels=1)
@@ -190,7 +190,7 @@ class ControllerTest(TestCase):
             tick=0,
         )
         assert_that(result.engine_power_derivative, less_than(0))
-        assert_that(result.wheel_turn_derivative, less_than(0))
+        assert_that(result.wheel_turn_derivative, greater_than(0))
 
     def test_start_direct_forward_with_initial_speed_turn_left(self):
         controller = Controller(distance_to_wheels=1)
@@ -235,7 +235,7 @@ class ControllerTest(TestCase):
             tick=0,
         )
         assert_that(result.engine_power_derivative, greater_than(0))
-        assert_that(result.wheel_turn_derivative, greater_than(0))
+        assert_that(result.wheel_turn_derivative, less_than(0))
 
     def test_start_direct_backward_with_initial_speed_turn_right(self):
         controller = Controller(distance_to_wheels=1)
@@ -250,7 +250,7 @@ class ControllerTest(TestCase):
             tick=0,
         )
         assert_that(result.engine_power_derivative, greater_than(0))
-        assert_that(result.wheel_turn_derivative, less_than(0))
+        assert_that(result.wheel_turn_derivative, greater_than(0))
 
     def test_start_direct_forward_with_initial_opposite_speed_turn_left(self):
         controller = Controller(distance_to_wheels=1)
@@ -265,7 +265,7 @@ class ControllerTest(TestCase):
             tick=0,
         )
         assert_that(result.engine_power_derivative, greater_than(0))
-        assert_that(result.wheel_turn_derivative, greater_than(0))
+        assert_that(result.wheel_turn_derivative, less_than(0))
 
     def test_start_direct_forward_with_initial_opposite_speed_turn_right(self):
         controller = Controller(distance_to_wheels=1)
@@ -280,7 +280,7 @@ class ControllerTest(TestCase):
             tick=0,
         )
         assert_that(result.engine_power_derivative, greater_than(0))
-        assert_that(result.wheel_turn_derivative, less_than(0))
+        assert_that(result.wheel_turn_derivative, greater_than(0))
 
     def test_start_direct_backward_with_initial_opposite_speed_turn_left(self):
         controller = Controller(distance_to_wheels=1)

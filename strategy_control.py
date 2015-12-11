@@ -1,7 +1,7 @@
 from collections import namedtuple, deque
 from functools import reduce
 from itertools import islice
-from math import pi, exp, sqrt
+from math import pi, exp, sqrt, cos
 from operator import mul
 from strategy_common import Point, normalize_angle, LimitedSum
 
@@ -82,8 +82,7 @@ class Controller:
         direction_angle_error = relative_angle_error(direction_angle_error)
         speed_angle_error = normalize_angle(speed.absolute_rotation() - angle)
         speed_angle_error = relative_angle_error(speed_angle_error)
-        if (speed.norm() > 0 and target_speed.norm() > 0 and
-                speed.cos(target_speed) < 0):
+        if target_speed.norm() > 0 and direction.cos(target_speed) < -cos(1):
             direction_angle_error = -direction_angle_error
             speed_angle_error = -speed_angle_error
         angle_error = max(direction_angle_error, speed_angle_error, key=abs)
