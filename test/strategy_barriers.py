@@ -177,6 +177,30 @@ class RectangleTest(TestCase):
             end=Point(x=800.0, y=5386.231448842183),
         )))
 
+    def test_2(self):
+        line = Line(begin=Point(x=-2, y=-2), end=Point(x=2, y=2))
+        rectangle = Rectangle(left_top=Point(x=-1, y=-1),
+                              right_bottom=Point(x=1, y=1))
+        result = rectangle.clip_line(line)
+        assert_that(result, equal_to(Line(begin=Point(x=-1, y=-1),
+                                          end=Point(x=1, y=1))))
+
+    def test_3(self):
+        line = Line(begin=Point(x=2, y=2), end=Point(x=-2, y=-2))
+        rectangle = Rectangle(left_top=Point(x=-1, y=-1),
+                              right_bottom=Point(x=1, y=1))
+        result = rectangle.clip_line(line)
+        assert_that(result, equal_to(Line(begin=Point(x=1, y=1),
+                                          end=Point(x=-1, y=-1))))
+
+    def test_4(self):
+        line = Line(begin=Point(x=2, y=1), end=Point(x=-2, y=-1))
+        rectangle = Rectangle(left_top=Point(x=-1, y=-1),
+                              right_bottom=Point(x=1, y=1))
+        result = rectangle.clip_line(line)
+        assert_that(result, equal_to(Line(begin=Point(x=1, y=0.5),
+                                          end=Point(x=-1, y=-0.5))))
+
 
 class MakeTileBarriersTest(TestCase):
     def test_for_empty_returns_tile_rectangle(self):

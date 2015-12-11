@@ -144,29 +144,36 @@ class Rectangle:
         top = self.left_top.y
         right = self.right_bottom.x
         bottom = self.right_bottom.y
-        while (k1 | k2) != 0:
+        accept = False
+        while True:
+            if (k1 | k2) == 0:
+                accept = True
+                break
             if (k1 & k2) != 0:
-                return line
+                break
             opt = k1 or k2
             if opt & Rectangle.TOP:
-                x = x1 + (x2 - x1) * (1.0 * (bottom - y1)) / (y2 - y1)
+                x = x1 + (x2 - x1) * (bottom - y1) / (y2 - y1)
                 y = bottom
             elif opt & Rectangle.BOTTOM:
-                x = x1 + (x2 - x1) * (1.0 * (top - y1)) / (y2 - y1)
+                x = x1 + (x2 - x1) * (top - y1) / (y2 - y1)
                 y = top
             if opt & Rectangle.RIGHT:
-                y = y1 + (y2 - y1) * (1.0 * (right - x1)) / (x2 - x1)
+                y = y1 + (y2 - y1) * (right - x1) / (x2 - x1)
                 x = right
             elif opt & Rectangle.LEFT:
-                y = y1 + (y2 - y1) * (1.0 * (left - x1)) / (x2 - x1)
+                y = y1 + (y2 - y1) * (left - x1) / (x2 - x1)
                 x = left
             if opt == k1:
                 x1, y1 = x, y
                 k1 = self.point_code(Point(x1, y1))
-            else:
+            elif opt == k2:
                 x2, y2 = x, y
                 k2 = self.point_code(Point(x2, y2))
-        return Line(Point(x1, y1), Point(x2, y2))
+        if accept:
+            return Line(Point(x1, y1), Point(x2, y2))
+        else:
+            return line
 
     def has_intersection_with_line(self, line: Line):
         return line != self.clip_line(line)
