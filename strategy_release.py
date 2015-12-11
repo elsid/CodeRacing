@@ -158,7 +158,8 @@ class ReleaseStrategy:
         context.move.engine_power = 1
         if context.world.tick < context.game.initial_freeze_duration_ticks:
             return
-        self.__stuck.update(context.position)
+        if context.me.durability > 0:
+            self.__stuck.update(context.position)
         self.__direction.update(context.position)
         if self.__stuck.positive_check():
             self.__move_mode.switch()
