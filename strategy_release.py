@@ -799,14 +799,9 @@ class Course:
         def adjust_forward(has_intersection):
             return adjust_course_forward(has_intersection, angle)
 
-        def adjust_backward(has_intersection):
-            return adjust_course_backward(has_intersection, angle)
-
         variants = [
             lambda: adjust_forward(with_lane(all_barriers)),
             lambda: adjust_forward(with_lane(tiles_barriers)),
-            lambda: adjust_backward(with_lane(all_barriers)),
-            lambda: adjust_backward(with_lane(tiles_barriers)),
         ]
         for f in variants:
             rotation = f()
@@ -850,10 +845,6 @@ def generate_opponents_cars_barriers(context: Context):
 
 def adjust_course_forward(has_intersection, angle):
     return adjust_course_rotation(has_intersection, -pi / 4, pi / 4, angle)
-
-
-def adjust_course_backward(has_intersection, angle):
-    return adjust_course_rotation(has_intersection, -1 - pi, 1 - pi, angle)
 
 
 def adjust_course_rotation(has_intersection, begin, end, angle):
