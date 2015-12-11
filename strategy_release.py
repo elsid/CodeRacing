@@ -58,6 +58,8 @@ MAX_SPEED = 50
 MAX_SPEED_THROUGH_UNKNOWN = 30
 PATH_SIZE_FOR_BONUSES = 5
 CAR_SPEED_FACTOR = 1.1
+WASHER_INTERVAL = 5
+TIRE_INTERVAL = 3
 
 
 class Context:
@@ -364,7 +366,7 @@ def throw_washer(context: Context):
                 for washer in washers:
                     yield make_has_intersection_with_lane(
                         position=washer.position,
-                        course=washer.speed * 100,
+                        course=washer.speed * 150,
                         barriers=car_barriers,
                         width=context.game.washer_radius,
                     )(0)
@@ -379,12 +381,14 @@ def throw_washer(context: Context):
                     car_dir = intersection - car_position
                     if car_dir.norm() > 0 and car_dir.cos(car_speed) < 0:
                         continue
+                    if car_dir.norm() > washer_speed * 150:
+                        continue
                     washer_dir = intersection - washer.position
                     if washer_dir.norm() > 0 and washer_dir.cos(washer.speed) < 0:
                         continue
                     car_time = car_dir.norm() / car_speed.norm()
                     washer_time = washer_dir.norm() / washer.speed.norm()
-                    if abs(car_time - washer_time) <= 10:
+                    if abs(car_time - washer_time) <= WASHER_INTERVAL:
                         yield True
 
     return next((x for x in generate() if x), False)
@@ -469,7 +473,7 @@ def throw_tire(context: Context, tiles_barriers):
                 yield (not has_intersection_with_tiles(distance) and
                        make_has_intersection_with_lane(
                            position=context.position,
-                           course=tire_speed * 100,
+                           course=tire_speed * 50,
                            barriers=car_barriers,
                            width=context.game.tire_radius,
                        )(0))
@@ -483,6 +487,8 @@ def throw_tire(context: Context, tiles_barriers):
                 car_dir = intersection - car_position
                 if car_dir.norm() > 0 and car_dir.cos(car_speed) < 0:
                     continue
+                if car_dir.norm() > context.game.tire_initial_speed * 50:
+                    continue
                 tire_dir = intersection - context.position
                 if tire_dir.norm() > 0 and tire_dir.cos(tire_speed) < 0:
                     continue
@@ -490,7 +496,7 @@ def throw_tire(context: Context, tiles_barriers):
                     continue
                 car_time = car_dir.norm() / car_speed.norm()
                 tire_time = tire_dir.norm() / tire_speed.norm()
-                if abs(car_time - tire_time) <= 10:
+                if abs(car_time - tire_time) <= TIRE_INTERVAL:
                     yield True
 
     return next((x for x in generate() if x), False)
