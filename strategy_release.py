@@ -169,9 +169,8 @@ class ReleaseStrategy:
             self.__controller.reset()
             self.__direction.reset(begin=context.position,
                                    end=context.position + context.direction)
-        elif (not self.__move_mode.is_forward and
-              self.__stuck.negative_check()):
-            self.__move_mode.use_forward()
+        elif not self.__move_mode.is_main and self.__stuck.negative_check():
+            self.__move_mode.use_main()
             self.__stuck.reset()
             self.__controller.reset()
             self.__direction.reset(begin=context.position,
@@ -203,8 +202,8 @@ class AdaptiveMoveMode:
         return self.__move_mode.target_position
 
     @property
-    def is_forward(self):
-        return self.__move_mode.is_forward
+    def is_main(self):
+        return self.__move_mode.is_main
 
     def move(self, context: Context):
         self.__crush.update(context.speed, context.me.durability)
@@ -217,8 +216,8 @@ class AdaptiveMoveMode:
             self.__change(0.999, context.world.tick)
         self.__move_mode.move(context)
 
-    def use_forward(self):
-        self.__move_mode.use_forward()
+    def use_main(self):
+        self.__move_mode.use_main()
 
     def switch(self):
         self.__move_mode.switch()
@@ -253,8 +252,8 @@ class MoveMode:
         return self.__target_position
 
     @property
-    def is_forward(self):
-        return self.__path.is_forward
+    def is_main(self):
+        return self.__path.is_main
 
     def move(self, context: Context):
         path = self.__path.get(context)
@@ -331,8 +330,8 @@ class MoveMode:
                 nitro_cos > 0.9 or nitro_cos > 0.6 and
                 target_speed.norm() - context.speed.norm() > 30)
 
-    def use_forward(self):
-        self.__path.use_forward()
+    def use_main(self):
+        self.__path.use_main()
 
     def switch(self):
         self.__path.switch()
@@ -517,12 +516,14 @@ class Path:
         )
         self.__unstuck_backward = UnstuckPathBuilder(-2)
         self.__unstuck_forward = UnstuckPathBuilder(2)
+        self.__main = self.__forward
         self.__states = {
             id(self.__forward): self.__unstuck_backward,
+            id(self.__backward): self.__unstuck_forward,
             id(self.__unstuck_backward): self.__unstuck_forward,
             id(self.__unstuck_forward): self.__unstuck_backward,
         }
-        self.__current = self.__forward
+        self.__current = self.__main
         self.__get_direction = get_direction
         self.__unknown_count = 0
 
@@ -542,8 +543,8 @@ class Path:
             limit=PATH_SIZE_FOR_BONUSES,
         ))
 
-    def use_forward(self):
-        self.__current = self.__forward
+    def use_main(self):
+        self.__current = self.__main
         self.__path.clear()
 
     def switch(self):
@@ -551,8 +552,8 @@ class Path:
         self.__path.clear()
 
     @property
-    def is_forward(self):
-        return self.__current == self.__forward
+    def is_main(self):
+        return self.__current == self.__main
 
     def __update(self, context: Context):
         def need_take_next(path):
