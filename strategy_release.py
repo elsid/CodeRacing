@@ -741,7 +741,7 @@ class Course:
             )
         tile_size = context.game.track_tile_size
         sub_path = [context.position] + path
-        if reduce(mul, generate_cos(path), 1) < 0.8:
+        if reduce(mul, generate_cos(path), 1) < 0:
             target_position = Curve(sub_path).at(tile_size)
         else:
             target_position = max(
