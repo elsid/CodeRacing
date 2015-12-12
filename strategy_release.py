@@ -513,8 +513,9 @@ class Path:
             start_tile=start_tile,
             waypoints_count=waypoints_count,
         )
-        self.__forward_unknown = ForwardUnknownWaypointsPathBuilder(
+        self.__forward_unknown = ForwardWaypointsPathBuilder(
             start_tile=start_tile,
+            waypoints_count=2,
         )
         self.__unstuck_backward = UnstuckPathBuilder(-1)
         self.__main = self.__forward if known else self.__forward_unknown
@@ -671,17 +672,6 @@ class ForwardWaypointsPathBuilder(WaypointsPathBuilder):
             result += add
             left -= len(add)
         return result
-
-    def _direction(self, context: Context):
-        return context.direction
-
-
-class ForwardUnknownWaypointsPathBuilder(WaypointsPathBuilder):
-    def __init__(self, start_tile):
-        super().__init__(start_tile)
-
-    def _waypoints(self, next_waypoint_index, waypoints):
-        return [waypoints[next_waypoint_index]]
 
     def _direction(self, context: Context):
         return context.direction
