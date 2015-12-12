@@ -518,15 +518,18 @@ class Path:
             waypoints_count=2,
         )
         self.__unstuck_backward = UnstuckPathBuilder(-1)
+        self.__unstuck_forward = UnstuckPathBuilder(1)
         self.__main = self.__forward if known else self.__forward_unknown
         self.__states = {
             id(self.__forward): {
                 id(self.__forward): self.__unstuck_backward,
-                id(self.__unstuck_backward): self.__forward,
+                id(self.__unstuck_backward): self.__unstuck_forward,
+                id(self.__unstuck_forward): self.__forward,
             },
             id(self.__forward_unknown): {
                 id(self.__forward_unknown): self.__unstuck_backward,
-                id(self.__unstuck_backward): self.__forward_unknown,
+                id(self.__unstuck_backward): self.__unstuck_forward,
+                id(self.__unstuck_forward): self.__forward_unknown,
             },
         }
         self.__current = self.__main
