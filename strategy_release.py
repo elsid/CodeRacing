@@ -43,7 +43,7 @@ from strategy_barriers import (
 )
 
 
-BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.3
+BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.4
 JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.6
 SPEED_LOSS_HISTORY_SIZE = 500
 MIN_SPEED_LOSS = 1 / SPEED_LOSS_HISTORY_SIZE
@@ -292,17 +292,7 @@ class MoveMode:
         )
         context.move.engine_power = control.engine_power
         context.move.wheel_turn = control.wheel_turn
-        if (target_speed.norm() == 0 or
-            (context.speed.norm() > 0 and
-             (context.speed.norm() > target_speed.norm() and
-              context.speed.cos(target_speed) >= 0 or
-              context.speed.cos(target_speed) < 0))):
-            if context.speed.cos(context.direction) > -cos(1):
-                context.move.brake = (control.engine_power <
-                                      context.me.engine_power)
-            else:
-                context.move.brake = (control.engine_power >
-                                      context.me.engine_power)
+        context.move.brake = control.brake
         context.move.spill_oil = (
             context.me.oil_canister_count > MAX_CANISTER_COUNT or
             make_has_intersection_with_line(

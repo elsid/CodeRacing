@@ -5,7 +5,7 @@ from math import pi, exp, sqrt, cos
 from operator import mul
 from strategy_common import Point, normalize_angle, LimitedSum
 
-Control = namedtuple('Control', ('engine_power', 'wheel_turn'))
+Control = namedtuple('Control', ('engine_power', 'wheel_turn', 'brake'))
 
 History = namedtuple('History', ('current', 'target'))
 
@@ -72,6 +72,18 @@ class Controller:
             cos_val = sqrt(2) / 2 if cos_val >= 0 else -sqrt(2) / 2
         target_engine_power = acceleration_derivative.norm() * cos_val
         target_engine_power = max(-1, min(1, target_engine_power))
+        if (speed.norm() > 0 and target_speed.norm() > 0 and
+                speed.cos(target_speed) > -cos(1) or speed.norm() == 0):
+            if speed.norm() > target_speed.norm():
+                target_engine_power = (1 if direction.cos(speed) > -cos(1)
+                                       else -1)
+                brake = True
+            else:
+                target_engine_power = (1 if direction.cos(target_speed) > -cos(1)
+                                       else -1)
+                brake = False
+        else:
+            brake = True
         target_angle = course.absolute_rotation()
         direction_angle_error = normalize_angle(target_angle - angle)
         direction_angle_error = relative_angle_error(direction_angle_error)
@@ -128,7 +140,7 @@ class Controller:
                 draw('engine_power')
                 draw('angle')
                 draw('wheel_turn')
-        return Control(target_engine_power, target_wheel_turn)
+        return Control(target_engine_power, target_wheel_turn, brake)
 
 
 def relative_angle_error(value):
