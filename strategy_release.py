@@ -290,19 +290,19 @@ class MoveMode:
             target_speed=target_speed,
             tick=context.world.tick,
         )
-        context.move.engine_power = (context.me.engine_power +
-                                     control.engine_power_derivative)
-        context.move.wheel_turn = (context.me.wheel_turn +
-                                   control.wheel_turn_derivative)
+        context.move.engine_power = control.engine_power
+        context.move.wheel_turn = control.wheel_turn
         if (target_speed.norm() == 0 or
             (context.speed.norm() > 0 and
              (context.speed.norm() > target_speed.norm() and
               context.speed.cos(target_speed) >= 0 or
               context.speed.cos(target_speed) < 0))):
             if context.speed.cos(context.direction) > -cos(1):
-                context.move.brake = control.engine_power_derivative < 0
+                context.move.brake = (control.engine_power <
+                                      context.me.engine_power)
             else:
-                context.move.brake = control.engine_power_derivative > 0
+                context.move.brake = (control.engine_power >
+                                      context.me.engine_power)
         context.move.spill_oil = (
             context.me.oil_canister_count > MAX_CANISTER_COUNT or
             make_has_intersection_with_line(

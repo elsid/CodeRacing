@@ -5,8 +5,7 @@ from math import pi, exp, sqrt, cos
 from operator import mul
 from strategy_common import Point, normalize_angle, LimitedSum
 
-Control = namedtuple('Control', ('engine_power_derivative',
-                                 'wheel_turn_derivative'))
+Control = namedtuple('Control', ('engine_power', 'wheel_turn'))
 
 History = namedtuple('History', ('current', 'target'))
 
@@ -50,10 +49,8 @@ class Controller:
     def reset(self):
         self.__speed = PidController(2, 0, 0)
         self.__acceleration = PidController(2, 0, 0)
-        self.__engine_power = PidController(2, 0, 0)
         self.__angle = PidController(2, 0, 0)
         self.__angular_speed_angle = PidController(2, 0, 0)
-        self.__wheel_turn = PidController(2, 0, 0)
         self.__previous_speed = Point(0, 0)
         self.__previous_angular_speed_angle = 0
 
@@ -75,8 +72,6 @@ class Controller:
             cos_val = sqrt(2) / 2 if cos_val >= 0 else -sqrt(2) / 2
         target_engine_power = acceleration_derivative.norm() * cos_val
         target_engine_power = max(-1, min(1, target_engine_power))
-        engine_power_derivative = self.__engine_power(
-            target_engine_power - engine_power)
         target_angle = course.absolute_rotation()
         direction_angle_error = normalize_angle(target_angle - angle)
         direction_angle_error = relative_angle_error(direction_angle_error)
@@ -90,8 +85,6 @@ class Controller:
         target_wheel_turn = self.__angular_speed_angle(angle_derivative -
                                                        angular_speed_angle)
         target_wheel_turn = max(-1, min(1, target_wheel_turn))
-        wheel_turn_derivative = self.__wheel_turn(
-            target_wheel_turn - wheel_turn)
         self.__previous_speed = speed
         self.__previous_angular_speed_angle = angular_speed_angle
         if self.__is_debug:
@@ -135,7 +128,7 @@ class Controller:
                 draw('engine_power')
                 draw('angle')
                 draw('wheel_turn')
-        return Control(engine_power_derivative, wheel_turn_derivative)
+        return Control(target_engine_power, target_wheel_turn)
 
 
 def relative_angle_error(value):
