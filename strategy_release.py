@@ -167,6 +167,10 @@ class ReleaseStrategy:
             self.__direction.reset(begin=context.position,
                                    end=context.position + context.direction)
         elif not self.__move_mode.is_main and self.__stuck.negative_check():
+            if tiles_has_unknown(context.world.tiles_x_y):
+                self.__move_mode.unknown()
+            else:
+                self.__move_mode.known()
             self.__move_mode.use_main()
             self.__stuck.reset()
             self.__controller.reset()
@@ -215,6 +219,12 @@ class AdaptiveMoveMode:
 
     def use_main(self):
         self.__move_mode.use_main()
+
+    def known(self):
+        self.__move_mode.known()
+
+    def unknown(self):
+        self.__move_mode.unknown()
 
     def switch(self):
         self.__move_mode.switch()
@@ -316,6 +326,12 @@ class MoveMode:
 
     def use_main(self):
         self.__path.use_main()
+
+    def known(self):
+        self.__path.known()
+
+    def unknown(self):
+        self.__path.unknown()
 
     def switch(self):
         self.__path.switch()
@@ -493,6 +509,9 @@ class Path:
             start_tile=start_tile,
             waypoints_count=waypoints_count,
         )
+        self.__forward_unknown = ForwardUnknownWaypointsPathBuilder(
+            start_tile=start_tile,
+        )
         self.__backward = BackwardWaypointsPathBuilder(
             start_tile=start_tile,
             get_direction=get_direction,
@@ -503,6 +522,7 @@ class Path:
         self.__main = self.__forward
         self.__states = {
             id(self.__forward): self.__unstuck_backward,
+            id(self.__forward_unknown): self.__unstuck_backward,
             id(self.__backward): self.__unstuck_forward,
             id(self.__unstuck_backward): self.__unstuck_forward,
             id(self.__unstuck_forward): self.__unstuck_backward,
@@ -530,6 +550,12 @@ class Path:
     def use_main(self):
         self.__current = self.__main
         self.__path.clear()
+
+    def known(self):
+        self.__main = self.__forward
+
+    def unknown(self):
+        self.__main = self.__forward_unknown
 
     def switch(self):
         self.__current = self.__states[id(self.__current)]
@@ -650,6 +676,17 @@ class ForwardWaypointsPathBuilder(WaypointsPathBuilder):
             result += add
             left -= len(add)
         return result
+
+    def _direction(self, context: Context):
+        return context.direction
+
+
+class ForwardUnknownWaypointsPathBuilder(WaypointsPathBuilder):
+    def __init__(self, start_tile):
+        super().__init__(start_tile)
+
+    def _waypoints(self, next_waypoint_index, waypoints):
+        return [waypoints[next_waypoint_index]]
 
     def _direction(self, context: Context):
         return context.direction
