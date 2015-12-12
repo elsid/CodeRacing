@@ -138,7 +138,8 @@ class ReleaseStrategy:
                 BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION
                 if context.is_buggy
                 else JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION
-            )
+            ),
+            known=tiles_has_unknown(context.world.tiles_x_y),
         )
 
     @property
@@ -150,12 +151,12 @@ class ReleaseStrategy:
         return self.__move_mode.target_position
 
     def move(self, context: Context):
-        if self.__first_move:
-            self.__lazy_init(context)
-            self.__first_move = False
         context.move.engine_power = 1
         if context.world.tick < context.game.initial_freeze_duration_ticks:
             return
+        if self.__first_move:
+            self.__lazy_init(context)
+            self.__first_move = False
         if context.me.durability > 0:
             self.__stuck.update(context.position)
         else:
@@ -182,7 +183,7 @@ class ReleaseStrategy:
 
 class AdaptiveMoveMode:
     def __init__(self, controller, start_tile, get_direction, waypoints_count,
-                 speed_angle_to_direct_proportion):
+                 speed_angle_to_direct_proportion, known):
         self.__current_index = 0
         self.__move_mode = MoveMode(
             start_tile=start_tile,
@@ -190,6 +191,7 @@ class AdaptiveMoveMode:
             get_direction=get_direction,
             waypoints_count=waypoints_count,
             speed_angle_to_direct_proportion=speed_angle_to_direct_proportion,
+            known=known
         )
         self.__crush = CrushDetector(min_derivative=-0.6)
         self.__speed_loss = SpeedLoss(history_size=SPEED_LOSS_HISTORY_SIZE)
@@ -238,12 +240,13 @@ class AdaptiveMoveMode:
 
 class MoveMode:
     def __init__(self, controller, start_tile, get_direction, waypoints_count,
-                 speed_angle_to_direct_proportion):
+                 speed_angle_to_direct_proportion, known):
         self.__controller = controller
         self.__path = Path(
             start_tile=start_tile,
             get_direction=get_direction,
             waypoints_count=waypoints_count,
+            known=known,
         )
         self.__target_position = None
         self.__get_direction = get_direction
@@ -504,7 +507,7 @@ def throw_tire(context: Context, tiles_barriers):
 
 
 class Path:
-    def __init__(self, start_tile, get_direction, waypoints_count):
+    def __init__(self, start_tile, get_direction, waypoints_count, known):
         self.__path = []
         self.__forward = ForwardWaypointsPathBuilder(
             start_tile=start_tile,
@@ -514,11 +517,16 @@ class Path:
             start_tile=start_tile,
         )
         self.__unstuck_backward = UnstuckPathBuilder(-1)
-        self.__main = self.__forward
+        self.__main = self.__forward if known else self.__forward_unknown
         self.__states = {
-            id(self.__forward): self.__unstuck_backward,
-            id(self.__forward_unknown): self.__unstuck_backward,
-            id(self.__unstuck_backward): self.__forward,
+            id(self.__forward): {
+                id(self.__forward): self.__unstuck_backward,
+                id(self.__unstuck_backward): self.__forward,
+            },
+            id(self.__forward_unknown): {
+                id(self.__forward_unknown): self.__unstuck_backward,
+                id(self.__unstuck_backward): self.__forward_unknown,
+            },
         }
         self.__current = self.__main
         self.__get_direction = get_direction
@@ -551,7 +559,7 @@ class Path:
         self.__main = self.__forward_unknown
 
     def switch(self):
-        self.__current = self.__states[id(self.__current)]
+        self.__current = self.__states[id(self.__main)][id(self.__current)]
         self.__path.clear()
 
     @property
