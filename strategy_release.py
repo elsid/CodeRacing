@@ -1,6 +1,6 @@
 from collections import deque, namedtuple
 from copy import copy
-from math import cos, radians
+from math import cos, radians, pi
 from itertools import chain, islice
 from functools import reduce
 from operator import mul
@@ -800,12 +800,12 @@ class Course:
                 width=width,
             )
 
-        def adjust_forward(has_intersection):
-            return adjust_course_forward(has_intersection, angle)
+        def adjust_forward(has_intersection, begin, end):
+            return adjust_course_forward(has_intersection, angle, begin, end)
 
         variants = [
-            lambda: adjust_forward(with_lane(all_barriers)),
-            lambda: adjust_forward(with_lane(tiles_barriers)),
+            lambda: adjust_forward(with_lane(all_barriers), -pi / 4, pi / 4),
+            lambda: adjust_forward(with_lane(tiles_barriers), -1, 1),
         ]
         for f in variants:
             rotation = f()
@@ -847,8 +847,8 @@ def generate_opponents_cars_barriers(context: Context):
     return make_units_barriers(context.opponents_cars)
 
 
-def adjust_course_forward(has_intersection, angle):
-    return adjust_course_rotation(has_intersection, -1, 1, angle)
+def adjust_course_forward(has_intersection, angle, begin, end):
+    return adjust_course_rotation(has_intersection, begin, end, angle)
 
 
 def adjust_course_rotation(has_intersection, begin, end, angle):
