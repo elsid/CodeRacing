@@ -163,7 +163,7 @@ class PidController:
         if self.__integral is None:
             self.__integral = error
         else:
-            self.__integral = self.__integral + error
+            self.__integral += error
         derivative = error - self.__previous_error
         output = (error * self.proportional_gain +
                   self.__integral * self.integral_gain +

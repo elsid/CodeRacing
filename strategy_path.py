@@ -5,7 +5,6 @@ from itertools import islice, groupby, chain
 from sys import maxsize
 from collections import defaultdict, deque
 from heapq import heappop, heappush
-from math import pi
 from model.TileType import TileType
 from strategy_common import Point, get_current_tile, Polyline
 
@@ -226,47 +225,6 @@ class PointType(PointTypeImpl):
     BOTTOM_TOP = PointTypeImpl(SideType.BOTTOM, SideType.TOP)
 
 
-def reduce_diagonal_direct(path):
-    return reduce_base_on_three(path, is_diagonal_direct)
-
-
-def is_diagonal_direct(previous, current, following):
-    to_previous = previous - current
-    to_following = following - current
-    return to_following.x == -to_previous.x and to_following.y == -to_previous.y
-
-
-def reduce_direct_first_after_me(path):
-    if len(path) < 2:
-        return (x for x in path)
-    following = path[0]
-    after_following = path[1]
-    if following.x == after_following.x or following.y == after_following.y:
-        return islice(path, 1, len(path))
-    return (x for x in path)
-
-
-def reduce_direct(path):
-    return reduce_base_on_three(path, is_direct)
-
-
-def is_direct(previous, current, following):
-    return (current.x == previous.x and current.x == following.x or
-            current.y == previous.y and current.y == following.y)
-
-
-def reduce_base_on_three(path, need_reduce):
-    if not path:
-        return []
-    yield path[0]
-    if len(path) == 1:
-        return
-    for i, current in islice(enumerate(path), 1, len(path) - 1):
-        if not need_reduce(path[i - 1], current, path[i + 1]):
-            yield current
-    yield path[-1]
-
-
 def shift_on_direct(path):
     if len(path) < 2:
         return (x for x in path)
@@ -309,16 +267,6 @@ def shift_on_direct_y(path):
         return last, chain([path[0]],
                            (Point(p.x, y) for p in islice(path, 1, last)))
     return last, (p for p in path)
-
-
-def shift_to_borders(path):
-    if not path:
-        return []
-    for i, current in islice(enumerate(path), len(path) - 1):
-        following = path[i + 1]
-        direction = following - current
-        yield current + direction * 0.5
-    yield path[-1]
 
 
 def make_tiles_path(start_tile, waypoints, tiles, direction):

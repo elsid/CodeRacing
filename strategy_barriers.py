@@ -4,7 +4,7 @@ from model.TileType import TileType
 from numpy import sign
 from scipy.optimize import bisect
 from strategy_common import Point, Line
-from strategy_path import get_point_index, get_current_tile
+from strategy_path import get_point_index
 
 
 class Circle:
@@ -19,10 +19,6 @@ class Circle:
     def __eq__(self, other):
         return (self.position == other.position and
                 self.radius == other.radius)
-
-    def passability(self, position, radius, _=None):
-        distance = (self.position - position).norm()
-        return float(distance > self.radius + radius)
 
     def has_intersection_with_line(self, line: Line):
         nearest = line.nearest(self.position)
@@ -58,16 +54,6 @@ class Circle:
         return list(generate())
 
 
-def make_passability_function(barriers, radius, speed, tiles, tile_size):
-    def impl(x, y):
-        tile = get_current_tile(Point(x, y), tile_size)
-        if tile not in tiles:
-            return 0.0
-        return min((b.passability(Point(x, y), radius, speed)
-                    for b in barriers), default=1.0)
-    return impl
-
-
 class Rectangle:
     INSIDE = 0
     LEFT = 1
@@ -86,18 +72,6 @@ class Rectangle:
     def __eq__(self, other):
         return (self.left_top == other.left_top and
                 self.right_bottom == other.right_bottom)
-
-    def passability(self, position, radius, _=None):
-        position_code = self.point_code(position)
-        if position_code == Rectangle.INSIDE:
-            return 0.0
-        width = self.right_bottom.x - self.left_top.x
-        height = self.right_bottom.y - self.left_top.y
-        center = self.left_top + Point(width / 2, height / 2)
-        direction = center - position
-        border = position + direction / direction.norm() * radius
-        border_code = self.point_code(border)
-        return float(position_code & border_code)
 
     def point_code(self, point):
         result = Rectangle.INSIDE
@@ -273,7 +247,6 @@ def make_unit_barrier(unit):
         )
     else:
         return None
-
 
 
 def make_has_intersection_with_line(position, course, barriers):

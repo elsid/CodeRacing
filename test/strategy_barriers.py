@@ -4,33 +4,12 @@ from model.TileType import TileType
 from strategy_barriers import (
     Rectangle,
     Circle,
-    make_passability_function,
     make_tile_barriers
 )
 from strategy_common import Point, Line
 
 
 class CircleTest(TestCase):
-    def test_passability_outside_radius_with_fit_size_returns_1(self):
-        circle = Circle(Point(0, 0), 1)
-        result = circle.passability(position=Point(0, 3), radius=1)
-        assert_that(result, equal_to(1.0))
-
-    def test_passability_inside_radius_with_fit_size_returns_0(self):
-        circle = Circle(Point(0, 0), 1)
-        result = circle.passability(position=Point(0, 1), radius=1)
-        assert_that(result, equal_to(0.0))
-
-    def test_passability_outside_radius_with_unfit_size_returns_0(self):
-        circle = Circle(Point(0, 0), 1)
-        result = circle.passability(position=Point(0, 2), radius=2)
-        assert_that(result, equal_to(0.0))
-
-    def test_passability_inside_radius_with_unfit_size_returns_0(self):
-        circle = Circle(Point(0, 0), 4)
-        result = circle.passability(position=Point(0, 1), radius=4)
-        assert_that(result, equal_to(0.0))
-
     def test_intersection_with_line_begins_from_circle_position_returns_one_point(self):
         circle = Circle(Point(0, 0), 1)
         line = Line(begin=Point(0, 0), end=Point(2, 0))
@@ -60,20 +39,6 @@ class CircleTest(TestCase):
         line = Line(begin=Point(-1, 1), end=Point(1, 1))
         result = circle.intersection_with_line(line)
         assert_that(result, equal_to([Point(0, 1)]))
-
-
-class MakeTilePassabilityTest(TestCase):
-    def test_inside_one_of_circles_returns_0(self):
-        passability = make_passability_function(
-            barriers=[Circle(Point(0, 0), 1), Circle(Point(1, 1), 1)],
-            radius=1, speed=Point(0, 0), tiles=[Point(0, 0)], tile_size=4)
-        assert_that(passability(0, 0), equal_to(0))
-
-    def test_inside_all_of_circles_returns_1(self):
-        passability = make_passability_function(
-            barriers=[Circle(Point(0, 0), 1), Circle(Point(1, 1), 1)],
-            radius=1, speed=Point(0, 0), tiles=[Point(0, 0)], tile_size=4)
-        assert_that(passability(3, 3), equal_to(1))
 
 
 class RectangleTest(TestCase):
@@ -121,31 +86,6 @@ class RectangleTest(TestCase):
         border = Rectangle(left_top=Point(-1, -1), right_bottom=Point(1, 1))
         result = border.point_code(Point(2, 2))
         assert_that(result, equal_to(Rectangle.RIGHT | Rectangle.BOTTOM))
-
-    def test_passability_for_position_and_border_inside_returns_0(self):
-        border = Rectangle(left_top=Point(-1, -1), right_bottom=Point(1, 1))
-        result = border.passability(Point(0, 0), radius=1)
-        assert_that(result, equal_to(0))
-
-    def test_passability_for_position_inside_returns_0(self):
-        border = Rectangle(left_top=Point(-1, -1), right_bottom=Point(1, 1))
-        result = border.passability(Point(0, 0), radius=2)
-        assert_that(result, equal_to(0))
-
-    def test_passability_for_border_inside_returns_0(self):
-        border = Rectangle(left_top=Point(-1, -1), right_bottom=Point(1, 1))
-        result = border.passability(Point(-2, 0), radius=1)
-        assert_that(result, equal_to(0))
-
-    def test_passability_for_position_and_border_outside_with_disjoint_codes_returns_0(self):
-        border = Rectangle(left_top=Point(-1, -1), right_bottom=Point(1, 1))
-        result = border.passability(Point(-3, 0), radius=6)
-        assert_that(result, equal_to(0))
-
-    def test_passability_for_position_and_border_outside_with_cross_codes_returns_1(self):
-        border = Rectangle(left_top=Point(-1, -1), right_bottom=Point(1, 1))
-        result = border.passability(Point(-3, 0), radius=1)
-        assert_that(result, equal_to(1))
 
     def test_clip_line_inside_returns_equal(self):
         rectangle = Rectangle(left_top=Point(0, 0), right_bottom=Point(1, 1))

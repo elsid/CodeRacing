@@ -381,7 +381,8 @@ def throw_washer(context: Context):
                     if car_dir.norm() > washer_speed * 150:
                         continue
                     washer_dir = intersection - washer.position
-                    if washer_dir.norm() > 0 and washer_dir.cos(washer.speed) < 0:
+                    if (washer_dir.norm() > 0 and
+                            washer_dir.cos(washer.speed) < 0):
                         continue
                     car_time = car_dir.norm() / car_speed.norm()
                     washer_time = washer_dir.norm() / washer.speed.norm()
