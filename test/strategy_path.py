@@ -127,6 +127,7 @@ class AdjustPathPointTest(TestCase):
         )
         assert_that(result, equal_to(Point(2, 2)))
 
+
 class MakeTilesPathTest(TestCase):
     def test_from_vertical_to_next_vertical_returns_first_and_second_point(self):
         result = make_tiles_path(
