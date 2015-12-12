@@ -1,3 +1,4 @@
+from os import environ
 from collections import namedtuple, deque
 from functools import reduce
 from itertools import islice
@@ -6,7 +7,6 @@ from operator import mul
 from strategy_common import Point, normalize_angle, LimitedSum
 
 Control = namedtuple('Control', ('engine_power', 'wheel_turn', 'brake'))
-
 History = namedtuple('History', ('current', 'target'))
 
 
@@ -20,11 +20,10 @@ class Controller:
     __previous_speed = None
     __previous_angular_speed_angle = None
 
-    def __init__(self, distance_to_wheels, is_debug=False):
+    def __init__(self, distance_to_wheels):
         self.distance_to_wheels = distance_to_wheels
         self.reset()
-        self.__is_debug = is_debug
-        if is_debug:
+        if 'PLOT' in environ and environ['PLOT'] == '1':
             from debug import Plot
 
             self.history = {}
@@ -100,7 +99,7 @@ class Controller:
         target_wheel_turn = max(-1, min(1, target_wheel_turn))
         self.__previous_speed = speed
         self.__previous_angular_speed_angle = angular_speed_angle
-        if self.__is_debug:
+        if 'PLOT' in environ and environ['PLOT'] == '1':
 
             def append_point(name, current, target):
                 # append_value(name + ' x', current.x, target.x)

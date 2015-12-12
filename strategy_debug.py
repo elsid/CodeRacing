@@ -1,17 +1,19 @@
+from os import environ
 from strategy_release import ReleaseStrategy, Context
 from strategy_common import Point, get_tile_center
-from strategy_control import Controller
 
 
 class DebugStrategy:
     def __init__(self):
         from debug import Plot
-        self.__impl = ReleaseStrategy(make_debug_controller)
-        self.__plot = Plot()
+        self.__impl = ReleaseStrategy()
+        if 'PLOT' in environ and environ['PLOT'] == '1':
+            self.__plot = Plot()
 
     def move(self, context: Context):
         self.__impl.move(context)
-        if (context.world.tick > context.game.initial_freeze_duration_ticks and
+        if ('PLOT' in environ and environ['PLOT'] == '1' and
+                context.world.tick > context.game.initial_freeze_duration_ticks and
                 context.world.tick % 50 == 0):
             path = self.__impl.path
             position = context.position
@@ -32,7 +34,3 @@ class DebugStrategy:
             self.__plot.path([Point(p.x, -p.y) for p in waypoints], 'D')
             self.__plot.path([Point(p.x, -p.y) for p in [next_waypoint]], 'D')
             self.__plot.draw()
-
-
-def make_debug_controller(context: Context):
-    return Controller(distance_to_wheels=context.me.width / 4, is_debug=True)

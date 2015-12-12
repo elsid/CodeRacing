@@ -104,10 +104,6 @@ class Context:
         return (x for x in self.world.cars if not x.teammate)
 
 
-def make_release_controller(context: Context):
-    return Controller(distance_to_wheels=context.me.width / 4)
-
-
 def tiles_has_unknown(tiles):
     for column in tiles:
         for tile in column:
@@ -116,9 +112,8 @@ def tiles_has_unknown(tiles):
 
 
 class ReleaseStrategy:
-    def __init__(self, make_controller=make_release_controller):
+    def __init__(self):
         self.__first_move = True
-        self.__make_controller = make_controller
 
     def __lazy_init(self, context: Context):
         self.__stuck = StuckDetector(
@@ -131,7 +126,7 @@ class ReleaseStrategy:
             end=context.position + context.direction,
             min_distance=max(context.me.width, context.me.height),
         )
-        self.__controller = self.__make_controller(context)
+        self.__controller = Controller(distance_to_wheels=context.me.width / 4)
         self.__move_mode = AdaptiveMoveMode(
             start_tile=context.tile,
             controller=self.__controller,
