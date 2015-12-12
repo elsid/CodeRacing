@@ -53,6 +53,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(1, 0),
             tick=0,
+            backward=False,
         )
         assert_that(result.engine_power, equal_to(1))
         assert_that(result.wheel_turn, equal_to(0))
@@ -69,6 +70,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(-1, 0),
             tick=0,
+            backward=False,
         )
         assert_that(result.engine_power, equal_to(-1))
         assert_that(result.wheel_turn, equal_to(0))
@@ -85,6 +87,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(1, 0),
             tick=0,
+            backward=False,
         )
         assert_that(result.engine_power, equal_to(1))
         assert_that(result.wheel_turn, equal_to(0))
@@ -101,6 +104,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(-1, 0),
             tick=0,
+            backward=False,
         )
         assert_that(result.engine_power, equal_to(-1))
         assert_that(result.wheel_turn, equal_to(0))
@@ -117,6 +121,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(1, 0),
             tick=0,
+            backward=False,
         )
         assert_that(result.engine_power, equal_to(1))
         assert_that(result.wheel_turn, equal_to(0))
@@ -133,6 +138,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(-1, 0),
             tick=0,
+            backward=False,
         )
         assert_that(result.engine_power, equal_to(-1))
         assert_that(result.wheel_turn, equal_to(0))
@@ -149,6 +155,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(1, 0.1),
             tick=0,
+            backward=False,
         )
         assert_that(result.engine_power, equal_to(1))
         assert_that(result.wheel_turn, less_than(0))
@@ -165,6 +172,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(1, 0.1),
             tick=0,
+            backward=False,
         )
         assert_that(result.engine_power, equal_to(1))
         assert_that(result.wheel_turn, greater_than(0))
@@ -181,6 +189,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(-1, -0.1),
             tick=0,
+            backward=True,
         )
         assert_that(result.engine_power, equal_to(-1))
         assert_that(result.wheel_turn, less_than(0))
@@ -197,6 +206,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(-1, 0.1),
             tick=0,
+            backward=True,
         )
         assert_that(result.engine_power, equal_to(-1))
         assert_that(result.wheel_turn, greater_than(0))
@@ -213,6 +223,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(1, 0.1),
             tick=0,
+            backward=False,
         )
         assert_that(result.engine_power, equal_to(1))
         assert_that(result.wheel_turn, less_than(0))
@@ -229,6 +240,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(1, 0.1),
             tick=0,
+            backward=False,
         )
         assert_that(result.engine_power, equal_to(1))
         assert_that(result.wheel_turn, greater_than(0))
@@ -245,6 +257,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(-1, -0.1),
             tick=0,
+            backward=True,
         )
         assert_that(result.engine_power, equal_to(-1))
         assert_that(result.wheel_turn, less_than(0))
@@ -261,6 +274,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(-1, 0.1),
             tick=0,
+            backward=True,
         )
         assert_that(result.engine_power, equal_to(-1))
         assert_that(result.wheel_turn, greater_than(0))
@@ -277,6 +291,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(1, 0.1),
             tick=0,
+            backward=False,
         )
         assert_that(result.engine_power, equal_to(1))
         assert_that(result.wheel_turn, less_than(0))
@@ -293,6 +308,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(1, 0.1),
             tick=0,
+            backward=False,
         )
         assert_that(result.engine_power, equal_to(1))
         assert_that(result.wheel_turn, greater_than(0))
@@ -309,6 +325,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(-1, -0.1),
             tick=0,
+            backward=True,
         )
         assert_that(result.engine_power, equal_to(-1))
         assert_that(result.wheel_turn, less_than(0))
@@ -325,6 +342,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(-1, 0.1),
             tick=0,
+            backward=True,
         )
         assert_that(result.engine_power, equal_to(-1))
         assert_that(result.wheel_turn, greater_than(0))
@@ -341,6 +359,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(0, -1),
             tick=0,
+            backward=False,
         )
         assert_that(result.engine_power, equal_to(1))
         assert_that(result.wheel_turn, less_than(0))
@@ -357,6 +376,7 @@ class ControllerTest(TestCase):
             wheel_turn=0,
             target_speed=Point(0, 1),
             tick=0,
+            backward=False,
         )
         assert_that(result.engine_power, equal_to(1))
         assert_that(result.wheel_turn, greater_than(0))
