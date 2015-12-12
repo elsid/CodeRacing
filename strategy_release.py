@@ -798,7 +798,7 @@ class Course:
                     unit_dir = intersection - unit.position
                     if unit_dir.norm() > 0 and unit_dir.cos(unit.speed) < 0:
                         continue
-                    if unit_dir.norm() > my_speed.norm() * 50:
+                    if unit_dir.norm() > my_speed.norm() * 100:
                         continue
                     my_dir = intersection - context.position
                     if my_dir.norm() > 0 and my_dir.cos(my_speed) < 0:
