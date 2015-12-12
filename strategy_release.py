@@ -139,7 +139,7 @@ class ReleaseStrategy:
                 if context.is_buggy
                 else JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION
             ),
-            known=tiles_has_unknown(context.world.tiles_x_y),
+            known=not tiles_has_unknown(context.world.tiles_x_y),
         )
 
     @property
@@ -569,11 +569,6 @@ class Path:
     def __update(self, context: Context):
         def need_take_next(path):
             if not path:
-                return False
-            tile = context.tile
-            first_tile = get_current_tile(path[0], context.game.track_tile_size)
-            if tile != first_tile and (tile.x == first_tile.x or
-                                       tile.y == first_tile.y):
                 return False
             course = path[0] - context.position
             distance = course.norm()
