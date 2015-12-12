@@ -31,6 +31,8 @@ class MyStrategy:
 
     @profile
     def move(self, me: Car, world: World, game: Game, move: Move):
+        if 'MAX_TICKS' in environ and world.tick >= int(environ['MAX_TICKS']):
+            exit(0)
         context = Context(me=me, world=world, game=game, move=move)
         if isinstance(self.__impl, ReleaseStrategy):
             try:
