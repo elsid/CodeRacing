@@ -17,7 +17,6 @@ from strategy_common import (
     LimitedSum,
     Line,
     Curve,
-    get_tile_center,
 )
 from strategy_control import (
     Controller,
@@ -167,7 +166,7 @@ class ReleaseStrategy:
             self.__stuck.reset()
         self.__direction.update(context.position)
         if self.__stuck.positive_check():
-            self.__move_mode.on_stuck()
+            self.__move_mode.switch()
             self.__stuck.reset()
             self.__controller.reset()
             self.__direction.reset(begin=context.position,
@@ -178,9 +177,6 @@ class ReleaseStrategy:
             self.__controller.reset()
             self.__direction.reset(begin=context.position,
                                    end=context.position + context.direction)
-        elif (self.__move_mode.is_main and context.speed.norm() > 0 and
-                context.direction.cos(context.speed) < -cos(1)):
-            self.__move_mode.on_backward()
         self.__move_mode.move(context)
 
 
@@ -225,11 +221,8 @@ class AdaptiveMoveMode:
     def use_main(self):
         self.__move_mode.use_main()
 
-    def on_stuck(self):
-        self.__move_mode.on_stuck()
-
-    def on_backward(self):
-        self.__move_mode.on_backward()
+    def switch(self):
+        self.__move_mode.switch()
 
     def __change(self, value, tick):
         if tick - self.__last_change >= CHANGE_PER_TICKS_COUNT:
@@ -329,11 +322,8 @@ class MoveMode:
     def use_main(self):
         self.__path.use_main()
 
-    def on_stuck(self):
-        self.__path.on_stuck()
-
-    def on_backward(self):
-        self.__path.on_backward()
+    def switch(self):
+        self.__path.switch()
 
 
 def throw_projectile(context: Context, tiles_barriers):
@@ -515,12 +505,10 @@ class Path:
         )
         self.__unstuck_backward = UnstuckPathBuilder(-1)
         self.__unstuck_forward = UnstuckPathBuilder(1)
-        self.__u_turn = UTurnPathBuilder()
         self.__main = self.__forward
-        self.__stuck_states = {
+        self.__states = {
             id(self.__forward): self.__unstuck_backward,
             id(self.__backward): self.__unstuck_forward,
-            id(self.__u_turn): self.__forward,
             id(self.__unstuck_backward): self.__unstuck_forward,
             id(self.__unstuck_forward): self.__unstuck_backward,
         }
@@ -548,12 +536,8 @@ class Path:
         self.__current = self.__main
         self.__path.clear()
 
-    def on_stuck(self):
-        self.__current = self.__stuck_states[id(self.__current)]
-        self.__path.clear()
-
-    def on_backward(self):
-        self.__current = self.__u_turn
+    def switch(self):
+        self.__current = self.__states[id(self.__current)]
         self.__path.clear()
 
     @property
@@ -727,23 +711,6 @@ class UnstuckPathBuilder:
             return [clipped.begin + (line.end - line.begin) * 0.99]
         else:
             return [line.end]
-
-
-class UTurnPathBuilder:
-    @staticmethod
-    def make(context: Context):
-        tile_size = context.game.track_tile_size
-        center = get_tile_center(context.tile, tile_size)
-        rectangle = Rectangle(left_top=center - Point(tile_size, tile_size),
-                              right_bottom=center + Point(tile_size, tile_size))
-        orthogonal = context.direction.left_orthogonal()
-        line = Line(begin=context.position + orthogonal * tile_size,
-                    end=context.position - orthogonal * tile_size)
-        line = rectangle.clip_line(line)
-        farthest = max(line.begin, line.end,
-                       key=lambda x: x.distance(context.position))
-        return [context.position +
-                (farthest - context.position).normalized() * tile_size]
 
 
 def generate_cos(path):
