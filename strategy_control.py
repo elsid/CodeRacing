@@ -55,7 +55,7 @@ class Controller:
         self.__previous_angular_speed_angle = 0
 
     def __call__(self, course, angle, direct_speed: Point, angular_speed_angle,
-                 engine_power, wheel_turn, target_speed: Point, tick):
+                 engine_power, wheel_turn, target_speed: Point, tick, backward):
         direction = Point(1, 0).rotate(angle)
         radius = -(direction * self.distance_to_wheels).rotate(pi / 2)
         angular_speed = radius.left_orthogonal() * angular_speed_angle
@@ -89,7 +89,8 @@ class Controller:
         direction_angle_error = relative_angle_error(direction_angle_error)
         speed_angle_error = normalize_angle(speed.absolute_rotation() - angle)
         speed_angle_error = relative_angle_error(speed_angle_error)
-        if target_speed.norm() > 0 and direction.cos(target_speed) < -cos(1):
+        if (backward and target_speed.norm() > 0 and
+                direction.cos(target_speed) < -cos(1)):
             direction_angle_error = -direction_angle_error
             speed_angle_error = -speed_angle_error
         angle_error = max(direction_angle_error, speed_angle_error, key=abs)

@@ -289,6 +289,7 @@ class MoveMode:
             wheel_turn=context.me.wheel_turn,
             target_speed=target_speed,
             tick=context.world.tick,
+            backward=not self.__path.is_main
         )
         context.move.engine_power = control.engine_power
         context.move.wheel_turn = control.wheel_turn
