@@ -606,6 +606,9 @@ class Path:
 
         if need_remake(self.__path):
             self.__path = self.__current.make(context)
+            path_size = len(self.__path)
+            while need_take_next(self.__path):
+                self.__path = self.__path[1:]
             self.__unknown_count = path_count_tiles(
                 self.__path, context.world.tiles_x_y,
                 context.game.track_tile_size, TileType.UNKNOWN)
