@@ -513,18 +513,12 @@ class Path:
         self.__forward_unknown = ForwardUnknownWaypointsPathBuilder(
             start_tile=start_tile,
         )
-        self.__backward = BackwardWaypointsPathBuilder(
-            start_tile=start_tile,
-            get_direction=get_direction,
-            waypoints_count=waypoints_count,
-        )
         self.__unstuck_backward = UnstuckPathBuilder(-1)
         self.__unstuck_forward = UnstuckPathBuilder(1)
         self.__main = self.__forward
         self.__states = {
             id(self.__forward): self.__unstuck_backward,
             id(self.__forward_unknown): self.__unstuck_backward,
-            id(self.__backward): self.__unstuck_forward,
             id(self.__unstuck_backward): self.__unstuck_forward,
             id(self.__unstuck_forward): self.__unstuck_backward,
         }
@@ -610,7 +604,6 @@ class Path:
             self.__unknown_count = path_count_tiles(
                 self.__path, context.world.tiles_x_y,
                 context.game.track_tile_size, TileType.UNKNOWN)
-        self.__backward.start_tile = context.tile
         self.__forward.start_tile = context.tile
 
 
@@ -691,44 +684,6 @@ class ForwardUnknownWaypointsPathBuilder(WaypointsPathBuilder):
 
     def _direction(self, context: Context):
         return context.direction
-
-
-class BackwardWaypointsPathBuilder(WaypointsPathBuilder):
-    def __init__(self, start_tile, get_direction, waypoints_count):
-        super().__init__(start_tile)
-        self.__waypoints_count = waypoints_count
-        self.__begin = None
-        self.__get_direction = get_direction
-
-    def make(self, context: Context):
-        result = super().make(context)[1:]
-        if context.speed.norm() < 1:
-            first = (context.position -
-                     self.__get_direction().normalized() *
-                     context.game.track_tile_size)
-            result = [first] + result
-        return result
-
-    def _waypoints(self, next_waypoint_index, waypoints):
-        if self.__begin is None:
-            self.__begin = (next_waypoint_index - 1) % len(waypoints)
-        self.__begin = next((i for i, v in enumerate(waypoints)
-                             if Point(v[0], v[1]) == self.start_tile),
-                            self.__begin)
-        begin = self.__begin
-        result = list(reversed(waypoints[:begin][-self.__waypoints_count:]))
-        left = self.__waypoints_count - len(result)
-        while left > 0:
-            add = list(reversed(waypoints[-left:]))
-            result += add
-            left -= len(add)
-        return result
-
-    def _direction(self, context: Context):
-        result = self.__get_direction().normalized()
-        if context.speed.norm() > 0:
-            return result + context.speed.normalized()
-        return result
 
 
 class UnstuckPathBuilder:
