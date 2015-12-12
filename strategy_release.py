@@ -514,13 +514,11 @@ class Path:
             start_tile=start_tile,
         )
         self.__unstuck_backward = UnstuckPathBuilder(-1)
-        self.__unstuck_forward = UnstuckPathBuilder(1)
         self.__main = self.__forward
         self.__states = {
             id(self.__forward): self.__unstuck_backward,
             id(self.__forward_unknown): self.__unstuck_backward,
-            id(self.__unstuck_backward): self.__unstuck_forward,
-            id(self.__unstuck_forward): self.__unstuck_backward,
+            id(self.__unstuck_backward): self.__forward,
         }
         self.__current = self.__main
         self.__get_direction = get_direction
