@@ -60,6 +60,7 @@ PATH_SIZE_FOR_BONUSES = 5
 CAR_SPEED_FACTOR = 1.2
 WASHER_INTERVAL = 3
 TIRE_INTERVAL = 2
+MY_INTERVAL = 5
 
 
 class Context:
@@ -752,6 +753,9 @@ def generate_cos(path):
         yield (1 if a.norm() < 1e-3 or b.norm() < 1e-3 else a.cos(b))
 
 
+Unit = namedtuple('Unit', ('position', 'speed'))
+
+
 class Course:
     def __init__(self):
         self.__tile_barriers = None
@@ -806,13 +810,20 @@ class Course:
                     yield self.__tile_barriers[get_point_index(tile, row_size)]
             return chain.from_iterable(impl())
 
+        all_units = list(
+            Unit(Point(v.x, v.y), Point(v.speed_x, v.speed_y)) for v in chain(
+                (v for v in context.world.cars
+                 if v.id != context.me.id and v.speed_x > 0 and v.speed_y > 0),
+                (x for x in context.world.projectiles),
+            )
+        )
         tiles_barriers = list(generate_tiles_barriers())
         all_barriers = list(chain(tiles_barriers,
                                   generate_units_barriers(context)))
         width = max(context.me.width, context.me.height)
         angle = course.rotation(context.direction)
 
-        def with_lane(current_barriers):
+        def static(current_barriers):
             return make_has_intersection_with_lane(
                 position=context.position,
                 course=course * (0.75 + context.speed.norm() / MAX_SPEED),
@@ -820,13 +831,45 @@ class Course:
                 width=width,
             )
 
-        def adjust_forward(has_intersection, begin, end):
-            return adjust_course_forward(has_intersection, angle, begin, end)
+        def dynamic(units, barriers):
+            def units_intersection(current_angle):
+                my_speed = course.rotate(current_angle) * context.speed.norm()
+                my_line = Line(context.position, context.position + my_speed)
+                for unit in units:
+                    if unit.speed.norm() == 0:
+                        continue
+                    unit_line = Line(unit.position, unit.position + unit.speed)
+                    intersection = my_line.intersection(unit_line)
+                    if intersection is None:
+                        continue
+                    unit_dir = intersection - unit.position
+                    if unit_dir.norm() > 0 and unit_dir.cos(unit.speed) < 0:
+                        continue
+                    if unit_dir.norm() > my_speed.norm() * 50:
+                        continue
+                    my_dir = intersection - context.position
+                    if my_dir.norm() > 0 and my_dir.cos(my_speed) < 0:
+                        continue
+                    unit_time = unit_dir.norm() / unit.speed.norm()
+                    my_time = my_dir.norm() / my_speed.norm()
+                    if abs(my_time - unit_time) <= MY_INTERVAL:
+                        return True
+                return False
+
+            barriers_intersection = static(barriers)
+            return lambda x: units_intersection(x) or barriers_intersection(x)
+
+        def adjust(has_intersection, begin, end):
+            return adjust_course(has_intersection, angle, begin, end)
 
         variants = [
-            lambda: adjust_forward(with_lane(all_barriers), -pi / 4, pi / 4),
-            lambda: adjust_forward(with_lane(tiles_barriers), -1, 1),
+            lambda: adjust(static(all_barriers), -pi / 4, pi / 4),
+            lambda: adjust(static(tiles_barriers), -1, 1),
         ]
+        if context.speed.norm() > 0:
+            variants = [
+                lambda: adjust(dynamic(all_units, all_barriers), -pi/8, pi/8),
+            ] + variants
         for f in variants:
             rotation = f()
             if rotation is not None:
@@ -867,7 +910,7 @@ def generate_opponents_cars_barriers(context: Context):
     return make_units_barriers(context.opponents_cars)
 
 
-def adjust_course_forward(has_intersection, angle, begin, end):
+def adjust_course(has_intersection, angle, begin, end):
     return adjust_course_rotation(has_intersection, begin, end, angle)
 
 
