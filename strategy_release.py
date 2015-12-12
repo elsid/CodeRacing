@@ -191,7 +191,7 @@ class AdaptiveMoveMode:
             get_direction=get_direction,
             waypoints_count=waypoints_count,
             speed_angle_to_direct_proportion=speed_angle_to_direct_proportion,
-            known=known
+            known=known,
         )
         self.__crush = CrushDetector(min_derivative=-0.6)
         self.__speed_loss = SpeedLoss(history_size=SPEED_LOSS_HISTORY_SIZE)
