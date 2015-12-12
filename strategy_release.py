@@ -225,7 +225,7 @@ class AdaptiveMoveMode:
         self.__move_mode.switch()
 
     def __change(self, value, tick):
-        if tick - self.__last_change > CHANGE_PER_TICKS_COUNT:
+        if tick - self.__last_change >= CHANGE_PER_TICKS_COUNT:
             self.__move_mode.speed_angle_to_direct_proportion *= value
             self.__last_change = tick
 
