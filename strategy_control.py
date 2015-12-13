@@ -23,7 +23,7 @@ class Controller:
     def __init__(self, distance_to_wheels):
         self.distance_to_wheels = distance_to_wheels
         self.reset()
-        if 'PLOT' in environ and environ['PLOT'] == '1':
+        if 'CONTROL_PLOTS' in environ and environ['CONTROL_PLOTS'] == '1':
             from debug import Plot
 
             self.history = {}
@@ -99,7 +99,7 @@ class Controller:
         target_wheel_turn = max(-1, min(1, target_wheel_turn))
         self.__previous_speed = speed
         self.__previous_angular_speed_angle = angular_speed_angle
-        if 'PLOT' in environ and environ['PLOT'] == '1':
+        if 'CONTROL_PLOTS' in environ and environ['CONTROL_PLOTS'] == '1':
 
             def append_point(name, current, target):
                 # append_value(name + ' x', current.x, target.x)
