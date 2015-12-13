@@ -793,7 +793,7 @@ class Course:
         ]
         if context.speed.norm() > 0:
             variants = [
-                lambda: adjust(dynamic(all_units, all_barriers), -pi/8, pi/8),
+                lambda: adjust(dynamic(all_units, all_barriers), -pi/4, pi/4),
             ] + variants
         for f in variants:
             rotation = f()
