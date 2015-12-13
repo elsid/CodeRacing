@@ -899,7 +899,7 @@ def find_false(begin, end, is_true, min_interval):
     while queue:
         begin, end = queue.popleft()
         if end - begin < min_interval:
-            break
+            continue
         middle = (begin + end) / 2
         if is_true(middle):
             queue.append((begin, middle))
