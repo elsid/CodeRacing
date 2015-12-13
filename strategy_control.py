@@ -48,8 +48,8 @@ class Controller:
     def reset(self):
         self.__speed = PidController(2, 0, 0)
         self.__acceleration = PidController(2, 0, 0)
-        self.__angle = PidController(2, 0, 0)
-        self.__angular_speed_angle = PidController(2, 0, 0)
+        self.__angle = PidController(1, 0, 0)
+        self.__angular_speed_angle = PidController(4, 0, 0)
         self.__previous_speed = Point(0, 0)
         self.__previous_angular_speed_angle = 0
 
