@@ -738,11 +738,7 @@ class Course:
         if reduce(mul, generate_cos(path), 1) < 0:
             target_position = Curve(sub_path).at(tile_size)
         else:
-            target_position = max(
-                Polyline(sub_path).at(tile_size),
-                path[0],
-                key=lambda x: x.distance(context.position)
-            )
+            target_position = Polyline(sub_path).at(tile_size)
         course = target_position - context.position
         current_tile = context.tile
         target_tile = get_current_tile(target_position, tile_size)
