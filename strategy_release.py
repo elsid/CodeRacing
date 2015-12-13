@@ -1,7 +1,7 @@
 from collections import deque, namedtuple
 from copy import copy
 from math import cos, radians, pi
-from itertools import chain, islice
+from itertools import chain, islice, takewhile
 from functools import reduce
 from operator import mul
 from model.Car import Car
@@ -106,13 +106,6 @@ class Context:
         return (x for x in self.world.cars if not x.teammate)
 
 
-def tiles_has_unknown(tiles):
-    for column in tiles:
-        for tile in column:
-            if tile == TileType.UNKNOWN:
-                return True
-
-
 class ReleaseStrategy:
     def __init__(self):
         self.__first_move = True
@@ -133,14 +126,11 @@ class ReleaseStrategy:
             start_tile=context.tile,
             controller=self.__controller,
             get_direction=self.__direction,
-            waypoints_count=(len(context.world.waypoints) *
-                             context.game.lap_count),
             speed_angle_to_direct_proportion=(
                 BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION
                 if context.is_buggy
                 else JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION
             ),
-            known=not tiles_has_unknown(context.world.tiles_x_y),
         )
 
     @property
@@ -169,12 +159,8 @@ class ReleaseStrategy:
             self.__controller.reset()
             self.__direction.reset(begin=context.position,
                                    end=context.position + context.direction)
-        elif not self.__move_mode.is_main and self.__stuck.negative_check():
-            if tiles_has_unknown(context.world.tiles_x_y):
-                self.__move_mode.unknown()
-            else:
-                self.__move_mode.known()
-            self.__move_mode.use_main()
+        elif not self.__move_mode.is_forward and self.__stuck.negative_check():
+            self.__move_mode.use_forward()
             self.__stuck.reset()
             self.__controller.reset()
             self.__direction.reset(begin=context.position,
@@ -183,16 +169,14 @@ class ReleaseStrategy:
 
 
 class AdaptiveMoveMode:
-    def __init__(self, controller, start_tile, get_direction, waypoints_count,
-                 speed_angle_to_direct_proportion, known):
+    def __init__(self, controller, start_tile, get_direction,
+                 speed_angle_to_direct_proportion):
         self.__current_index = 0
         self.__move_mode = MoveMode(
             start_tile=start_tile,
             controller=controller,
             get_direction=get_direction,
-            waypoints_count=waypoints_count,
             speed_angle_to_direct_proportion=speed_angle_to_direct_proportion,
-            known=known,
         )
         self.__crush = CrushDetector(min_derivative=-0.6)
         self.__speed_loss = SpeedLoss(history_size=SPEED_LOSS_HISTORY_SIZE)
@@ -207,8 +191,8 @@ class AdaptiveMoveMode:
         return self.__move_mode.target_position
 
     @property
-    def is_main(self):
-        return self.__move_mode.is_main
+    def is_forward(self):
+        return self.__move_mode.is_forward
 
     def move(self, context: Context):
         self.__crush.update(context.speed, context.me.durability)
@@ -221,14 +205,8 @@ class AdaptiveMoveMode:
             self.__change(0.999, context.world.tick)
         self.__move_mode.move(context)
 
-    def use_main(self):
-        self.__move_mode.use_main()
-
-    def known(self):
-        self.__move_mode.known()
-
-    def unknown(self):
-        self.__move_mode.unknown()
+    def use_forward(self):
+        self.__move_mode.use_forward()
 
     def switch(self):
         self.__move_mode.switch()
@@ -240,14 +218,12 @@ class AdaptiveMoveMode:
 
 
 class MoveMode:
-    def __init__(self, controller, start_tile, get_direction, waypoints_count,
-                 speed_angle_to_direct_proportion, known):
+    def __init__(self, controller, start_tile, get_direction,
+                 speed_angle_to_direct_proportion):
         self.__controller = controller
         self.__path = Path(
             start_tile=start_tile,
             get_direction=get_direction,
-            waypoints_count=waypoints_count,
-            known=known,
             history_size=TARGET_SPEED_PATH_HISTORY_SIZE,
         )
         self.__target_position = None
@@ -265,8 +241,8 @@ class MoveMode:
         return self.__target_position
 
     @property
-    def is_main(self):
-        return self.__path.is_main
+    def is_forward(self):
+        return self.__path.is_forward
 
     def move(self, context: Context):
         path = self.__path.get(context)
@@ -299,7 +275,7 @@ class MoveMode:
             wheel_turn=context.me.wheel_turn,
             target_speed=target_speed,
             tick=context.world.tick,
-            backward=not self.__path.is_main
+            backward=not self.__path.is_forward
         )
         context.move.engine_power = control.engine_power
         context.move.wheel_turn = control.wheel_turn
@@ -329,14 +305,8 @@ class MoveMode:
                 target_speed.norm() - context.speed.norm() > 30 and
                 context.direction.cos(course) > 0.95)
 
-    def use_main(self):
-        self.__path.use_main()
-
-    def known(self):
-        self.__path.known()
-
-    def unknown(self):
-        self.__path.unknown()
+    def use_forward(self):
+        self.__path.use_forward()
 
     def switch(self):
         self.__path.switch()
@@ -508,34 +478,20 @@ def throw_tire(context: Context, tiles_barriers):
 
 
 class Path:
-    def __init__(self, start_tile, get_direction, waypoints_count, known,
-                 history_size):
+    def __init__(self, start_tile, get_direction, history_size):
         self.__path = []
         self.__history = deque(maxlen=history_size)
         self.__forward = ForwardWaypointsPathBuilder(
             start_tile=start_tile,
-            waypoints_count=waypoints_count,
-        )
-        self.__forward_unknown = ForwardWaypointsPathBuilder(
-            start_tile=start_tile,
-            waypoints_count=2,
         )
         self.__unstuck_backward = UnstuckPathBuilder(-1)
         self.__unstuck_forward = UnstuckPathBuilder(1)
-        self.__main = self.__forward if known else self.__forward_unknown
         self.__states = {
-            id(self.__forward): {
-                id(self.__forward): self.__unstuck_backward,
-                id(self.__unstuck_backward): self.__unstuck_forward,
-                id(self.__unstuck_forward): self.__forward,
-            },
-            id(self.__forward_unknown): {
-                id(self.__forward_unknown): self.__unstuck_backward,
-                id(self.__unstuck_backward): self.__unstuck_forward,
-                id(self.__unstuck_forward): self.__forward_unknown,
-            },
+            id(self.__forward): self.__unstuck_backward,
+            id(self.__unstuck_backward): self.__unstuck_forward,
+            id(self.__unstuck_forward): self.__forward,
         }
-        self.__current = self.__main
+        self.__current = self.__forward
         self.__get_direction = get_direction
         self.__unknown_count = 0
 
@@ -559,25 +515,19 @@ class Path:
             limit=PATH_SIZE_FOR_BONUSES,
         ))
 
-    def use_main(self):
-        self.__current = self.__main
+    def use_forward(self):
+        self.__current = self.__forward
         self.__path.clear()
         self.__history.clear()
 
-    def known(self):
-        self.__main = self.__forward
-
-    def unknown(self):
-        self.__main = self.__forward_unknown
-
     def switch(self):
-        self.__current = self.__states[id(self.__main)][id(self.__current)]
+        self.__current = self.__states[id(self.__current)]
         self.__path.clear()
         self.__history.clear()
 
     @property
-    def is_main(self):
-        return self.__current == self.__main
+    def is_forward(self):
+        return id(self.__current) == id(self.__forward)
 
     def __update(self, context: Context):
         def need_take_next(path):
@@ -615,7 +565,6 @@ class Path:
                 self.__path, context.world.tiles_x_y,
                 context.game.track_tile_size, TileType.UNKNOWN)
         self.__forward.start_tile = context.tile
-        self.__forward_unknown.start_tile = context.tile
 
 
 def path_count_tiles(path, tiles, tile_size, tile_type):
@@ -640,7 +589,15 @@ class WaypointsPathBuilder:
 
     def make(self, context: Context):
         waypoints = self._waypoints(context.me.next_waypoint_index,
-                                    context.world.waypoints)
+                                    context.world.waypoints,
+                                    len(context.world.waypoints) *
+                                    context.game.lap_count)
+        first_unknown = next(
+            (i for i, v in enumerate(waypoints)
+             if context.world.tiles_x_y[v[0]][v[1]] == TileType.UNKNOWN),
+            len(waypoints))
+        if first_unknown + 1 < len(waypoints):
+            waypoints = waypoints[:first_unknown + 1]
         path = list(make_tiles_path(
             start_tile=context.tile,
             waypoints=waypoints,
@@ -660,7 +617,7 @@ class WaypointsPathBuilder:
         path = list(shift_on_direct(path))
         return path
 
-    def _waypoints(self, next_waypoint_index, waypoints):
+    def _waypoints(self, next_waypoint_index, waypoints, max_count):
         raise NotImplementedError()
 
     def _direction(self, context: Context):
@@ -668,14 +625,13 @@ class WaypointsPathBuilder:
 
 
 class ForwardWaypointsPathBuilder(WaypointsPathBuilder):
-    def __init__(self, start_tile, waypoints_count):
+    def __init__(self, start_tile):
         super().__init__(start_tile)
-        self.__waypoints_count = waypoints_count
 
-    def _waypoints(self, next_waypoint_index, waypoints):
-        end = next_waypoint_index + self.__waypoints_count
+    def _waypoints(self, next_waypoint_index, waypoints, max_count):
+        end = next_waypoint_index + max_count
         result = waypoints[next_waypoint_index:end]
-        left = self.__waypoints_count - len(result)
+        left = max_count - len(result)
         while left > 0:
             add = waypoints[:left]
             result += add
