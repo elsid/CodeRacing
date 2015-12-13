@@ -52,6 +52,7 @@ CHANGE_PER_TICKS_COUNT = SPEED_LOSS_HISTORY_SIZE / 5
 MAX_CANISTER_COUNT = 1
 COURSE_PATH_SIZE = 3
 TARGET_SPEED_PATH_SIZE = 3
+TARGET_SPEED_PATH_HISTORY_SIZE = 2
 BUGGY_PATH_SIZE_FOR_USE_NITRO = 5
 JEEP_PATH_SIZE_FOR_USE_NITRO = 5
 MAX_SPEED = 50
@@ -247,6 +248,7 @@ class MoveMode:
             get_direction=get_direction,
             waypoints_count=waypoints_count,
             known=known,
+            history_size=TARGET_SPEED_PATH_HISTORY_SIZE,
         )
         self.__target_position = None
         self.__get_direction = get_direction
@@ -269,8 +271,7 @@ class MoveMode:
     def move(self, context: Context):
         path = self.__path.get(context)
         course = self.__course.get(context, path[:COURSE_PATH_SIZE])
-        speed_path = ([context.position - self.__get_direction(),
-                       context.position] + path[:TARGET_SPEED_PATH_SIZE])
+        speed_path = self.__path.history + path[:TARGET_SPEED_PATH_SIZE]
         max_speed = (
             MAX_SPEED_THROUGH_UNKNOWN
             if path_has_tiles(path, context.world.tiles_x_y,
@@ -319,8 +320,7 @@ class MoveMode:
         if context.world.tick == context.game.initial_freeze_duration_ticks + 1:
             nitro_path = path[:nitro_path_size]
         else:
-            nitro_path = ([context.position - self.__get_direction(),
-                           context.position] + path[:nitro_path_size])
+            nitro_path = self.__path.history + path[:nitro_path_size]
         if (context.world.tick > context.game.initial_freeze_duration_ticks and
                 len(nitro_path) >= nitro_path_size):
             nitro_cos = cos_product(nitro_path)
@@ -507,8 +507,10 @@ def throw_tire(context: Context, tiles_barriers):
 
 
 class Path:
-    def __init__(self, start_tile, get_direction, waypoints_count, known):
+    def __init__(self, start_tile, get_direction, waypoints_count, known,
+                 history_size):
         self.__path = []
+        self.__history = deque(maxlen=history_size)
         self.__forward = ForwardWaypointsPathBuilder(
             start_tile=start_tile,
             waypoints_count=waypoints_count,
@@ -536,6 +538,10 @@ class Path:
         self.__get_direction = get_direction
         self.__unknown_count = 0
 
+    @property
+    def history(self):
+        return list(self.__history)
+
     def get(self, context: Context):
         self.__update(context)
         return list(adjust_for_bonuses(
@@ -555,6 +561,7 @@ class Path:
     def use_main(self):
         self.__current = self.__main
         self.__path.clear()
+        self.__history.clear()
 
     def known(self):
         self.__main = self.__forward
@@ -565,6 +572,7 @@ class Path:
     def switch(self):
         self.__current = self.__states[id(self.__main)][id(self.__current)]
         self.__path.clear()
+        self.__history.clear()
 
     @property
     def is_main(self):
@@ -583,6 +591,7 @@ class Path:
 
         path_size = len(self.__path)
         while need_take_next(self.__path):
+            self.__history.append(self.__path[0])
             self.__path = self.__path[1:]
 
         def need_remake(path):
