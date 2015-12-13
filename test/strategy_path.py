@@ -1,6 +1,6 @@
 from unittest import TestCase
 from hamcrest import assert_that, equal_to
-from math import sqrt
+from math import pi
 from model.TileType import TileType
 from strategy_common import Point
 from strategy_path import (
@@ -273,7 +273,7 @@ class ShortestPathWithDirectionTest(TestCase):
         }, src=0, dst=5, initial_direction=Point(1, 1))
         assert_that(list(result), equal_to([2, 4, 5]))
 
-    def test_for_graph_with_1(self):
+    def test_for_graph_1(self):
         result = shortest_path_with_direction(graph={
             0: Node(position=Point(0, 1), arcs=[Arc(dst=1, weight=1),
                                                 Arc(dst=2, weight=1)]),
@@ -286,7 +286,7 @@ class ShortestPathWithDirectionTest(TestCase):
         }, src=0, dst=6, initial_direction=Point(1, -1))
         assert_that(list(result), equal_to([1, 3, 5, 6]))
 
-    def test_for_graph_with_2(self):
+    def test_for_graph_2(self):
         result = shortest_path_with_direction(graph={
             0: Node(position=Point(0, 1), arcs=[Arc(dst=1, weight=1),
                                                 Arc(dst=2, weight=1)]),
@@ -298,6 +298,25 @@ class ShortestPathWithDirectionTest(TestCase):
             6: Node(position=Point(2, 2), arcs=[]),
         }, src=0, dst=6, initial_direction=Point(1, 1))
         assert_that(list(result), equal_to([2, 4, 6]))
+
+    def test_for_graph_3(self):
+        result = shortest_path_with_direction(graph={
+            0: Node(position=Point(0, 0), arcs=[]),
+            1: Node(position=Point(0, 1), arcs=[Arc(dst=0, weight=1)]),
+            2: Node(position=Point(0, 2), arcs=[Arc(dst=1, weight=1)]),
+            3: Node(position=Point(0, 3), arcs=[Arc(dst=2, weight=1)]),
+            4: Node(position=Point(0, 4), arcs=[Arc(dst=3, weight=1)]),
+            5: Node(position=Point(0, 5), arcs=[Arc(dst=4, weight=1)]),
+            6: Node(position=Point(1, 2), arcs=[Arc(dst=1, weight=pi / 2)]),
+            7: Node(position=Point(1, 6), arcs=[Arc(dst=5, weight=pi / 2)]),
+            8: Node(position=Point(2, 3), arcs=[Arc(dst=6, weight=pi / 2)]),
+            9: Node(position=Point(2, 4), arcs=[Arc(dst=8, weight=1)]),
+            10: Node(position=Point(2, 5), arcs=[Arc(dst=9, weight=1)]),
+            11: Node(position=Point(2, 6), arcs=[Arc(dst=7, weight=1)]),
+            12: Node(position=Point(3, 6), arcs=[Arc(dst=10, weight=pi / 2),
+                                                 Arc(dst=11, weight=1)]),
+        }, src=12, dst=0, initial_direction=Point(-1, 0))
+        assert_that(list(result), equal_to([11, 7, 5, 4, 3, 2, 1, 0]))
 
 
 class SplitArcsTest(TestCase):
@@ -372,20 +391,20 @@ class AddDiagonalArcsTest(TestCase):
                     arcs=[Arc(dst=6, weight=0.5), Arc(dst=7, weight=0.5)]),
             4: Node(position=Point(x=0.0, y=0.5),
                     arcs=[Arc(dst=0, weight=0.5), Arc(dst=1, weight=0.5),
-                          Arc(dst=5, weight=sqrt(2) / 2),
-                          Arc(dst=6, weight=sqrt(2) / 2)]),
+                          Arc(dst=5, weight=pi / 2 / 2),
+                          Arc(dst=6, weight=pi / 2 / 2)]),
             5: Node(position=Point(x=0.5, y=0.0),
                     arcs=[Arc(dst=0, weight=0.5), Arc(dst=2, weight=0.5),
-                          Arc(dst=4, weight=sqrt(2) / 2),
-                          Arc(dst=7, weight=sqrt(2) / 2)]),
+                          Arc(dst=4, weight=pi / 2 / 2),
+                          Arc(dst=7, weight=pi / 2 / 2)]),
             6: Node(position=Point(x=0.5, y=1.0),
                     arcs=[Arc(dst=1, weight=0.5), Arc(dst=3, weight=0.5),
-                          Arc(dst=4, weight=sqrt(2) / 2),
-                          Arc(dst=7, weight=sqrt(2) / 2)]),
+                          Arc(dst=4, weight=pi / 2 / 2),
+                          Arc(dst=7, weight=pi / 2 / 2)]),
             7: Node(position=Point(x=1.0, y=0.5),
                     arcs=[Arc(dst=2, weight=0.5), Arc(dst=3, weight=0.5),
-                          Arc(dst=5, weight=sqrt(2) / 2),
-                          Arc(dst=6, weight=sqrt(2) / 2)]),
+                          Arc(dst=5, weight=pi / 2 / 2),
+                          Arc(dst=6, weight=pi / 2 / 2)]),
         }))
 
 

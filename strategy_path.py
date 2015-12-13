@@ -1,10 +1,10 @@
-from model.BonusType import BonusType
+from collections import namedtuple, defaultdict, deque
 from enum import Enum
-from collections import namedtuple
-from itertools import islice, groupby, chain
-from sys import maxsize
-from collections import defaultdict, deque
 from heapq import heappop, heappush
+from itertools import islice, groupby, chain
+from math import sqrt, pi
+from sys import maxsize
+from model.BonusType import BonusType
 from model.TileType import TileType
 from strategy_common import Point, get_current_tile, Polyline
 
@@ -424,8 +424,9 @@ def add_diagonal_arcs(graph):
                 if ((first_arc.dst, second_arc.dst) not in result and
                         (second_arc.dst, first_arc.dst) not in result and
                         first_direction.cos(second_direction) >= 0):
-                    result[first_arc.dst].append(Arc(second_arc.dst, distance))
-                    result[second_arc.dst].append(Arc(first_arc.dst, distance))
+                    weight = sqrt(distance ** 2 / 2) * pi / 2
+                    result[first_arc.dst].append(Arc(second_arc.dst, weight))
+                    result[second_arc.dst].append(Arc(first_arc.dst, weight))
         return result
 
     def generate():
@@ -466,12 +467,16 @@ def shortest_path_with_direction(graph, src, dst, initial_direction):
             new_direction = direction_from
             current_distance = distances.get(neighbor_index, float('inf'))
             cos_value = direction.cos(new_direction)
-            factor = (1 - cos_value) * min(10, 2 ** (3 - 2 * cos_value))
-            new_distance = distance + (factor + 1) / weight
+            penalty = (1 - cos_value) * min(10, 2 ** (3 - 2 * cos_value))
+            new_distance = distance + weight + penalty
             if new_distance < current_distance:
                 distances[neighbor_index] = new_distance
                 previous_nodes[neighbor_index] = node_index
                 heappush(queue, (new_distance, neighbor_index, new_direction))
+    return build_path(src, dst, previous_nodes)
+
+
+def build_path(src, dst, previous_nodes):
     result = deque()
     node_index = dst
     while node_index is not None:
