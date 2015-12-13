@@ -590,7 +590,6 @@ class Path:
             return (distance < 0.75 * context.game.track_tile_size and
                     self.__get_direction().cos(course) < 0.25)
 
-        path_size = len(self.__path)
         while need_take_next(self.__path):
             self.__history.append(self.__path[0])
             self.__path = self.__path[1:]
@@ -598,11 +597,7 @@ class Path:
         def need_remake(path):
             if not path:
                 return True
-            tile = context.tile
-            first_tile = get_current_tile(path[0], context.game.track_tile_size)
             return (
-                tile.x != first_tile.x and tile.y != first_tile.y or
-                path_size != len(self.__path) and
                 context.speed.norm() > 0 and
                 context.direction.cos(context.speed) < -cos(1) or
                 path_has_tiles(path, context.world.tiles_x_y,
