@@ -32,6 +32,11 @@ class Plot:
     def lines(self, x, y, *args, **kwargs):
         self.__axis.plot(x, y, *args, **kwargs)
 
+    def circle(self, position, radius, **kwargs):
+        from matplotlib.pyplot import Circle
+        self.__axis.add_patch(Circle((position.x, position.y), radius,
+                                     **kwargs))
+
     def draw(self):
         if self.__title is not None:
             self.__axis.set_title(self.__title)
