@@ -330,6 +330,8 @@ def throw_washer(context: Context):
         Washer(position=context.position,
                speed=context.direction.rotate(radians(-2)) * washer_speed),
     ]
+    world_tiles = context.world.tiles_x_y
+    tile_size = context.game.track_tile_size
 
     def generate():
         for car in context.opponents_cars:
@@ -351,6 +353,10 @@ def throw_washer(context: Context):
                                        washer.position + washer.speed)
                     intersection = washer_line.intersection(car_line)
                     if intersection is None:
+                        continue
+                    if not is_in_world(intersection, world_tiles, tile_size):
+                        continue
+                    if is_in_empty_tile(intersection, world_tiles, tile_size):
                         continue
                     car_dir = intersection - car_position
                     if car_dir.norm() > 0 and car_dir.cos(car_speed) < 0:
@@ -438,6 +444,8 @@ def throw_tire(context: Context, tiles_barriers):
             width=context.game.tire_radius,
         )(0)
 
+    world_tiles = context.world.tiles_x_y
+
     def generate():
         for car in context.opponents_cars:
             car_position = Point(car.x, car.y)
@@ -458,6 +466,10 @@ def throw_tire(context: Context, tiles_barriers):
                                  context.position + tire_speed)
                 intersection = tire_line.intersection(car_line)
                 if intersection is None:
+                    continue
+                if not is_in_world(intersection, world_tiles, tile_size):
+                    continue
+                if is_in_empty_tile(intersection, world_tiles, tile_size):
                     continue
                 car_dir = intersection - car_position
                 if car_dir.norm() > 0 and car_dir.cos(car_speed) < 0:
@@ -738,6 +750,8 @@ class Course:
                 width=width,
             )
 
+        world_tiles = context.world.tiles_x_y
+
         def dynamic(units, barriers):
             def units_intersection(current_angle):
                 my_speed = course.rotate(current_angle) * context.speed.norm()
@@ -748,6 +762,10 @@ class Course:
                     unit_line = Line(unit.position, unit.position + unit.speed)
                     intersection = my_line.intersection(unit_line)
                     if intersection is None:
+                        continue
+                    if not is_in_world(intersection, world_tiles, tile_size):
+                        continue
+                    if is_in_empty_tile(intersection, world_tiles, tile_size):
                         continue
                     unit_dir = intersection - unit.position
                     if unit_dir.norm() == 0 or unit_dir.cos(unit.speed) < 0:
@@ -876,3 +894,14 @@ class SpeedLoss:
 
     def get(self):
         return self.__speed.get() * self.__crush.get() / self.__crush.count
+
+
+def is_in_empty_tile(position, tiles, tile_size):
+    tile = get_current_tile(position, tile_size)
+    return tiles[tile.x][tile.y] == TileType.EMPTY
+
+
+def is_in_world(position, tiles, tile_size):
+    width = len(tiles) * tile_size
+    height = len(tiles[0]) * tile_size
+    return 0 < position.x < width and 0 < position.y < height
