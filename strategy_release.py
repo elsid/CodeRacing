@@ -325,8 +325,9 @@ class MoveMode:
                 len(nitro_path) >= nitro_path_size):
             nitro_cos = cos_product(nitro_path)
             context.move.use_nitro = (
-                nitro_cos > 0.9 or nitro_cos > 0.6 and
-                target_speed.norm() - context.speed.norm() > 30)
+                nitro_cos > 0.9 or nitro_cos > 0.7 and
+                target_speed.norm() - context.speed.norm() > 30 and
+                context.direction.cos(course) > 0.95)
 
     def use_main(self):
         self.__path.use_main()
