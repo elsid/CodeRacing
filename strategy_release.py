@@ -298,7 +298,8 @@ class MoveMode:
         else:
             nitro_path = self.__path.history + path[:nitro_path_size]
         if (context.world.tick > context.game.initial_freeze_duration_ticks and
-                len(nitro_path) >= nitro_path_size):
+                len(nitro_path) >= (nitro_path_size +
+                                    TARGET_SPEED_PATH_HISTORY_SIZE)):
             nitro_cos = cos_product(nitro_path)
             context.move.use_nitro = (
                 nitro_cos > 0.9 or nitro_cos > 0.7 and
