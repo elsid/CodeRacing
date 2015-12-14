@@ -302,8 +302,9 @@ class MoveMode:
             nitro_cos = cos_product(nitro_path)
             context.move.use_nitro = (
                 nitro_cos > 0.9 or nitro_cos > 0.7 and
-                target_speed.norm() - context.speed.norm() > 30 and
-                context.direction.cos(course) > 0.95)
+                target_speed.norm() - context.speed.norm() > 25 and
+                context.direction.cos(course) > 0.95 and
+                context.speed.norm() > 5)
 
     def use_forward(self):
         self.__path.use_forward()
