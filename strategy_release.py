@@ -44,14 +44,15 @@ from strategy_barriers import (
 )
 
 
-BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.5
-JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 2.6
+BUGGY_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 3.5
+JEEP_INITIAL_ANGLE_TO_DIRECT_PROPORTION = 3.5
 SPEED_LOSS_HISTORY_SIZE = 500
 MIN_SPEED_LOSS = 1 / SPEED_LOSS_HISTORY_SIZE
 MAX_SPEED_LOSS = 1 / SPEED_LOSS_HISTORY_SIZE
 CHANGE_PER_TICKS_COUNT = SPEED_LOSS_HISTORY_SIZE / 5
 MAX_CANISTER_COUNT = 1
 COURSE_PATH_SIZE = 3
+TARGET_SPEED_PATH_MIN_SIZE = 3
 TARGET_SPEED_PATH_HISTORY_SIZE = 2
 BUGGY_PATH_SIZE_FOR_USE_NITRO = 5
 JEEP_PATH_SIZE_FOR_USE_NITRO = 5
@@ -247,7 +248,8 @@ class MoveMode:
     def move(self, context: Context):
         path = self.__path.get(context)
         course = self.__course.get(context, path[:COURSE_PATH_SIZE])
-        speed_path_size = int(context.speed.norm() / 10) + 1
+        speed_path_size = max(TARGET_SPEED_PATH_MIN_SIZE,
+                              int(context.speed.norm() / 9))
         speed_path = self.__path.history + path[:speed_path_size]
         max_speed = (
             MAX_SPEED_THROUGH_UNKNOWN
