@@ -5,11 +5,12 @@ from model.Game import Game
 from model.Move import Move
 from model.World import World
 from strategy_release import Context, ReleaseStrategy
-from debug import log
 
 
 def profile(func):
     if 'PROFILE' in environ and environ['PROFILE'] == '1':
+        from debug import log
+
         def wrap(self, me: Car, world: World, game: Game, move: Move):
             start = time()
             result = func(self, me, world, game, move)
