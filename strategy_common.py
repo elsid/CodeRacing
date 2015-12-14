@@ -278,7 +278,3 @@ class Curve:
         angle = self.__spline(distance)
         point = Point(distance, angle)
         return self.__begin + point.cartesian().rotate(self.__angle)
-
-
-def log(**kwargs):
-    print(dumps(kwargs))

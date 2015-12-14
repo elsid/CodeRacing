@@ -5,6 +5,7 @@ from model.Game import Game
 from model.Move import Move
 from model.World import World
 from strategy_release import Context, ReleaseStrategy
+from debug import log
 
 
 def profile(func):
@@ -13,7 +14,7 @@ def profile(func):
             start = time()
             result = func(self, me, world, game, move)
             finish = time()
-            print(world.tick, finish - start)
+            log(tick=world.tick, id=me.id, time=finish - start)
             return result
 
         return wrap
