@@ -507,7 +507,6 @@ class Path:
         }
         self.__current = self.__forward
         self.__get_direction = get_direction
-        self.__unknown_count = 0
 
     @property
     def history(self):
@@ -567,34 +566,33 @@ class Path:
                 path_has_tiles(path, context.world.tiles_x_y,
                                context.game.track_tile_size,
                                TileType.EMPTY) or
-                path_count_tiles(path, context.world.tiles_x_y,
-                                 context.game.track_tile_size,
-                                 TileType.UNKNOWN) != self.__unknown_count or
+                first_point_index(path, context.world.tiles_x_y,
+                                  context.game.track_tile_size,
+                                  TileType.UNKNOWN) < min(3, len(path)) or
                 context.position.distance(path[0]) >
                 2 * context.game.track_tile_size)
 
         if need_remake(self.__path):
             self.__path = self.__current.make(context)
-            self.__unknown_count = path_count_tiles(
-                self.__path, context.world.tiles_x_y,
-                context.game.track_tile_size, TileType.UNKNOWN)
         self.__forward.start_tile = context.tile
 
 
-def path_count_tiles(path, tiles, tile_size, tile_type):
-    return sum(path_filter_tiles(path, tiles, tile_size, tile_type))
+def first_point_index(path, tiles, tile_size, tile_type):
+    for i, p in enumerate(path):
+        if is_in_world(p, tiles, tile_size):
+            tile = get_current_tile(p, tile_size)
+            if tiles[tile.x][tile.y] == tile_type:
+                return i
+    return len(path)
 
 
 def path_has_tiles(path, tiles, tile_size, tile_type):
-    return next(path_filter_tiles(path, tiles, tile_size, tile_type), False)
-
-
-def path_filter_tiles(path, tiles, tile_size, tile_type):
     for p in path:
-        tile = get_current_tile(p, tile_size)
-        if (0 <= tile.x < len(tiles) and 0 <= tile.y < len(tiles[tile.x]) and
-                tiles[tile.x][tile.y] == tile_type):
-            yield True
+        if is_in_world(p, tiles, tile_size):
+            tile = get_current_tile(p, tile_size)
+            if tiles[tile.x][tile.y] == tile_type:
+                return True
+    return False
 
 
 class WaypointsPathBuilder:
