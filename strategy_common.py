@@ -1,6 +1,6 @@
 from collections import deque
 from itertools import islice
-from math import cos, sin, sqrt, atan2, pi
+from math import cos, sin, sqrt, atan2, pi, hypot
 from numpy import arctan2
 from scipy.interpolate import InterpolatedUnivariateSpline
 
@@ -76,13 +76,13 @@ class Point:
         return self.x * other.x + self.y * other.y
 
     def norm(self):
-        return sqrt(self.dot(self))
+        return hypot(self.x, self.y)
 
     def cos(self, other):
         return self.dot(other) / (self.norm() * other.norm())
 
     def distance(self, other):
-        return (other - self).norm()
+        return hypot(other.x - self.x, other.y - self.y)
 
     def map(self, function):
         return Point(function(self.x), function(self.y))
