@@ -1,6 +1,6 @@
 from collections import deque, namedtuple
 from copy import copy
-from math import cos, radians, pi
+from math import cos, radians
 from itertools import chain, islice
 from functools import reduce
 from operator import mul
