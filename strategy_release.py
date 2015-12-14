@@ -52,11 +52,10 @@ MAX_SPEED_LOSS = 1 / SPEED_LOSS_HISTORY_SIZE
 CHANGE_PER_TICKS_COUNT = SPEED_LOSS_HISTORY_SIZE / 5
 MAX_CANISTER_COUNT = 1
 COURSE_PATH_SIZE = 3
-TARGET_SPEED_PATH_SIZE = 4
 TARGET_SPEED_PATH_HISTORY_SIZE = 2
 BUGGY_PATH_SIZE_FOR_USE_NITRO = 5
 JEEP_PATH_SIZE_FOR_USE_NITRO = 5
-MAX_SPEED = 50
+MAX_SPEED = 45
 MAX_SPEED_THROUGH_UNKNOWN = 40
 PATH_SIZE_FOR_BONUSES = 5
 CAR_SPEED_FACTOR = 1.2
@@ -248,7 +247,8 @@ class MoveMode:
     def move(self, context: Context):
         path = self.__path.get(context)
         course = self.__course.get(context, path[:COURSE_PATH_SIZE])
-        speed_path = self.__path.history + path[:TARGET_SPEED_PATH_SIZE]
+        speed_path_size = int(context.speed.norm() / 10) + 1
+        speed_path = self.__path.history + path[:speed_path_size]
         max_speed = (
             MAX_SPEED_THROUGH_UNKNOWN
             if path_has_tiles(path, context.world.tiles_x_y,
@@ -262,6 +262,7 @@ class MoveMode:
             angle_to_direct_proportion=(self.speed_angle_to_direct_proportion *
                                         max_speed / MAX_SPEED),
             max_speed=max_speed,
+            min_power=speed_path_size + TARGET_SPEED_PATH_HISTORY_SIZE
         )
         self.__target_position = context.position + course
         self.__previous_path = path
@@ -301,7 +302,7 @@ class MoveMode:
         if (context.world.tick > context.game.initial_freeze_duration_ticks and
                 len(nitro_path) >= (nitro_path_size +
                                     TARGET_SPEED_PATH_HISTORY_SIZE)):
-            nitro_cos = cos_product(nitro_path)
+            nitro_cos = cos_product(nitro_path, nitro_path_size)
             context.move.use_nitro = (
                 nitro_cos > 0.9 or nitro_cos > 0.7 and
                 target_speed.norm() - context.speed.norm() > 25 and
