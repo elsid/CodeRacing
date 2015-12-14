@@ -40,6 +40,7 @@ from strategy_barriers import (
     make_has_intersection_with_line,
     make_has_intersection_with_lane,
     Rectangle,
+    BarrierLimit,
 )
 
 
@@ -720,94 +721,83 @@ class Course:
                 for y in range_y:
                     yield Point(x, y)
 
-        tiles = list(generate_tiles())
         row_size = context.world.height
 
         def generate_tiles_barriers():
             def impl():
-                for tile in tiles:
+                for tile in generate_tiles():
                     yield self.__tile_barriers[get_point_index(tile, row_size)]
-            return chain.from_iterable(impl())
+            return (v for v in chain.from_iterable(impl()))
 
         all_units = list(
             Unit(Point(v.x, v.y), Point(v.speed_x, v.speed_y)) for v in chain(
                 (v for v in context.world.cars
-                 if v.id != context.me.id and v.speed_x > 0 and v.speed_y > 0),
+                 if v.id != context.me.id and (v.speed_x > 0 or v.speed_y > 0)),
                 (x for x in context.world.projectiles),
             )
         )
-        tiles_barriers = list(generate_tiles_barriers())
-        all_barriers = list(chain(tiles_barriers,
-                                  generate_units_barriers(context)))
+        tiles_barriers = generate_tiles_barriers()
+        projectiles_barriers = generate_projectiles_barriers(context)
+        cars_barriers = generate_cars_barriers(context)
+        oil_slicks_barriers = generate_oil_slicks_barriers(context)
+        all_barriers = list(chain(
+            tiles_barriers,
+            (BarrierLimit(v, 0.9) for v in projectiles_barriers),
+            (BarrierLimit(v, 0.8) for v in cars_barriers),
+            (BarrierLimit(v, 0.7) for v in oil_slicks_barriers),
+        ))
         width = max(context.me.width, context.me.height)
         angle = course.rotation(context.direction)
 
-        def static(current_barriers):
-            return make_has_intersection_with_lane(
-                position=context.position,
-                course=course * (0.75 + context.speed.norm() / MAX_SPEED),
-                barriers=current_barriers,
-                width=width,
-            )
+        static = make_has_intersection_with_lane(
+            position=context.position,
+            course=course * (0.75 + context.speed.norm() / MAX_SPEED),
+            barriers=all_barriers,
+            width=width,
+        )
 
         world_tiles = context.world.tiles_x_y
 
-        def dynamic(units, barriers):
-            def units_intersection(current_angle):
-                my_speed = course.rotate(current_angle) * context.speed.norm()
-                my_line = Line(context.position, context.position + my_speed)
-                for unit in units:
-                    if unit.speed.norm() == 0:
-                        continue
-                    unit_line = Line(unit.position, unit.position + unit.speed)
-                    intersection = my_line.intersection(unit_line)
-                    if intersection is None:
-                        continue
-                    if not is_in_world(intersection, world_tiles, tile_size):
-                        continue
-                    if is_in_empty_tile(intersection, world_tiles, tile_size):
-                        continue
-                    unit_dir = intersection - unit.position
-                    if unit_dir.norm() == 0 or unit_dir.cos(unit.speed) < 0:
-                        continue
-                    if unit_dir.norm() > my_speed.norm() * 100:
-                        continue
-                    my_dir = intersection - context.position
-                    if my_dir.norm() == 0 or my_dir.cos(my_speed) < 0:
-                        continue
-                    unit_time = unit_dir.norm() / unit.speed.norm()
-                    my_time = my_dir.norm() / my_speed.norm()
-                    if abs(my_time - unit_time) <= MY_INTERVAL:
-                        return True
+        def dynamic(current_angle):
+            if abs(current_angle) > 0.6:
                 return False
-
-            barriers_intersection = static(barriers)
-            return lambda x: units_intersection(x) or barriers_intersection(x)
+            my_speed = course.rotate(current_angle) * context.speed.norm()
+            my_line = Line(context.position, context.position + my_speed)
+            for unit in all_units:
+                if unit.speed.norm() == 0:
+                    continue
+                unit_line = Line(unit.position, unit.position + unit.speed)
+                intersection = my_line.intersection(unit_line)
+                if intersection is None:
+                    continue
+                if not is_in_world(intersection, world_tiles, tile_size):
+                    continue
+                if is_in_empty_tile(intersection, world_tiles, tile_size):
+                    continue
+                unit_dir = intersection - unit.position
+                if unit_dir.norm() == 0 or unit_dir.cos(unit.speed) < 0:
+                    continue
+                if unit_dir.norm() > my_speed.norm() * 100:
+                    continue
+                my_dir = intersection - context.position
+                if my_dir.norm() == 0 or my_dir.cos(my_speed) < 0:
+                    continue
+                unit_time = unit_dir.norm() / unit.speed.norm()
+                my_time = my_dir.norm() / my_speed.norm()
+                if abs(my_time - unit_time) <= MY_INTERVAL:
+                    return True
+            return False
 
         def adjust(has_intersection, begin, end):
             return adjust_course(has_intersection, angle, begin, end)
 
-        variants = [
-            lambda: adjust(static(all_barriers), -pi / 4, pi / 4),
-            lambda: adjust(static(tiles_barriers), -1, 1),
-        ]
         if context.speed.norm() > 0:
-            variants = [
-                lambda: adjust(dynamic(all_units, all_barriers), -pi/4, pi/4),
-            ] + variants
-        for f in variants:
-            rotation = f()
-            if rotation is not None:
-                return course.rotate(rotation)
+            rotation = adjust(lambda x: dynamic(x) or static(x), -1, 1)
+        else:
+            rotation = adjust(static, -1, 1)
+        if rotation is not None:
+            return course.rotate(rotation)
         return course
-
-
-def generate_units_barriers(context: Context):
-    return chain(
-        generate_projectiles_barriers(context),
-        generate_oil_slicks_barriers(context),
-        generate_cars_barriers(context),
-    )
 
 
 def generate_projectiles_barriers(context: Context):

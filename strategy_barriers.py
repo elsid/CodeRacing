@@ -1,8 +1,10 @@
+from collections import namedtuple
+from itertools import chain
+from numpy import sign
+from scipy.optimize import bisect
 from model.CircularUnit import CircularUnit
 from model.RectangularUnit import RectangularUnit
 from model.TileType import TileType
-from numpy import sign
-from scipy.optimize import bisect
 from strategy_common import Point, Line
 from strategy_path import get_point_index
 
@@ -251,12 +253,20 @@ def make_unit_barrier(unit):
         return None
 
 
+BarrierLimit = namedtuple('BarrierLimit', ('value', 'angle'))
+
+
 def make_has_intersection_with_line(position, course, barriers):
     def impl(angle):
         end = position + course.rotate(angle)
         line = Line(position, end)
-        return next((True for x in barriers
-                     if x.has_intersection_with_line(line)), False)
+        filtered = chain(
+            (v.value for v in barriers if isinstance(v, BarrierLimit) and
+             abs(angle) <= v.angle),
+            (v for v in barriers if not isinstance(v, BarrierLimit)),
+        )
+        return next((True for v in filtered
+                     if v.has_intersection_with_line(line)), False)
     return impl
 
 
