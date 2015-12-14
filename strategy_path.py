@@ -313,6 +313,50 @@ def multi_path(graph, waypoints, direction):
 Node = namedtuple('Node', ('position', 'arcs'))
 Arc = namedtuple('Arc', ('dst', 'weight'))
 
+HAS_LEFT_INPUT = frozenset((
+    TileType.HORIZONTAL,
+    TileType.RIGHT_TOP_CORNER,
+    TileType.RIGHT_BOTTOM_CORNER,
+    TileType.LEFT_HEADED_T,
+    TileType.TOP_HEADED_T,
+    TileType.BOTTOM_HEADED_T,
+    TileType.CROSSROADS,
+    TileType.UNKNOWN,
+))
+
+HAS_RIGHT_INPUT = frozenset((
+    TileType.HORIZONTAL,
+    TileType.LEFT_TOP_CORNER,
+    TileType.LEFT_BOTTOM_CORNER,
+    TileType.RIGHT_HEADED_T,
+    TileType.TOP_HEADED_T,
+    TileType.BOTTOM_HEADED_T,
+    TileType.CROSSROADS,
+    TileType.UNKNOWN,
+))
+
+HAS_TOP_INPUT = frozenset((
+    TileType.VERTICAL,
+    TileType.LEFT_BOTTOM_CORNER,
+    TileType.RIGHT_BOTTOM_CORNER,
+    TileType.LEFT_HEADED_T,
+    TileType.RIGHT_HEADED_T,
+    TileType.TOP_HEADED_T,
+    TileType.CROSSROADS,
+    TileType.UNKNOWN,
+))
+
+HAS_BOTTOM_INPUT = frozenset((
+    TileType.VERTICAL,
+    TileType.LEFT_TOP_CORNER,
+    TileType.RIGHT_TOP_CORNER,
+    TileType.LEFT_HEADED_T,
+    TileType.RIGHT_HEADED_T,
+    TileType.BOTTOM_HEADED_T,
+    TileType.CROSSROADS,
+    TileType.UNKNOWN,
+))
+
 
 def make_graph(tiles):
     column_size = len(tiles)
@@ -354,16 +398,23 @@ def make_graph(tiles):
         elif tile_type == TileType.CROSSROADS:
             return left(pos), right(pos), top(pos), bottom(pos)
         elif tile_type == TileType.UNKNOWN:
+            def is_valid(point: Point):
+                return 0 <= point.x < column_size and 0 <= point.y < row_size
+
             def generate():
                 l = Point(pos.x - 1, pos.y)
+                if is_valid(l) and tiles[l.x][l.y] in HAS_LEFT_INPUT:
+                    yield l
                 r = Point(pos.x + 1, pos.y)
+                if is_valid(r) and tiles[r.x][r.y] in HAS_RIGHT_INPUT:
+                    yield r
                 t = Point(pos.x, pos.y - 1)
+                if is_valid(t) and tiles[t.x][t.y] in HAS_TOP_INPUT:
+                    yield t
                 b = Point(pos.x, pos.y + 1)
-                for p in l, r, t, b:
-                    if (0 <= p.x < column_size and 0 <= p.y < row_size and
-                            tiles[p.x][p.y] != TileType.EMPTY):
-                        yield get_point_index(p, row_size)
-            return tuple(generate())
+                if is_valid(b) and tiles[b.x][b.y] in HAS_BOTTOM_INPUT:
+                    yield b
+            return tuple(get_point_index(p, row_size) for p in generate())
         else:
             return tuple()
 
