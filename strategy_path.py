@@ -490,28 +490,38 @@ def get_point(index, row_size):
 
 def shortest_path_with_direction(graph, src, dst, initial_direction):
     initial_direction = initial_direction.normalized()
-    queue = [(0, src, initial_direction)]
+    dst_position = graph[dst].position
+    src_position = graph[src].position
+    queue = [(0, src_position.distance(dst_position), src, initial_direction)]
     distances = {src: 0}
     previous_nodes = {}
     visited = defaultdict(list)
     while queue:
-        distance, node_index, direction = heappop(queue)
+        v = heappop(queue)
+        distance = v[0]
+        node_index = v[2]
+        direction = v[3]
         visited[node_index].append(direction)
         node = graph[node_index]
         for neighbor_index, weight in node.arcs:
-            direction_from = graph[neighbor_index].position - node.position
+            neighbor = graph[neighbor_index]
+            direction_from = neighbor.position - node.position
             if (direction_from in visited[neighbor_index] or
                     direction_from.norm() == 0):
                 continue
             new_direction = direction_from
             current_distance = distances.get(neighbor_index, float('inf'))
+            if not distance + weight < current_distance:
+                continue
             cos_value = direction.cos(new_direction)
             penalty = (1 - cos_value) * min(10, 2 ** (3 - 2 * cos_value))
             new_distance = distance + weight + penalty
             if new_distance < current_distance:
                 distances[neighbor_index] = new_distance
                 previous_nodes[neighbor_index] = node_index
-                heappush(queue, (new_distance, neighbor_index, new_direction))
+                direct_distance = neighbor.position.distance(dst_position)
+                heappush(queue, (new_distance, direct_distance, neighbor_index,
+                                 new_direction))
     return build_path(src, dst, previous_nodes)
 
 
