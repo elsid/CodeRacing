@@ -210,6 +210,8 @@ def make_tile_barriers(tile_type: TileType, position: Point, margin, size):
         return [left_top, left_bottom, right_top, right_bottom]
     elif tile_type == TileType.EMPTY:
         return [Rectangle(left_top=point(0, 0), right_bottom=point(size, size))]
+    else:
+        return []
 
 
 class Unit:
