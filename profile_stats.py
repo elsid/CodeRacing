@@ -18,11 +18,12 @@ def main():
     grouped = groupby(ordered, key=attrgetter('id'))
     for car_id, values in grouped:
         values = sorted(values, key=attrgetter('tick'))
-        values = [x for x in values if x.time > 0.02]
-        print(car_id, 'sum:', sum(x.time for x in values))
-        print(car_id, 'mean:', mean(x.time for x in values))
-        print(car_id, 'median:', median(x.time for x in values))
-        hist([x.time for x in values], 100)
+        print(car_id, 'sum:', sum(v.time for v in values))
+        print(car_id, 'min:', min(v.time for v in values))
+        print(car_id, 'max:', max(v.time for v in values))
+        print(car_id, 'mean:', mean(v.time for v in values))
+        print(car_id, 'median:', median(v.time for v in values))
+        hist([v.time for v in values], 100)
     show()
 
 
