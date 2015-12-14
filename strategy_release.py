@@ -1,7 +1,7 @@
 from collections import deque, namedtuple
 from copy import copy
 from math import cos, radians, pi
-from itertools import chain, islice, takewhile
+from itertools import chain, islice
 from functools import reduce
 from operator import mul
 from model.Car import Car
