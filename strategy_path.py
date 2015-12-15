@@ -532,7 +532,7 @@ def shortest_path_with_direction(graph, src, dst, initial_direction, forbidden):
             if not distance + weight < current_distance:
                 continue
             cos_value = direction.cos(new_direction)
-            penalty = (1 - cos_value) * 2 ** (3 - 2 * cos_value)
+            penalty = (1 - cos_value) * min(10, 2 ** (3 - 2 * cos_value))
             new_distance = distance + weight + penalty
             if new_distance < current_distance:
                 distances[neighbor_index] = new_distance
