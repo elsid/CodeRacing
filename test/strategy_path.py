@@ -1,4 +1,5 @@
 from unittest import TestCase
+
 from hamcrest import assert_that, equal_to
 from math import pi
 from model.TileType import TileType
@@ -196,27 +197,27 @@ class ShortestPathWithDirectionTest(TestCase):
     def test_for_graph_with_one_node_without_arcs_returns_empty(self):
         result = shortest_path_with_direction(
             graph={0: Node(position=Point(0, 0), arcs=[])},
-            src=0, dst=0, initial_direction=Point(1, 0))
+            src=0, dst=0, initial_direction=Point(1, 0), forbidden={})
         assert_that(list(result), equal_to([]))
 
     def test_for_graph_with_one_node_with_arc_returns_empty(self):
         result = shortest_path_with_direction(
             graph={0: Node(position=Point(0, 0), arcs=[Arc(dst=0, weight=1)])},
-            src=0, dst=0, initial_direction=Point(1, 0))
+            src=0, dst=0, initial_direction=Point(1, 0), forbidden={})
         assert_that(list(result), equal_to([]))
 
     def test_for_graph_with_two_connected_nodes_returns_second(self):
         result = shortest_path_with_direction(graph={
             0: Node(position=Point(0, 0), arcs=[Arc(dst=1, weight=1)]),
             1: Node(position=Point(1, 0), arcs=[]),
-        }, src=0, dst=1, initial_direction=Point(1, 0))
+        }, src=0, dst=1, initial_direction=Point(1, 0), forbidden={})
         assert_that(list(result), equal_to([1]))
 
     def test_for_graph_with_two_disconnected_nodes_returns_empty(self):
         result = shortest_path_with_direction(graph={
             0: Node(position=Point(0, 0), arcs=[]),
             1: Node(position=Point(1, 0), arcs=[]),
-        }, src=0, dst=1, initial_direction=Point(1, 0))
+        }, src=0, dst=1, initial_direction=Point(1, 0), forbidden={})
         assert_that(list(result), equal_to([]))
 
     def test_for_quadrant_from_left_top_to_right_bottom_with_direction_to_right_returns_path_over_right_top(self):
@@ -226,7 +227,7 @@ class ShortestPathWithDirectionTest(TestCase):
             1: Node(position=Point(0, 1), arcs=[Arc(dst=3, weight=1)]),
             2: Node(position=Point(1, 0), arcs=[Arc(dst=3, weight=1)]),
             3: Node(position=Point(1, 1), arcs=[]),
-        }, src=0, dst=3, initial_direction=Point(1, 0))
+        }, src=0, dst=3, initial_direction=Point(1, 0), forbidden={})
         assert_that(list(result), equal_to([2, 3]))
 
     def test_for_quadrant_from_left_top_to_right_bottom_with_direction_to_bottom_returns_path_over_left_bottom(self):
@@ -236,7 +237,7 @@ class ShortestPathWithDirectionTest(TestCase):
             1: Node(position=Point(0, 1), arcs=[Arc(dst=3, weight=1)]),
             2: Node(position=Point(1, 0), arcs=[Arc(dst=3, weight=1)]),
             3: Node(position=Point(1, 1), arcs=[]),
-        }, src=0, dst=3, initial_direction=Point(0, 1))
+        }, src=0, dst=3, initial_direction=Point(0, 1), forbidden={})
         assert_that(list(result), equal_to([1, 3]))
 
     def test_for_quadrant_from_left_top_to_right_top_with_direction_to_bottom_returns_path_direct_to_right_top(self):
@@ -246,7 +247,7 @@ class ShortestPathWithDirectionTest(TestCase):
             1: Node(position=Point(0, 1), arcs=[Arc(dst=3, weight=1)]),
             2: Node(position=Point(1, 0), arcs=[]),
             3: Node(position=Point(1, 1), arcs=[Arc(dst=2, weight=1)]),
-        }, src=0, dst=2, initial_direction=Point(0, 1))
+        }, src=0, dst=2, initial_direction=Point(0, 1), forbidden={})
         assert_that(list(result), equal_to([2]))
 
     def test_for_graph_with_two_alternatives_with_initial_direction_to_right_bottom_returns_over_bottom(self):
@@ -258,7 +259,7 @@ class ShortestPathWithDirectionTest(TestCase):
             3: Node(position=Point(1, 0), arcs=[Arc(dst=5, weight=1)]),
             4: Node(position=Point(1, 2), arcs=[Arc(dst=5, weight=1)]),
             5: Node(position=Point(1, 1), arcs=[]),
-        }, src=0, dst=5, initial_direction=Point(1, -1))
+        }, src=0, dst=5, initial_direction=Point(1, -1), forbidden={})
         assert_that(list(result), equal_to([1, 3, 5]))
 
     def test_for_graph_with_two_alternatives_with_initial_direction_to_right_top_returns_over_top(self):
@@ -270,7 +271,7 @@ class ShortestPathWithDirectionTest(TestCase):
             3: Node(position=Point(1, 0), arcs=[Arc(dst=5, weight=1)]),
             4: Node(position=Point(1, 2), arcs=[Arc(dst=5, weight=1)]),
             5: Node(position=Point(1, 1), arcs=[]),
-        }, src=0, dst=5, initial_direction=Point(1, 1))
+        }, src=0, dst=5, initial_direction=Point(1, 1), forbidden={})
         assert_that(list(result), equal_to([2, 4, 5]))
 
     def test_for_graph_1(self):
@@ -283,7 +284,7 @@ class ShortestPathWithDirectionTest(TestCase):
             4: Node(position=Point(1, 2), arcs=[Arc(dst=6, weight=1)]),
             5: Node(position=Point(1, 1), arcs=[Arc(dst=6, weight=1)]),
             6: Node(position=Point(2, 2), arcs=[]),
-        }, src=0, dst=6, initial_direction=Point(1, -1))
+        }, src=0, dst=6, initial_direction=Point(1, -1), forbidden={})
         assert_that(list(result), equal_to([1, 3, 5, 6]))
 
     def test_for_graph_2(self):
@@ -296,7 +297,7 @@ class ShortestPathWithDirectionTest(TestCase):
             4: Node(position=Point(1, 2), arcs=[Arc(dst=6, weight=1)]),
             5: Node(position=Point(1, 1), arcs=[Arc(dst=6, weight=1)]),
             6: Node(position=Point(2, 2), arcs=[]),
-        }, src=0, dst=6, initial_direction=Point(1, 1))
+        }, src=0, dst=6, initial_direction=Point(1, 1), forbidden={})
         assert_that(list(result), equal_to([2, 4, 6]))
 
     def test_for_graph_3(self):
@@ -315,7 +316,7 @@ class ShortestPathWithDirectionTest(TestCase):
             11: Node(position=Point(2, 6), arcs=[Arc(dst=7, weight=1)]),
             12: Node(position=Point(3, 6), arcs=[Arc(dst=10, weight=pi / 2),
                                                  Arc(dst=11, weight=1)]),
-        }, src=12, dst=0, initial_direction=Point(-1, 0))
+        }, src=12, dst=0, initial_direction=Point(-1, 0), forbidden={})
         assert_that(list(result), equal_to([11, 7, 5, 4, 3, 2, 1, 0]))
 
 

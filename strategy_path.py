@@ -1,7 +1,7 @@
 from collections import namedtuple, defaultdict, deque
 from enum import Enum
 from heapq import heappop, heappush
-from itertools import islice, groupby, chain
+from itertools import islice, groupby, chain, takewhile
 from math import sqrt, pi
 from sys import maxsize
 from model.BonusType import BonusType
@@ -290,8 +290,24 @@ def multi_path(graph, waypoints, direction):
     path = [waypoints[0]]
     for i, w in islice(enumerate(waypoints), 0, len(waypoints) - 1):
         if w in graph and waypoints[i + 1] in graph:
+            forbidden_waypoints = takewhile(lambda v: v != waypoints[i],
+                                            waypoints[i + 2:])
             sub_path = list(shortest_path_with_direction(
-                graph, path[-1], waypoints[i + 1], direction))
+                graph=graph,
+                src=path[-1],
+                dst=waypoints[i + 1],
+                initial_direction=direction,
+                forbidden=frozenset(chain.from_iterable(
+                    (n for n, _ in graph[v].arcs) for v in forbidden_waypoints))
+            ))
+            if not sub_path:
+                sub_path = list(shortest_path_with_direction(
+                    graph=graph,
+                    src=path[-1],
+                    dst=waypoints[i + 1],
+                    initial_direction=direction,
+                    forbidden=frozenset(),
+                ))
             path += sub_path[:-1] if i + 1 < len(waypoints) - 1 else sub_path
         if len(path) > 2:
             direction = graph[path[-1]].position - graph[path[-2]].position
@@ -488,7 +504,7 @@ def get_point(index, row_size):
     return Point(int(index / row_size), index % row_size)
 
 
-def shortest_path_with_direction(graph, src, dst, initial_direction):
+def shortest_path_with_direction(graph, src, dst, initial_direction, forbidden):
     initial_direction = initial_direction.normalized()
     dst_position = graph[dst].position
     src_position = graph[src].position
@@ -504,6 +520,8 @@ def shortest_path_with_direction(graph, src, dst, initial_direction):
         visited[node_index].append(direction)
         node = graph[node_index]
         for neighbor_index, weight in node.arcs:
+            if neighbor_index in forbidden:
+                continue
             neighbor = graph[neighbor_index]
             direction_from = neighbor.position - node.position
             if (direction_from in visited[neighbor_index] or
@@ -514,7 +532,7 @@ def shortest_path_with_direction(graph, src, dst, initial_direction):
             if not distance + weight < current_distance:
                 continue
             cos_value = direction.cos(new_direction)
-            penalty = (1 - cos_value) * min(10, 2 ** (3 - 2 * cos_value))
+            penalty = (1 - cos_value) * 2 ** (3 - 2 * cos_value)
             new_distance = distance + weight + penalty
             if new_distance < current_distance:
                 distances[neighbor_index] = new_distance
